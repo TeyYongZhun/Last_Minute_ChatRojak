@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Last Minute ChatRojak</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .card { transition: transform 0.15s, box-shadow 0.15s; }
+    .card:hover { transform: translateY(-1px); }
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+    .loading-dot::after {
+      content: ''; animation: dots 1.2s steps(3, end) infinite;
+    }
+    @keyframes dots {
+      0%   { content: ''; }
+      33%  { content: '.'; }
+      66%  { content: '..'; }
+      100% { content: '...'; }
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+
+<!-- Header -->
+<header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+  <div>
+    <h1 class="text-lg font-bold text-white tracking-tight">Last Minute ChatRojak</h1>
+    <p class="text-xs text-gray-500 mt-0.5">AI-powered task extraction &amp; planning from chat exports</p>
+  </div>
+  <div id="summary-badges" class="flex gap-2 flex-wrap justify-end"></div>
+</header>
+
+<div class="max-w-7xl mx-auto p-5 grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+  <!-- Left: Input Panel -->
+  <div class="lg:col-span-2 space-y-4">
+    <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+      <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Chat Messages</h2>
+      <textarea
+        id="chat-input"
+        class="w-full h-56 bg-gray-800 rounded-xl p-3 text-sm text-gray-200 resize-none border border-gray-700 focus:border-blue-500 focus:outline-none placeholder-gray-600"
+        placeholder="Paste your WhatsApp chat export here...&#10;&#10;e.g.&#10;[10/04/2026] Dr. Rahman: Submit Assignment 2 by Friday 11:59pm&#10;[10/04/2026] Sarah: noted!"
+      ></textarea>
+
+      <div class="flex gap-2 mt-3">
+        <button onclick="loadSample()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-xs font-medium border border-gray-700 transition-colors whitespace-nowrap">
+          Load Sample
+        </button>
+        <button onclick="processMessages()" id="process-btn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors">
+          Process Messages
+        </button>
+        <button onclick="resetAll()" class="px-3 py-2 bg-gray-800 hover:bg-red-950 border border-gray-700 hover:border-red-800 rounded-xl text-xs font-medium transition-colors">
+          Reset
+        </button>
+      </div>
+
+      <div id="status-msg" class="mt-3 text-xs text-gray-500 min-h-4"></div>
+    </div>
+
+    <!-- System Log -->
+    <div id="events-panel" class="bg-gray-900 rounded-2xl border border-gray-800 p-5 hidden">
+      <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">System Log</h2>
+      <div id="events-log" class="space-y-1 max-h-40 overflow-y-auto font-mono"></div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+      <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">How It Works</h2>
+      <ol class="space-y-2 text-xs text-gray-500">
+        <li class="flex gap-2"><span class="text-blue-500 font-bold">1.</span> Paste chat messages or load the sample</li>
+        <li class="flex gap-2"><span class="text-blue-500 font-bold">2.</span> AI extracts actionable tasks from the noise</li>
+        <li class="flex gap-2"><span class="text-blue-500 font-bold">3.</span> Planner scores priority &amp; detects conflicts</li>
+        <li class="flex gap-2"><span class="text-blue-500 font-bold">4.</span> Dashboard shows what to do now vs later</li>
+        <li class="flex gap-2"><span class="text-blue-500 font-bold">5.</span> Answer questions to unlock blocked tasks</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Right: Dashboard -->
+  <div class="lg:col-span-3 space-y-4" id="dashboard">
+    <div class="text-center py-24 text-gray-700">
+      <div class="text-5xl mb-4">💬</div>
+      <p class="text-sm">Paste your chat messages and click<br /><span class="text-blue-500 font-medium">Process Messages</span> to get started</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SAMPLE_CHAT = `[10/04/2026, 9:15 AM] Dr. Rahman: Hi everyone, please submit Assignment 2 by this Friday 11:59pm. No late submissions accepted.
+[10/04/2026, 9:16 AM] Sarah: ok thanks Dr Rahman
+[10/04/2026, 9:20 AM] Amir: noted!
+[10/04/2026, 10:45 AM] Group Chat: Quiz 3 will be on Monday next week, covers Chapter 5-7. Worth 15% of your grade.
+[10/04/2026, 11:00 AM] Emma: hey can you help me with the lab report tomorrow? I'm stuck
+[10/04/2026, 11:05 AM] You: sure np
+[10/04/2026, 2:00 PM] CS Society: Club meeting this Thursday 3pm at Block B. RSVP if you're coming!
+[10/04/2026, 3:30 PM] Ahmad: Team project presentation is on 25th April, we need to finish the slides before that
+[10/04/2026, 4:00 PM] You: guys what time should we meet to do the slides?
+[10/04/2026, 4:05 PM] Kevin: maybe Saturday morning?
+[10/04/2026, 5:00 PM] Prof. Lim: Reminder: peer review forms are due next Wednesday by noon. Check the portal.`;
+
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function loadSample() {
+  document.getElementById('chat-input').value = SAMPLE_CHAT;
+}
+
+function setStatus(msg, type = 'info') {
+  const el = document.getElementById('status-msg');
+  const colors = {
+    info: 'text-gray-500',
+    success: 'text-green-400',
+    error: 'text-red-400',
+    loading: 'text-blue-400',
+  };
+  el.className = `mt-3 text-xs ${colors[type] || colors.info} min-h-4`;
+  el.innerHTML = msg;
+}
+
+async function processMessages() {
+  const text = document.getElementById('chat-input').value.trim();
+  if (!text) { setStatus('Please paste some chat messages first.', 'error'); return; }
+
+  const btn = document.getElementById('process-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-dot">Analyzing with AI</span>';
+  setStatus('<span class="loading-dot">Extracting tasks and building plans</span>', 'loading');
+
+  try {
+    const res = await fetch('/api/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Processing failed');
+
+    if (data.tasks_extracted === 0) {
+      setStatus('No actionable tasks found in these messages. Try different content.', 'info');
+    } else {
+      const conflictNote = data.conflicts > 0 ? ` &mdash; <span class="text-yellow-400">${data.conflicts} conflict(s) detected</span>` : '';
+      setStatus(`Found <strong>${data.tasks_extracted}</strong> task(s), created <strong>${data.plans_created}</strong> plan(s)${conflictNote}`, 'success');
+    }
+    await refreshDashboard();
+  } catch (e) {
+    setStatus('Error: ' + esc(e.message), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Process Messages';
+  }
+}
+
+async function refreshDashboard() {
+  try {
+    const res = await fetch('/api/dashboard');
+    const data = await res.json();
+    renderDashboard(data);
+  } catch (e) {
+    console.error('Dashboard refresh failed:', e);
+  }
+}
+
+function renderDashboard(data) {
+  const dash = document.getElementById('dashboard');
+
+  // Header badges
+  const badges = document.getElementById('summary-badges');
+  if (data.total_tasks > 0) {
+    badges.innerHTML = [
+      data.do_now?.length    ? `<span class="bg-red-900/80 text-red-300 text-xs px-2 py-1 rounded-lg font-medium border border-red-800">${data.do_now.length} Urgent</span>` : '',
+      data.schedule?.length  ? `<span class="bg-yellow-900/80 text-yellow-300 text-xs px-2 py-1 rounded-lg font-medium border border-yellow-800">${data.schedule.length} Upcoming</span>` : '',
+      data.need_info?.length ? `<span class="bg-orange-900/80 text-orange-300 text-xs px-2 py-1 rounded-lg font-medium border border-orange-800">${data.need_info.length} Need Info</span>` : '',
+      data.done?.length      ? `<span class="bg-green-900/80 text-green-300 text-xs px-2 py-1 rounded-lg font-medium border border-green-800">${data.done.length} Done</span>` : '',
+    ].join('');
+  } else {
+    badges.innerHTML = '';
+  }
+
+  if (!data.total_tasks) {
+    dash.innerHTML = `<div class="text-center py-24 text-gray-700"><div class="text-5xl mb-4">💬</div><p class="text-sm">Paste your chat messages and click<br /><span class="text-blue-500 font-medium">Process Messages</span> to get started</p></div>`;
+    return;
+  }
+
+  let html = '';
+  if (data.do_now?.length)    html += renderSection('🔴 High Priority — Do Now', data.do_now, 'red');
+  if (data.schedule?.length)  html += renderSection('🟡 Upcoming — Schedule', data.schedule, 'yellow');
+  if (data.need_info?.length) html += renderSection('🟠 Need Information', data.need_info, 'orange');
+  if (data.defer?.length)     html += renderSection('⚪ Deferred', data.defer, 'gray');
+  if (data.done?.length)      html += renderSection('✅ Done', data.done, 'green');
+
+  dash.innerHTML = html;
+
+  // Events log
+  if (data.replan_events?.length) {
+    const panel = document.getElementById('events-panel');
+    panel.classList.remove('hidden');
+    document.getElementById('events-log').innerHTML = [...data.replan_events]
+      .reverse()
+      .map(e => `<div class="text-xs text-gray-600">${esc(e)}</div>`)
+      .join('');
+  }
+}
+
+const COLORS = {
+  red:    { border: 'border-red-800',    bg: 'bg-red-950/60',    badge: 'bg-red-900 text-red-300',    btn: 'bg-red-900/60 hover:bg-red-900 border-red-800',   head: 'text-red-400' },
+  yellow: { border: 'border-yellow-800', bg: 'bg-yellow-950/60', badge: 'bg-yellow-900 text-yellow-300', btn: 'bg-yellow-900/60 hover:bg-yellow-900 border-yellow-800', head: 'text-yellow-400' },
+  orange: { border: 'border-orange-800', bg: 'bg-orange-950/60', badge: 'bg-orange-900 text-orange-300', btn: 'bg-orange-900/60 hover:bg-orange-900 border-orange-800', head: 'text-orange-400' },
+  gray:   { border: 'border-gray-700',   bg: 'bg-gray-900',      badge: 'bg-gray-700 text-gray-300',  btn: 'bg-gray-800 hover:bg-gray-700 border-gray-700',   head: 'text-gray-500' },
+  green:  { border: 'border-green-800',  bg: 'bg-green-950/60',  badge: 'bg-green-900 text-green-300', btn: 'bg-green-900/60 hover:bg-green-900 border-green-800', head: 'text-green-400' },
+};
+
+function renderSection(title, items, color) {
+  const c = COLORS[color] || COLORS.gray;
+  return `
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-widest ${c.head} mb-2">${title}</p>
+      <div class="space-y-2">${items.map(item => renderCard(item, c)).join('')}</div>
+    </div>`;
+}
+
+function fieldForQuestion(q) {
+  const lq = q.toLowerCase();
+  if (lq.includes('due') || lq.includes('when')) return 'deadline';
+  if (lq.includes('who') || lq.includes('assigned')) return 'assigned_by';
+  return 'deadline';
+}
+
+function renderCard(item, c) {
+  const tid = esc(item.task_id);
+
+  const stepsHtml = item.steps?.length
+    ? `<details class="mt-3"><summary class="text-xs text-gray-500 hover:text-gray-400 select-none">▶ Steps (${item.steps.length})</summary>
+        <ol class="mt-2 space-y-1 pl-1">${item.steps.map((s, i) => `<li class="text-xs text-gray-400"><span class="text-gray-600">${i + 1}.</span> ${esc(s)}</li>`).join('')}</ol>
+      </details>` : '';
+
+  const conflictsHtml = item.conflicts?.length
+    ? `<div class="mt-2 text-xs text-yellow-600 bg-yellow-950/50 rounded-lg px-3 py-2 border border-yellow-900/60">⚠️ ${esc(item.conflicts[0])}</div>`
+    : '';
+
+  const questionsHtml = item.missing_info_questions?.length
+    ? `<div class="mt-3 space-y-2">${item.missing_info_questions.map((q, i) => `
+        <div class="bg-gray-800/80 rounded-xl p-3 border border-gray-700">
+          <p class="text-xs text-orange-400 mb-2">❓ ${esc(q)}</p>
+          <div class="flex gap-2">
+            <input type="text" id="q-${tid}-${i}" class="flex-1 bg-gray-700 rounded-lg px-3 py-1.5 text-xs border border-gray-600 focus:border-orange-500 focus:outline-none placeholder-gray-500" placeholder="Type your answer..." />
+            <button data-tid="${tid}" data-field="${esc(fieldForQuestion(q))}" data-idx="${i}" onclick="answerQuestion(this)" class="px-3 py-1 bg-orange-800 hover:bg-orange-700 rounded-lg text-xs font-medium transition-colors">Send</button>
+          </div>
+        </div>`).join('')}</div>`
+    : '';
+
+  const doneBtn = item.status !== 'done'
+    ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="mt-3 w-full py-1.5 ${c.btn} rounded-lg text-xs font-medium border transition-colors">Mark as Done ✓</button>`
+    : '';
+
+  const confidenceNote = item.confidence < 0.7
+    ? `<span class="text-xs text-gray-600">${Math.round(item.confidence * 100)}% confident</span>`
+    : '';
+
+  return `
+    <div class="card ${c.bg} border ${c.border} rounded-xl p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${c.badge}">${esc(item.decision?.toUpperCase().replace('_', ' '))} · ${item.priority_score}</span>
+            ${item.status === 'done' ? '<span class="text-xs text-green-400">✓ Done</span>' : ''}
+            ${confidenceNote}
+          </div>
+          <h3 class="font-semibold text-sm text-white leading-snug">${esc(item.task)}</h3>
+          <div class="flex flex-wrap gap-x-4 mt-1 text-xs text-gray-500">
+            ${item.deadline   ? `<span>📅 ${esc(item.deadline)}</span>` : ''}
+            ${item.assigned_by ? `<span>👤 ${esc(item.assigned_by)}</span>` : ''}
+            ${item.priority   ? `<span>🎯 ${esc(item.priority)}</span>` : ''}
+          </div>
+        </div>
+      </div>
+      ${conflictsHtml}
+      ${stepsHtml}
+      ${questionsHtml}
+      ${doneBtn}
+    </div>`;
+}
+
+async function markDone(taskId) {
+  try {
+    await fetch(`/api/tasks/${encodeURIComponent(taskId)}/complete`, { method: 'POST' });
+    await refreshDashboard();
+  } catch (e) { console.error(e); }
+}
+
+async function answerQuestion(btn) {
+  const { tid, field, idx } = btn.dataset;
+  const input = document.getElementById(`q-${tid}-${idx}`);
+  const value = input?.value?.trim();
+  if (!value) { input?.focus(); return; }
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    await fetch('/api/clarify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_id: tid, field, value }),
+    });
+    await refreshDashboard();
+  } catch (e) {
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = 'Send';
+  }
+}
+
+async function resetAll() {
+  if (!confirm('Reset all tasks and plans?')) return;
+  await fetch('/api/reset', { method: 'POST' });
+  document.getElementById('dashboard').innerHTML = `<div class="text-center py-24 text-gray-700"><div class="text-5xl mb-4">💬</div><p class="text-sm">Paste your chat messages and click<br /><span class="text-blue-500 font-medium">Process Messages</span> to get started</p></div>`;
+  document.getElementById('summary-badges').innerHTML = '';
+  document.getElementById('events-panel').classList.add('hidden');
+  setStatus('', 'info');
+}
+
+// Load existing state on page load
+refreshDashboard();
+</script>
+</body>
+</html>
