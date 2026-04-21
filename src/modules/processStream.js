@@ -1,11 +1,12 @@
 import { parseMessages } from './task1Parser.js';
 import { mergeNewTasks, replanAll, getDashboard } from './task3Executor.js';
+import { MODEL, getProviderName } from '../client.js';
 
 export async function processWithEvents(text, now, emit) {
   const lineCount = text.split('\n').filter((l) => l.trim().length > 0).length;
   emit('log', { text: `Parsing ${lineCount} message line(s)…` });
 
-  emit('log', { text: 'Extracting tasks (calling glm-4.6)…' });
+  emit('log', { text: `Extracting tasks (calling ${getProviderName()} · ${MODEL})…` });
   const tasks = await parseMessages(text, now);
   emit('log', { text: `Found ${tasks.length} task(s).` });
 

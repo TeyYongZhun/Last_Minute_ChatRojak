@@ -2,19 +2,51 @@ import OpenAI from 'openai';
 
 let _client = null;
 
+const PROVIDERS = {
+  zai: {
+    apiKeyEnv: 'Z_AI_API_KEY',
+    defaultBaseURL: 'https://api.z.ai/api/paas/v4/',
+    baseURLEnv: 'Z_AI_BASE_URL',
+    modelEnv: 'Z_AI_MODEL',
+    defaultModel: 'glm-4.6',
+  },
+  gemini: {
+    apiKeyEnv: 'GEMINI_API_KEY',
+    defaultBaseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+    baseURLEnv: 'GEMINI_BASE_URL',
+    modelEnv: 'GEMINI_MODEL',
+    defaultModel: 'gemini-2.5-flash',
+  },
+};
+
+function activeProviderName() {
+  const p = (process.env.AI_PROVIDER || 'zai').toLowerCase();
+  return PROVIDERS[p] ? p : 'zai';
+}
+
+export function getProviderName() {
+  return activeProviderName();
+}
+
 export function getClient() {
   if (_client) return _client;
-  if (!process.env.Z_AI_API_KEY) {
-    throw new Error('Z_AI_API_KEY is not set. Copy .env.example to .env and add your key.');
+  const name = activeProviderName();
+  const cfg = PROVIDERS[name];
+  const key = process.env[cfg.apiKeyEnv];
+  if (!key) {
+    throw new Error(`${cfg.apiKeyEnv} is not set. Copy .env.example to .env and add your ${name} key.`);
   }
   _client = new OpenAI({
-    apiKey: process.env.Z_AI_API_KEY,
-    baseURL: process.env.Z_AI_BASE_URL || 'https://api.z.ai/api/paas/v4/',
+    apiKey: key,
+    baseURL: process.env[cfg.baseURLEnv] || cfg.defaultBaseURL,
   });
   return _client;
 }
 
-export const MODEL = process.env.Z_AI_MODEL || 'glm-4.6';
+export const MODEL = (() => {
+  const cfg = PROVIDERS[activeProviderName()];
+  return process.env[cfg.modelEnv] || cfg.defaultModel;
+})();
 
 export function extractJson(text) {
   if (!text) return {};

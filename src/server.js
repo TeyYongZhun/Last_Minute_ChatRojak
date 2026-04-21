@@ -17,6 +17,7 @@ import { clearState } from './state.js';
 import { seedDemo } from './modules/demoSeed.js';
 import { startTelegramBot, isBotEnabled, getActiveChatId } from './modules/telegramBot.js';
 import { processWithEvents } from './modules/processStream.js';
+import { getProviderName, MODEL } from './client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_DIR = path.join(__dirname, '..', 'static');
@@ -152,8 +153,12 @@ app.get('/api/telegram-status', (_req, res) => {
 
 const PORT = Number(process.env.PORT) || 8000;
 app.listen(PORT, () => {
+  const provider = getProviderName();
   console.log(`Last Minute ChatRojak running at http://localhost:${PORT}`);
-  if (!process.env.Z_AI_API_KEY) {
-    console.warn('WARNING: Z_AI_API_KEY not set. Copy .env.example to .env and add your key.');
+  console.log(`AI provider: ${provider} · model: ${MODEL}`);
+  const keyEnv = provider === 'gemini' ? 'GEMINI_API_KEY' : 'Z_AI_API_KEY';
+  if (!process.env[keyEnv]) {
+    console.warn(`WARNING: ${keyEnv} not set. Copy .env.example to .env and add your key.`);
   }
+  startTelegramBot();
 });
