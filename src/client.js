@@ -14,7 +14,7 @@ export function getClient() {
   return _client;
 }
 
-export const MODEL = process.env.Z_AI_MODEL || 'glm-4.5';
+export const MODEL = process.env.Z_AI_MODEL || 'glm-4.6';
 
 export function extractJson(text) {
   if (!text) return {};
@@ -24,4 +24,30 @@ export function extractJson(text) {
   m = text.match(/\{[\s\S]*\}/);
   if (m) { try { return JSON.parse(m[0]); } catch {} }
   return {};
+}
+
+const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
+
+function isRetryable(err) {
+  if (!err) return false;
+  if (err.status && RETRY_STATUS.has(err.status)) return true;
+  const code = err.code || err.cause?.code;
+  if (code && ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED'].includes(code)) return true;
+  return false;
+}
+
+export async function withRetry(fn, { retries = 3, baseMs = 400 } = {}) {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt >= retries || !isRetryable(err)) throw err;
+      const jitter = Math.random() * 0.3 + 0.85;
+      const waitMs = Math.round(baseMs * 2 ** attempt * jitter);
+      console.warn(`[withRetry] attempt ${attempt + 1} failed (${err.status || err.code || err.message}), retrying in ${waitMs}ms`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      attempt += 1;
+    }
+  }
 }

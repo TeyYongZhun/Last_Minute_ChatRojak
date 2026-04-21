@@ -1,4 +1,4 @@
-import { getClient, MODEL, extractJson } from '../client.js';
+import { getClient, MODEL, extractJson, withRetry } from '../client.js';
 
 function scoreUrgency(deadlineIso, now) {
   if (!deadlineIso) return 20;
@@ -44,18 +44,20 @@ async function generateStepsBatch(tasks) {
   if (!tasks.length) return {};
   const client = getClient();
   const taskList = tasks.map((t) => `ID: ${t.id}\nTask: ${t.task}`).join('\n\n');
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    temperature: 0.4,
-    messages: [
-      {
-        role: 'system',
-        content:
-          'Generate 3-5 concrete, actionable steps for each task. Output ONLY valid JSON, no markdown: {"steps_by_id": {"t1": ["step 1", "step 2", ...], "t2": [...]}}',
-      },
-      { role: 'user', content: `Generate steps for these tasks:\n\n${taskList}` },
-    ],
-  });
+  const response = await withRetry(() =>
+    client.chat.completions.create({
+      model: MODEL,
+      temperature: 0.4,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Generate 3-5 concrete, actionable steps for each task. Output ONLY valid JSON, no markdown: {"steps_by_id": {"t1": ["step 1", "step 2", ...], "t2": [...]}}',
+        },
+        { role: 'user', content: `Generate steps for these tasks:\n\n${taskList}` },
+      ],
+    })
+  );
   const content = response.choices?.[0]?.message?.content || '';
   const data = extractJson(content);
   return data.steps_by_id && typeof data.steps_by_id === 'object' ? data.steps_by_id : {};
@@ -73,9 +75,19 @@ function detectConflicts(tasks) {
       if (isNaN(d1.getTime()) || isNaN(d2.getTime())) continue;
       const diffHours = Math.abs(d1.getTime() - d2.getTime()) / 3_600_000;
       if (diffHours < 3) {
+        let winner, reason;
+        if (d1.getTime() !== d2.getTime()) {
+          winner = d1.getTime() < d2.getTime() ? t1 : t2;
+          reason = 'earlier deadline';
+        } else {
+          const imp1 = scoreImportance(t1.assigned_by, t1.priority);
+          const imp2 = scoreImportance(t2.assigned_by, t2.priority);
+          winner = imp1 >= imp2 ? t1 : t2;
+          reason = 'higher importance';
+        }
         conflicts.push({
           ids: [t1.id, t2.id],
-          message: `Deadline clash: '${t1.task}' and '${t2.task}' are due within ${Math.round(diffHours * 60)} minutes of each other.`,
+          message: `Deadline clash: '${t1.task}' and '${t2.task}' are due within ${Math.round(diffHours * 60)} minutes of each other. Recommend prioritizing '${winner.task}' first (${reason}).`,
         });
       }
     }

@@ -1,11 +1,4 @@
-[10/04/2026, 9:15 AM] Dr. Rahman: Hi everyone, please submit Assignment 2 by this Friday 11:59pm. No late submissions accepted.
-[10/04/2026, 9:16 AM] Sarah: ok thanks Dr Rahman
-[10/04/2026, 9:20 AM] Amir: noted!
-[10/04/2026, 10:45 AM] Group Chat: Quiz 3 will be on Monday next week, covers Chapter 5-7. Worth 15% of your grade.
-[10/04/2026, 11:00 AM] Emma: hey can you help me with the lab report tomorrow? I'm stuck
-[10/04/2026, 11:05 AM] You: sure np
-[10/04/2026, 2:00 PM] CS Society: Club meeting this Thursday 3pm at Block B. RSVP if you're coming!
-[10/04/2026, 3:30 PM] Ahmad: Team project presentation is on 25th April, we need to finish the slides before that
-[10/04/2026, 4:00 PM] You: guys what time should we meet to do the slides?
-[10/04/2026, 4:05 PM] Kevin: maybe Saturday morning?
-[10/04/2026, 5:00 PM] Prof. Lim: Reminder: peer review forms are due next Wednesday by noon. Check the portal.
+Dr. Rahman: Submit Assignment 2 by Friday 11:59pm.
+Sarah: ok thanks
+Emma: help with lab report tomorrow?
+CS Society: need volunteers next week.

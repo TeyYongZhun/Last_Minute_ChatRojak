@@ -4,14 +4,18 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { parseMessages } from './modules/task1Parser.js';
-import { planTasks } from './modules/task2Planner.js';
 import {
-  mergeTasksAndPlans,
+  mergeNewTasks,
+  replanAll,
+  startTask,
   completeTask,
   respondToClarification,
+  toggleStep,
   getDashboard,
 } from './modules/task3Executor.js';
-import { clearState, loadState } from './state.js';
+import { clearState } from './state.js';
+import { seedDemo } from './modules/demoSeed.js';
+import { startTelegramBot, isBotEnabled, getActiveChatId } from './modules/telegramBot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_DIR = path.join(__dirname, '..', 'static');
@@ -40,12 +44,12 @@ app.post('/api/process', async (req, res) => {
         message: 'No actionable tasks found',
       });
     }
-    const { plans, conflicts } = await planTasks(tasks, now);
-    mergeTasksAndPlans(tasks, plans, conflicts);
+    mergeNewTasks(tasks);
+    const replan = await replanAll(now);
     res.json({
       tasks_extracted: tasks.length,
-      plans_created: plans.length,
-      conflicts: conflicts.length,
+      plans_created: replan.plans.length,
+      conflicts: replan.conflicts.length,
     });
   } catch (e) {
     console.error('[/api/process] error:', e);
@@ -57,11 +61,34 @@ app.get('/api/dashboard', (_req, res) => {
   res.json(getDashboard());
 });
 
-app.post('/api/tasks/:taskId/complete', (req, res) => {
+app.post('/api/tasks/:taskId/start', (req, res) => {
+  if (!startTask(req.params.taskId)) {
+    return res.status(404).json({ detail: 'Task not found' });
+  }
+  res.json({ status: 'in_progress' });
+});
+
+app.post('/api/tasks/:taskId/complete', async (req, res) => {
   if (!completeTask(req.params.taskId)) {
     return res.status(404).json({ detail: 'Task not found' });
   }
+  try {
+    await replanAll(new Date());
+  } catch (e) {
+    console.error('[/api/tasks/:id/complete] replan error:', e);
+  }
   res.json({ status: 'done' });
+});
+
+app.post('/api/tasks/:taskId/step', (req, res) => {
+  const { index } = req.body || {};
+  if (typeof index !== 'number') {
+    return res.status(400).json({ detail: 'index (number) is required' });
+  }
+  if (!toggleStep(req.params.taskId, index)) {
+    return res.status(404).json({ detail: 'Task or step not found' });
+  }
+  res.json({ status: 'toggled' });
 });
 
 app.post('/api/clarify', async (req, res) => {
@@ -73,12 +100,7 @@ app.post('/api/clarify', async (req, res) => {
     return res.status(404).json({ detail: 'Task not found' });
   }
   try {
-    const state = loadState();
-    const affected = state.tasks.filter((t) => t.id === task_id);
-    if (affected.length) {
-      const { plans, conflicts } = await planTasks(affected, new Date());
-      mergeTasksAndPlans(affected, plans, conflicts);
-    }
+    await replanAll(new Date());
     res.json({ status: 'updated' });
   } catch (e) {
     console.error('[/api/clarify] replan error:', e);
@@ -89,6 +111,19 @@ app.post('/api/clarify', async (req, res) => {
 app.post('/api/reset', (_req, res) => {
   clearState();
   res.json({ status: 'reset' });
+});
+
+app.post('/api/demo-seed', (_req, res) => {
+  clearState();
+  seedDemo();
+  res.json({ status: 'seeded' });
+});
+
+app.get('/api/telegram-status', (_req, res) => {
+  res.json({
+    connected: isBotEnabled(),
+    active_chat_id: getActiveChatId(),
+  });
 });
 
 const PORT = Number(process.env.PORT) || 8000;
