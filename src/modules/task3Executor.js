@@ -1,5 +1,6 @@
 import { loadState, saveState } from '../state.js';
 import { planTasks } from './task2Planner.js';
+import { reconcileIds } from './adapter.js';
 import {
   generateActionsForPlan,
   pruneActionsForTask,
@@ -15,22 +16,9 @@ function ts(d = new Date()) {
 
 export function mergeNewTasks(newTasks) {
   const state = loadState();
-  const existingTaskIds = new Set(state.tasks.map((t) => t.id));
-  let maxId = 0;
-  for (const t of state.tasks) {
-    const m = /^t(\d+)$/.exec(t.id || '');
-    if (m) maxId = Math.max(maxId, Number(m[1]));
-  }
-
-  for (const task of newTasks) {
-    if (existingTaskIds.has(task.id)) {
-      maxId += 1;
-      task.id = `t${maxId}`;
-    }
-    state.tasks.push(task);
-    existingTaskIds.add(task.id);
-  }
-
+  const existingIds = state.tasks.map((t) => t.id).filter(Boolean);
+  reconcileIds(newTasks, existingIds);
+  for (const task of newTasks) state.tasks.push(task);
   saveState(state);
 }
 
@@ -44,7 +32,11 @@ export async function replanAll(now = new Date()) {
   }
 
   const prevPlansById = Object.fromEntries(state.plans.map((p) => [p.task_id, p]));
-  const { plans, conflicts } = await planTasks(openTasks, now);
+  const { plans, conflicts, ai_error } = await planTasks(openTasks, now, state.plans);
+
+  if (ai_error) {
+    state.replan_events.push(`[${ts(now)}] AI planner unavailable (${ai_error}) — plans marked ask_user`);
+  }
 
   const taskById = Object.fromEntries(openTasks.map((t) => [t.id, t]));
   for (const plan of plans) {
@@ -198,6 +190,7 @@ export function getDashboard() {
       assigned_by: task.assigned_by,
       priority: task.priority,
       priority_score: plan.priority_score,
+      justification: plan.justification,
       decision: plan.decision,
       steps: plan.steps,
       checklist: getChecklist(state, task.id),

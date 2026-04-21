@@ -273,7 +273,8 @@ function renderTaskRow(item) {
   if (item.priority) meta.push(esc(item.priority));
   const metaLine = meta.length ? `<div class="text-xs text-zinc-500 mt-1">${meta.join(' · ')}</div>` : '';
 
-  const checklist = (item.checklist && item.checklist.length) ? item.checklist : (item.steps || []).map((s) => ({ step: s, done: false }));
+  const stepToStr = (s) => typeof s === 'string' ? s : (s && s.text) || '';
+  const checklist = (item.checklist && item.checklist.length) ? item.checklist : (item.steps || []).map((s) => ({ step: stepToStr(s), done: false }));
   const doneCount = checklist.filter((x) => x.done).length;
   const checklistHtml = checklist.length
     ? `<details class="mt-2" ${item.status === 'in_progress' ? 'open' : ''}>
@@ -300,6 +301,7 @@ function renderTaskRow(item) {
       <div class="flex-1 min-w-0">
         <div class="text-sm text-zinc-100 leading-snug">${esc(item.task)}</div>
         ${metaLine}
+        ${item.justification ? `<div class="text-xs text-zinc-500 italic mt-1">AI: ${esc(item.justification)}</div>` : ''}
         ${checklistHtml}
       </div>
       <div class="flex gap-2 shrink-0">${actions}</div>

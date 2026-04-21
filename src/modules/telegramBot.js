@@ -92,6 +92,7 @@ function renderDashboardText(data) {
       const dl = it.deadline ? ` · ${it.deadline}` : '';
       const by = it.assigned_by ? ` · ${it.assigned_by}` : '';
       lines.push(`${it.task_id}  ${it.task}${dl}${by}  [${it.priority_score}]`);
+      if (it.justification) lines.push(`   ↳ ${it.justification}`);
     }
   };
   push('In progress', data.in_progress);

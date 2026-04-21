@@ -56,12 +56,16 @@ export function seedDemo() {
     },
   ];
 
+  const asSteps = (texts) =>
+    texts.map((t, i) => ({ index: i, text: t, depends_on: i === 0 ? [] : [i - 1] }));
+
   const plans = [
     {
       task_id: 't1',
       priority_score: 88,
+      justification: 'Due Friday, assigned by lecturer — high-stakes coursework.',
       decision: 'do_now',
-      steps: ['Review requirements', 'Finalize draft', 'Submit via portal', 'Verify confirmation'],
+      steps: asSteps(['Review requirements', 'Finalize draft', 'Submit via portal', 'Verify confirmation']),
       conflicts: [],
       missing_info_questions: [],
       status: 'pending',
@@ -69,8 +73,9 @@ export function seedDemo() {
     {
       task_id: 't2',
       priority_score: 62,
+      justification: 'Due tomorrow noon, peer request — moderate urgency.',
       decision: 'schedule',
-      steps: ['Ask Emma for current draft', 'Review lab data', 'Draft sections together'],
+      steps: asSteps(['Ask Emma for current draft', 'Review lab data', 'Draft sections together']),
       conflicts: [],
       missing_info_questions: [],
       status: 'pending',
@@ -78,6 +83,7 @@ export function seedDemo() {
     {
       task_id: 't3',
       priority_score: 35,
+      justification: 'No deadline provided — cannot prioritise until clarified.',
       decision: 'ask_user',
       steps: [],
       conflicts: [],
@@ -87,8 +93,8 @@ export function seedDemo() {
   ];
 
   const actions = [
-    { type: 'checklist', task_id: 't1', items: plans[0].steps.map((s) => ({ step: s, done: false })) },
-    { type: 'checklist', task_id: 't2', items: plans[1].steps.map((s) => ({ step: s, done: false })) },
+    { type: 'checklist', task_id: 't1', items: plans[0].steps.map((s) => ({ step: s.text, done: false })) },
+    { type: 'checklist', task_id: 't2', items: plans[1].steps.map((s) => ({ step: s.text, done: false })) },
   ];
 
   const notifications = [
