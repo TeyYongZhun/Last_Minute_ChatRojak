@@ -5,125 +5,153 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Last Minute ChatRojak</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    .card { transition: transform 0.15s, box-shadow 0.15s; }
-    .card:hover { transform: translateY(-1px); }
+    :root { color-scheme: dark; }
+    html, body { font-family: 'Inter', system-ui, sans-serif; }
+    body { background: #0a0a0b; color: #e4e4e7; -webkit-font-smoothing: antialiased; }
+
     details > summary { list-style: none; cursor: pointer; }
     details > summary::-webkit-details-marker { display: none; }
-    .loading-dot::after {
-      content: ''; animation: dots 1.2s steps(3, end) infinite;
+
+    .dot { width: 6px; height: 6px; border-radius: 999px; display: inline-block; background: #52525b; }
+    .dot-active   { background: #38bdf8; }
+    .dot-needinfo { background: #f59e0b; }
+
+    .ghost-btn {
+      padding: 4px 10px;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #a1a1aa;
+      background: transparent;
+      transition: border-color .12s, color .12s;
     }
+    .ghost-btn:hover { border-color: #3f3f46; color: #e4e4e7; }
+    .ghost-btn-accent { border-color: #0369a1; color: #7dd3fc; }
+    .ghost-btn-accent:hover { border-color: #0ea5e9; color: #e0f2fe; }
+
+    .task-row { border-top: 1px solid #18181b; padding: 14px 0; }
+    .task-row:first-child { border-top: none; padding-top: 6px; }
+
+    .info-item {
+      border-left: 2px solid #27272a;
+      padding: 4px 0 4px 12px;
+      margin-bottom: 14px;
+    }
+    .info-item.accent-amber { border-left-color: #b45309; }
+    .info-item.accent-sky { border-left-color: #0369a1; }
+
+    .loading-dot::after { content: ''; animation: dots 1.2s steps(3, end) infinite; }
     @keyframes dots {
       0%   { content: ''; }
       33%  { content: '.'; }
       66%  { content: '..'; }
       100% { content: '...'; }
     }
+
+    input[type=checkbox] { accent-color: #0ea5e9; }
+    .section-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #71717a;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #18181b;
+      margin-bottom: 6px;
+    }
+    .bucket-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #52525b;
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+    .bucket-label:first-child { margin-top: 0; }
   </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen">
+<body class="min-h-screen">
 
-<!-- Header -->
-<header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-  <div>
-    <h1 class="text-lg font-bold text-white tracking-tight">Last Minute ChatRojak</h1>
-    <p class="text-xs text-gray-500 mt-0.5">AI-powered task extraction &amp; planning from chat exports</p>
+<header class="border-b border-zinc-900 px-6 py-4 flex items-baseline justify-between sticky top-0 z-20 bg-[#0a0a0b]/90 backdrop-blur">
+  <div class="flex items-baseline gap-4">
+    <h1 class="text-sm font-semibold tracking-tight text-zinc-100">Last Minute ChatRojak</h1>
+    <span id="summary-line" class="text-xs text-zinc-500"></span>
   </div>
-  <div id="summary-badges" class="flex gap-2 flex-wrap justify-end"></div>
 </header>
 
-<div class="max-w-7xl mx-auto p-5 grid grid-cols-1 lg:grid-cols-5 gap-5">
+<div class="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-10">
 
-  <!-- Left: Input Panel -->
-  <div class="lg:col-span-2 space-y-4">
-    <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5">
-      <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Chat Messages</h2>
+  <!-- Left: Input -->
+  <aside class="space-y-5">
+    <div>
+      <div class="section-label">Chat messages</div>
       <textarea
         id="chat-input"
-        class="w-full h-56 bg-gray-800 rounded-xl p-3 text-sm text-gray-200 resize-none border border-gray-700 focus:border-blue-500 focus:outline-none placeholder-gray-600"
-        placeholder="Paste your WhatsApp chat export here...&#10;&#10;e.g.&#10;[10/04/2026] Dr. Rahman: Submit Assignment 2 by Friday 11:59pm&#10;[10/04/2026] Sarah: noted!"
+        class="w-full h-48 bg-zinc-900/40 rounded-md p-3 text-sm text-zinc-200 resize-none border border-zinc-800 focus:border-sky-700 focus:outline-none placeholder-zinc-600 mt-3"
+        placeholder="Paste chat export here..."
       ></textarea>
 
       <div class="flex gap-2 mt-3">
-        <button onclick="loadSample()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-xs font-medium border border-gray-700 transition-colors whitespace-nowrap">
-          Load Sample
+        <button onclick="loadSample()" class="ghost-btn">Load sample</button>
+        <button onclick="processMessages()" id="process-btn" class="flex-1 py-1.5 border border-sky-700 text-sky-300 hover:bg-sky-950/40 disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-xs font-medium transition-colors">
+          Process
         </button>
-        <button onclick="processMessages()" id="process-btn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors">
-          Process Messages
-        </button>
-        <button onclick="resetAll()" class="px-3 py-2 bg-gray-800 hover:bg-red-950 border border-gray-700 hover:border-red-800 rounded-xl text-xs font-medium transition-colors">
-          Reset
-        </button>
+        <button onclick="resetAll()" class="ghost-btn">Reset</button>
       </div>
+      <button onclick="loadDemo()" class="w-full mt-2 py-1.5 border border-zinc-700 text-zinc-300 hover:bg-zinc-800/40 rounded-md text-xs font-medium transition-colors">
+        Load demo (no API)
+      </button>
 
-      <div id="status-msg" class="mt-3 text-xs text-gray-500 min-h-4"></div>
+      <div id="status-msg" class="mt-3 text-xs text-zinc-500 min-h-4"></div>
     </div>
-
-    <!-- System Log -->
-    <div id="events-panel" class="bg-gray-900 rounded-2xl border border-gray-800 p-5 hidden">
-      <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">System Log</h2>
-      <div id="events-log" class="space-y-1 max-h-40 overflow-y-auto font-mono"></div>
-    </div>
-
-    <!-- How It Works -->
-    <div class="bg-gray-900 rounded-2xl border border-gray-800 p-5">
-      <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">How It Works</h2>
-      <ol class="space-y-2 text-xs text-gray-500">
-        <li class="flex gap-2"><span class="text-blue-500 font-bold">1.</span> Paste chat messages or load the sample</li>
-        <li class="flex gap-2"><span class="text-blue-500 font-bold">2.</span> AI extracts actionable tasks from the noise</li>
-        <li class="flex gap-2"><span class="text-blue-500 font-bold">3.</span> Planner scores priority &amp; detects conflicts</li>
-        <li class="flex gap-2"><span class="text-blue-500 font-bold">4.</span> Dashboard shows what to do now vs later</li>
-        <li class="flex gap-2"><span class="text-blue-500 font-bold">5.</span> Answer questions to unlock blocked tasks</li>
-      </ol>
-    </div>
-  </div>
+  </aside>
 
   <!-- Right: Dashboard -->
-  <div class="lg:col-span-3 space-y-4" id="dashboard">
-    <div class="text-center py-24 text-gray-700">
-      <div class="text-5xl mb-4">💬</div>
-      <p class="text-sm">Paste your chat messages and click<br /><span class="text-blue-500 font-medium">Process Messages</span> to get started</p>
+  <main id="dashboard" class="space-y-10">
+    <div id="empty-state" class="text-sm text-zinc-600 py-24 text-center">
+      Paste chat messages on the left to begin.
     </div>
-  </div>
+  </main>
 
 </div>
 
 <script>
-const SAMPLE_CHAT = `[10/04/2026, 9:15 AM] Dr. Rahman: Hi everyone, please submit Assignment 2 by this Friday 11:59pm. No late submissions accepted.
-[10/04/2026, 9:16 AM] Sarah: ok thanks Dr Rahman
-[10/04/2026, 9:20 AM] Amir: noted!
-[10/04/2026, 10:45 AM] Group Chat: Quiz 3 will be on Monday next week, covers Chapter 5-7. Worth 15% of your grade.
-[10/04/2026, 11:00 AM] Emma: hey can you help me with the lab report tomorrow? I'm stuck
-[10/04/2026, 11:05 AM] You: sure np
-[10/04/2026, 2:00 PM] CS Society: Club meeting this Thursday 3pm at Block B. RSVP if you're coming!
-[10/04/2026, 3:30 PM] Ahmad: Team project presentation is on 25th April, we need to finish the slides before that
-[10/04/2026, 4:00 PM] You: guys what time should we meet to do the slides?
-[10/04/2026, 4:05 PM] Kevin: maybe Saturday morning?
-[10/04/2026, 5:00 PM] Prof. Lim: Reminder: peer review forms are due next Wednesday by noon. Check the portal.`;
+const SAMPLE_CHAT = `Dr. Rahman: Submit Assignment 2 by Friday 11:59pm.
+Sarah: ok thanks
+Emma: help with lab report tomorrow?
+CS Society: need volunteers next week.`;
 
 function esc(str) {
   if (str == null) return '';
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function loadSample() {
-  document.getElementById('chat-input').value = SAMPLE_CHAT;
+function loadSample() { document.getElementById('chat-input').value = SAMPLE_CHAT; }
+
+async function loadDemo() {
+  setStatus('Loading demo…', 'loading');
+  try {
+    const r = await fetch('/api/demo-seed', { method: 'POST' });
+    if (!r.ok) throw new Error((await r.json()).detail || 'Seed failed');
+    setStatus('Demo loaded (no API call).', 'success');
+    await refreshDashboard();
+  } catch (e) {
+    setStatus('Error: ' + e.message, 'error');
+  }
 }
 
 function setStatus(msg, type = 'info') {
   const el = document.getElementById('status-msg');
   const colors = {
-    info: 'text-gray-500',
-    success: 'text-green-400',
+    info: 'text-zinc-500',
+    success: 'text-emerald-400',
     error: 'text-red-400',
-    loading: 'text-blue-400',
+    loading: 'text-sky-400',
   };
   el.className = `mt-3 text-xs ${colors[type] || colors.info} min-h-4`;
   el.innerHTML = msg;
@@ -131,12 +159,12 @@ function setStatus(msg, type = 'info') {
 
 async function processMessages() {
   const text = document.getElementById('chat-input').value.trim();
-  if (!text) { setStatus('Please paste some chat messages first.', 'error'); return; }
+  if (!text) { setStatus('Paste some chat messages first.', 'error'); return; }
 
   const btn = document.getElementById('process-btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="loading-dot">Analyzing with AI</span>';
-  setStatus('<span class="loading-dot">Extracting tasks and building plans</span>', 'loading');
+  btn.innerHTML = '<span class="loading-dot">Analyzing</span>';
+  setStatus('<span class="loading-dot">Extracting & planning</span>', 'loading');
 
   try {
     const res = await fetch('/api/process', {
@@ -146,19 +174,17 @@ async function processMessages() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Processing failed');
-
     if (data.tasks_extracted === 0) {
-      setStatus('No actionable tasks found in these messages. Try different content.', 'info');
+      setStatus('No actionable tasks found.', 'info');
     } else {
-      const conflictNote = data.conflicts > 0 ? ` &mdash; <span class="text-yellow-400">${data.conflicts} conflict(s) detected</span>` : '';
-      setStatus(`Found <strong>${data.tasks_extracted}</strong> task(s), created <strong>${data.plans_created}</strong> plan(s)${conflictNote}`, 'success');
+      setStatus(`Found ${data.tasks_extracted} task(s), ${data.plans_created} plan(s)${data.conflicts > 0 ? `, ${data.conflicts} conflict(s)` : ''}.`, 'success');
     }
     await refreshDashboard();
   } catch (e) {
     setStatus('Error: ' + esc(e.message), 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Process Messages';
+    btn.textContent = 'Process';
   }
 }
 
@@ -167,67 +193,182 @@ async function refreshDashboard() {
     const res = await fetch('/api/dashboard');
     const data = await res.json();
     renderDashboard(data);
-  } catch (e) {
-    console.error('Dashboard refresh failed:', e);
-  }
+  } catch (e) { console.error('Dashboard refresh failed:', e); }
+}
+
+// --- Rendering ---
+
+function activeTasks(data) {
+  return [
+    ...(data.do_now || []),
+    ...(data.in_progress || []),
+    ...(data.need_info || []),
+    ...(data.schedule || []),
+    ...(data.defer || []),
+  ];
 }
 
 function renderDashboard(data) {
   const dash = document.getElementById('dashboard');
-
-  // Header badges
-  const badges = document.getElementById('summary-badges');
-  if (data.total_tasks > 0) {
-    badges.innerHTML = [
-      data.do_now?.length    ? `<span class="bg-red-900/80 text-red-300 text-xs px-2 py-1 rounded-lg font-medium border border-red-800">${data.do_now.length} Urgent</span>` : '',
-      data.schedule?.length  ? `<span class="bg-yellow-900/80 text-yellow-300 text-xs px-2 py-1 rounded-lg font-medium border border-yellow-800">${data.schedule.length} Upcoming</span>` : '',
-      data.need_info?.length ? `<span class="bg-orange-900/80 text-orange-300 text-xs px-2 py-1 rounded-lg font-medium border border-orange-800">${data.need_info.length} Need Info</span>` : '',
-      data.done?.length      ? `<span class="bg-green-900/80 text-green-300 text-xs px-2 py-1 rounded-lg font-medium border border-green-800">${data.done.length} Done</span>` : '',
-    ].join('');
-  } else {
-    badges.innerHTML = '';
-  }
+  const summary = document.getElementById('summary-line');
 
   if (!data.total_tasks) {
-    dash.innerHTML = `<div class="text-center py-24 text-gray-700"><div class="text-5xl mb-4">💬</div><p class="text-sm">Paste your chat messages and click<br /><span class="text-blue-500 font-medium">Process Messages</span> to get started</p></div>`;
+    summary.textContent = '';
+    dash.innerHTML = `<div class="text-sm text-zinc-600 py-24 text-center">Paste chat messages on the left to begin.</div>`;
     return;
   }
 
-  let html = '';
-  if (data.do_now?.length)    html += renderSection('🔴 High Priority — Do Now', data.do_now, 'red');
-  if (data.schedule?.length)  html += renderSection('🟡 Upcoming — Schedule', data.schedule, 'yellow');
-  if (data.need_info?.length) html += renderSection('🟠 Need Information', data.need_info, 'orange');
-  if (data.defer?.length)     html += renderSection('⚪ Deferred', data.defer, 'gray');
-  if (data.done?.length)      html += renderSection('✅ Done', data.done, 'green');
+  const active = activeTasks(data);
+  const dueToday = (active || []).filter((t) => t.deadline_iso && bucketDeadline(t.deadline_iso, new Date()) === 'today').length;
+  const needInfo = (data.need_info || []).length;
+  const parts = [`${active.length} active`];
+  if (dueToday) parts.push(`${dueToday} due today`);
+  if (needInfo) parts.push(`${needInfo} need info`);
+  if (data.done?.length) parts.push(`${data.done.length} done`);
+  summary.textContent = parts.join(' · ');
 
-  dash.innerHTML = html;
-
-  // Events log
-  if (data.replan_events?.length) {
-    const panel = document.getElementById('events-panel');
-    panel.classList.remove('hidden');
-    document.getElementById('events-log').innerHTML = [...data.replan_events]
-      .reverse()
-      .map(e => `<div class="text-xs text-gray-600">${esc(e)}</div>`)
-      .join('');
-  }
+  dash.innerHTML = [
+    renderTasks(data, active),
+    renderDeadlines(data, active),
+    renderImportantInfo(data, active),
+  ].join('');
 }
 
-const COLORS = {
-  red:    { border: 'border-red-800',    bg: 'bg-red-950/60',    badge: 'bg-red-900 text-red-300',    btn: 'bg-red-900/60 hover:bg-red-900 border-red-800',   head: 'text-red-400' },
-  yellow: { border: 'border-yellow-800', bg: 'bg-yellow-950/60', badge: 'bg-yellow-900 text-yellow-300', btn: 'bg-yellow-900/60 hover:bg-yellow-900 border-yellow-800', head: 'text-yellow-400' },
-  orange: { border: 'border-orange-800', bg: 'bg-orange-950/60', badge: 'bg-orange-900 text-orange-300', btn: 'bg-orange-900/60 hover:bg-orange-900 border-orange-800', head: 'text-orange-400' },
-  gray:   { border: 'border-gray-700',   bg: 'bg-gray-900',      badge: 'bg-gray-700 text-gray-300',  btn: 'bg-gray-800 hover:bg-gray-700 border-gray-700',   head: 'text-gray-500' },
-  green:  { border: 'border-green-800',  bg: 'bg-green-950/60',  badge: 'bg-green-900 text-green-300', btn: 'bg-green-900/60 hover:bg-green-900 border-green-800', head: 'text-green-400' },
-};
+function statusDot(item) {
+  if (item.status === 'in_progress') return '<span class="dot dot-active" title="in progress"></span>';
+  if (item.decision === 'ask_user')  return '<span class="dot dot-needinfo" title="needs info"></span>';
+  return '<span class="dot" title="pending"></span>';
+}
 
-function renderSection(title, items, color) {
-  const c = COLORS[color] || COLORS.gray;
+function renderTasks(data, active) {
+  const rows = active.length
+    ? active.map(renderTaskRow).join('')
+    : `<div class="text-xs text-zinc-600 py-4">No active tasks.</div>`;
+
+  const doneBlock = data.done?.length
+    ? `<details class="mt-6">
+         <summary class="text-xs text-zinc-500 hover:text-zinc-300">${data.done.length} completed ›</summary>
+         <div class="mt-3 space-y-2">
+           ${data.done.map((d) => `
+             <div class="text-xs text-zinc-600 line-through">${esc(d.task)}</div>
+           `).join('')}
+         </div>
+       </details>`
+    : '';
+
   return `
-    <div>
-      <p class="text-xs font-semibold uppercase tracking-widest ${c.head} mb-2">${title}</p>
-      <div class="space-y-2">${items.map(item => renderCard(item, c)).join('')}</div>
+    <section>
+      <div class="section-label">Tasks</div>
+      <div>${rows}</div>
+      ${doneBlock}
+    </section>`;
+}
+
+function renderTaskRow(item) {
+  const tid = esc(item.task_id);
+
+  const meta = [];
+  if (item.deadline) meta.push(esc(item.deadline));
+  if (item.assigned_by) meta.push(esc(item.assigned_by));
+  if (item.priority) meta.push(esc(item.priority));
+  const metaLine = meta.length ? `<div class="text-xs text-zinc-500 mt-1">${meta.join(' · ')}</div>` : '';
+
+  const checklist = (item.checklist && item.checklist.length) ? item.checklist : (item.steps || []).map((s) => ({ step: s, done: false }));
+  const doneCount = checklist.filter((x) => x.done).length;
+  const checklistHtml = checklist.length
+    ? `<details class="mt-2" ${item.status === 'in_progress' ? 'open' : ''}>
+         <summary class="text-xs text-zinc-500 hover:text-zinc-300">${doneCount}/${checklist.length} steps</summary>
+         <ul class="mt-2 space-y-1 pl-1">${checklist.map((x, i) => `
+           <li class="flex items-start gap-2 text-xs">
+             <input type="checkbox" ${x.done ? 'checked' : ''} data-tid="${tid}" data-idx="${i}" onchange="toggleStep(this)" class="mt-0.5 cursor-pointer" />
+             <span class="${x.done ? 'text-zinc-600 line-through' : 'text-zinc-400'}">${esc(x.step)}</span>
+           </li>`).join('')}</ul>
+       </details>` : '';
+
+  let actions = '';
+  if (item.status === 'in_progress') {
+    actions = `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Done</button>`;
+  } else if (item.decision !== 'ask_user') {
+    actions = `
+      <button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>
+      <button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Done</button>`;
+  }
+
+  return `
+    <div class="task-row flex items-start gap-3">
+      <span class="mt-2">${statusDot(item)}</span>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm text-zinc-100 leading-snug">${esc(item.task)}</div>
+        ${metaLine}
+        ${checklistHtml}
+      </div>
+      <div class="flex gap-2 shrink-0">${actions}</div>
     </div>`;
+}
+
+function bucketDeadline(iso, now) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'later';
+  const ms = d.getTime() - now.getTime();
+  if (ms < 0) return 'overdue';
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) return 'today';
+  const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
+  if (d.toDateString() === tomorrow.toDateString()) return 'tomorrow';
+  if (ms < 7 * 86_400_000) return 'week';
+  return 'later';
+}
+
+function formatDeadline(iso, now) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const ms = d.getTime() - now.getTime();
+  const abs = Math.abs(ms);
+  if (ms < 0) {
+    if (abs < 3600_000) return `${Math.round(abs / 60_000)}m ago`;
+    if (abs < 86400_000) return `${Math.round(abs / 3600_000)}h ago`;
+    return `${Math.round(abs / 86400_000)}d ago`;
+  }
+  const bucket = bucketDeadline(iso, now);
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (bucket === 'today') return time;
+  if (bucket === 'tomorrow') return `Tomorrow ${time}`;
+  if (bucket === 'week') return d.toLocaleDateString([], { weekday: 'short' }) + ' ' + time;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
+}
+
+function renderDeadlines(data, active) {
+  const withDeadline = active.filter((t) => t.deadline_iso);
+  if (!withDeadline.length) return '';
+
+  const now = new Date();
+  const buckets = { overdue: [], today: [], tomorrow: [], week: [], later: [] };
+  for (const t of withDeadline) buckets[bucketDeadline(t.deadline_iso, now)].push(t);
+
+  const labels = { overdue: 'Overdue', today: 'Today', tomorrow: 'Tomorrow', week: 'This week', later: 'Later' };
+  const order = ['overdue', 'today', 'tomorrow', 'week', 'later'];
+
+  for (const k of order) {
+    buckets[k].sort((a, b) => new Date(a.deadline_iso) - new Date(b.deadline_iso));
+  }
+
+  let html = '';
+  for (const k of order) {
+    if (!buckets[k].length) continue;
+    const colorClass = k === 'overdue' ? 'text-amber-400' : 'text-zinc-100';
+    html += `<div class="bucket-label">${labels[k]}</div>`;
+    html += buckets[k].map((t) => `
+      <div class="flex items-baseline gap-3 py-1.5 border-t border-zinc-900 first:border-t-0">
+        <div class="flex-1 text-sm ${colorClass} truncate">${esc(t.task)}</div>
+        <div class="text-xs text-zinc-500 shrink-0">${formatDeadline(t.deadline_iso, now)}</div>
+      </div>`).join('');
+  }
+
+  return `
+    <section>
+      <div class="section-label">Deadlines</div>
+      <div>${html}</div>
+    </section>`;
 }
 
 function fieldForQuestion(q) {
@@ -237,64 +378,96 @@ function fieldForQuestion(q) {
   return 'deadline';
 }
 
-function renderCard(item, c) {
-  const tid = esc(item.task_id);
+function renderImportantInfo(data, active) {
+  const items = [];
 
-  const stepsHtml = item.steps?.length
-    ? `<details class="mt-3"><summary class="text-xs text-gray-500 hover:text-gray-400 select-none">▶ Steps (${item.steps.length})</summary>
-        <ol class="mt-2 space-y-1 pl-1">${item.steps.map((s, i) => `<li class="text-xs text-gray-400"><span class="text-gray-600">${i + 1}.</span> ${esc(s)}</li>`).join('')}</ol>
-      </details>` : '';
-
-  const conflictsHtml = item.conflicts?.length
-    ? `<div class="mt-2 text-xs text-yellow-600 bg-yellow-950/50 rounded-lg px-3 py-2 border border-yellow-900/60">⚠️ ${esc(item.conflicts[0])}</div>`
-    : '';
-
-  const questionsHtml = item.missing_info_questions?.length
-    ? `<div class="mt-3 space-y-2">${item.missing_info_questions.map((q, i) => `
-        <div class="bg-gray-800/80 rounded-xl p-3 border border-gray-700">
-          <p class="text-xs text-orange-400 mb-2">❓ ${esc(q)}</p>
+  for (const t of (data.need_info || [])) {
+    const tid = esc(t.task_id);
+    for (const [i, q] of (t.missing_info_questions || []).entries()) {
+      items.push(`
+        <div class="info-item accent-amber">
+          <div class="text-xs text-zinc-400 mb-2">${esc(q)}</div>
           <div class="flex gap-2">
-            <input type="text" id="q-${tid}-${i}" class="flex-1 bg-gray-700 rounded-lg px-3 py-1.5 text-xs border border-gray-600 focus:border-orange-500 focus:outline-none placeholder-gray-500" placeholder="Type your answer..." />
-            <button data-tid="${tid}" data-field="${esc(fieldForQuestion(q))}" data-idx="${i}" onclick="answerQuestion(this)" class="px-3 py-1 bg-orange-800 hover:bg-orange-700 rounded-lg text-xs font-medium transition-colors">Send</button>
+            <input type="text" id="q-${tid}-${i}" class="flex-1 bg-zinc-900/60 rounded-md px-2 py-1 text-xs border border-zinc-800 focus:border-amber-700 focus:outline-none placeholder-zinc-600" placeholder="Type answer..." />
+            <button data-tid="${tid}" data-field="${esc(fieldForQuestion(q))}" data-idx="${i}" onclick="answerQuestion(this)" class="ghost-btn">Send</button>
           </div>
-        </div>`).join('')}</div>`
+        </div>`);
+    }
+  }
+
+  const seenConflicts = new Set();
+  for (const t of active) {
+    for (const c of (t.conflicts || [])) {
+      if (seenConflicts.has(c)) continue;
+      seenConflicts.add(c);
+      items.push(`<div class="info-item accent-amber"><div class="text-xs text-zinc-300">Conflict: ${esc(c)}</div></div>`);
+    }
+  }
+
+  for (const n of (data.notifications || [])) {
+    const when = n.fired_at_iso ? new Date(n.fired_at_iso).toLocaleString([], { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' }) : '';
+    items.push(`
+      <div class="info-item accent-sky">
+        <div class="text-xs text-zinc-300">${esc(n.message)}</div>
+        ${when ? `<div class="text-xs text-zinc-600 mt-0.5">${esc(when)}</div>` : ''}
+      </div>`);
+  }
+
+  for (const t of active) {
+    if (typeof t.confidence === 'number' && t.confidence < 0.6) {
+      items.push(`
+        <div class="info-item">
+          <div class="text-xs text-zinc-400">Low-confidence extraction (${Math.round(t.confidence * 100)}%): <span class="text-zinc-300">${esc(t.task)}</span></div>
+        </div>`);
+    }
+  }
+
+  const activityHtml = data.replan_events?.length
+    ? `<details class="mt-2">
+         <summary class="text-xs text-zinc-500 hover:text-zinc-300">Show activity (${data.replan_events.length})</summary>
+         <div class="mt-3 space-y-1 font-mono">
+           ${[...data.replan_events].reverse().map((e) => `<div class="text-xs text-zinc-600">${esc(e)}</div>`).join('')}
+         </div>
+       </details>`
     : '';
 
-  const doneBtn = item.status !== 'done'
-    ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="mt-3 w-full py-1.5 ${c.btn} rounded-lg text-xs font-medium border transition-colors">Mark as Done ✓</button>`
-    : '';
-
-  const confidenceNote = item.confidence < 0.7
-    ? `<span class="text-xs text-gray-600">${Math.round(item.confidence * 100)}% confident</span>`
-    : '';
+  const body = items.length
+    ? items.join('')
+    : `<div class="text-xs text-zinc-600 py-2">Nothing needs your attention.</div>`;
 
   return `
-    <div class="card ${c.bg} border ${c.border} rounded-xl p-4">
-      <div class="flex items-start justify-between gap-3">
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${c.badge}">${esc(item.decision?.toUpperCase().replace('_', ' '))} · ${item.priority_score}</span>
-            ${item.status === 'done' ? '<span class="text-xs text-green-400">✓ Done</span>' : ''}
-            ${confidenceNote}
-          </div>
-          <h3 class="font-semibold text-sm text-white leading-snug">${esc(item.task)}</h3>
-          <div class="flex flex-wrap gap-x-4 mt-1 text-xs text-gray-500">
-            ${item.deadline   ? `<span>📅 ${esc(item.deadline)}</span>` : ''}
-            ${item.assigned_by ? `<span>👤 ${esc(item.assigned_by)}</span>` : ''}
-            ${item.priority   ? `<span>🎯 ${esc(item.priority)}</span>` : ''}
-          </div>
-        </div>
-      </div>
-      ${conflictsHtml}
-      ${stepsHtml}
-      ${questionsHtml}
-      ${doneBtn}
-    </div>`;
+    <section>
+      <div class="section-label">Important info</div>
+      <div>${body}</div>
+      ${activityHtml}
+    </section>`;
 }
+
+// --- Actions ---
 
 async function markDone(taskId) {
   try {
     await fetch(`/api/tasks/${encodeURIComponent(taskId)}/complete`, { method: 'POST' });
+    await refreshDashboard();
+  } catch (e) { console.error(e); }
+}
+
+async function startTaskAction(taskId) {
+  try {
+    await fetch(`/api/tasks/${encodeURIComponent(taskId)}/start`, { method: 'POST' });
+    await refreshDashboard();
+  } catch (e) { console.error(e); }
+}
+
+async function toggleStep(checkbox) {
+  const tid = checkbox.dataset.tid;
+  const idx = Number(checkbox.dataset.idx);
+  try {
+    await fetch(`/api/tasks/${encodeURIComponent(tid)}/step`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index: idx }),
+    });
     await refreshDashboard();
   } catch (e) { console.error(e); }
 }
@@ -323,13 +496,11 @@ async function answerQuestion(btn) {
 async function resetAll() {
   if (!confirm('Reset all tasks and plans?')) return;
   await fetch('/api/reset', { method: 'POST' });
-  document.getElementById('dashboard').innerHTML = `<div class="text-center py-24 text-gray-700"><div class="text-5xl mb-4">💬</div><p class="text-sm">Paste your chat messages and click<br /><span class="text-blue-500 font-medium">Process Messages</span> to get started</p></div>`;
-  document.getElementById('summary-badges').innerHTML = '';
-  document.getElementById('events-panel').classList.add('hidden');
+  document.getElementById('summary-line').textContent = '';
   setStatus('', 'info');
+  await refreshDashboard();
 }
 
-// Load existing state on page load
 refreshDashboard();
 </script>
 </body>

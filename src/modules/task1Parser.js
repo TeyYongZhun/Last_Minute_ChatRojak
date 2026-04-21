@@ -1,4 +1,4 @@
-import { getClient, MODEL, extractJson } from '../client.js';
+import { getClient, MODEL, extractJson, withRetry } from '../client.js';
 
 const SYSTEM_PROMPT = `You are a task extraction AI. Given raw chat messages (e.g., from WhatsApp groups), identify and extract actionable tasks.
 
@@ -37,17 +37,19 @@ function normalize(t, index) {
 
 export async function parseMessages(rawText, now) {
   const client = getClient();
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    temperature: 0.3,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: `Current time: ${now.toISOString()}\n\nChat messages to analyze:\n\n${rawText}`,
-      },
-    ],
-  });
+  const response = await withRetry(() =>
+    client.chat.completions.create({
+      model: MODEL,
+      temperature: 0.3,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: `Current time: ${now.toISOString()}\n\nChat messages to analyze:\n\n${rawText}`,
+        },
+      ],
+    })
+  );
 
   const content = response.choices?.[0]?.message?.content || '';
   const data = extractJson(content);
