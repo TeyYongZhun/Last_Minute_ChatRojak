@@ -30,6 +30,7 @@ export function seedDemo() {
       priority: 'high',
       confidence: 0.95,
       missing_fields: [],
+      category: 'Academic',
       status: 'pending',
     },
     {
@@ -41,6 +42,7 @@ export function seedDemo() {
       priority: 'medium',
       confidence: 0.85,
       missing_fields: [],
+      category: 'Academic',
       status: 'pending',
     },
     {
@@ -52,6 +54,7 @@ export function seedDemo() {
       priority: 'medium',
       confidence: 0.7,
       missing_fields: ['deadline'],
+      category: 'CCA event',
       status: 'blocked_waiting_info',
     },
   ];

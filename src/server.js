@@ -16,6 +16,7 @@ import {
 import { clearState } from './state.js';
 import { seedDemo } from './modules/demoSeed.js';
 import { startTelegramBot, isBotEnabled, getActiveChatId } from './modules/telegramBot.js';
+import { processWithEvents } from './modules/processStream.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_DIR = path.join(__dirname, '..', 'static');
@@ -54,6 +55,29 @@ app.post('/api/process', async (req, res) => {
   } catch (e) {
     console.error('[/api/process] error:', e);
     res.status(500).json({ detail: e.message || 'Internal server error' });
+  }
+});
+
+app.post('/api/process-stream', async (req, res) => {
+  const text = (req.body?.text || '').trim();
+  if (!text) {
+    return res.status(400).json({ detail: 'No text provided' });
+  }
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  const emit = (kind, data) => {
+    res.write(`event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+  try {
+    await processWithEvents(text, new Date(), emit);
+  } catch (e) {
+    console.error('[/api/process-stream] error:', e);
+    emit('error', { message: e.message || 'Processing failed' });
+  } finally {
+    res.end();
   }
 });
 

@@ -71,18 +71,158 @@
       margin-bottom: 6px;
     }
     .bucket-label:first-child { margin-top: 0; }
+
+    /* segmented toggle */
+    .seg {
+      display: inline-flex;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .seg-btn {
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #a1a1aa;
+      background: transparent;
+      transition: background .12s, color .12s;
+    }
+    .seg-btn:hover { color: #e4e4e7; }
+    .seg-active { background: #0c4a6e; color: #e0f2fe; }
+    .seg-active:hover { color: #f0f9ff; }
+
+    /* upload view */
+    .dropzone {
+      border: 2px dashed #3f3f46;
+      border-radius: 16px;
+      padding: 64px 32px;
+      text-align: center;
+      transition: border-color .15s, background .15s;
+      cursor: pointer;
+      background: #0c0c0e;
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: #0ea5e9;
+      background: #0c1923;
+    }
+
+    .console {
+      background: #050507;
+      border: 1px solid #18181b;
+      border-radius: 12px;
+      padding: 18px 20px;
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      color: #34d399;
+      max-height: 360px;
+      overflow-y: auto;
+      line-height: 1.7;
+    }
+    .console-line { animation: fadeIn .25s ease-out; opacity: 0.95; }
+    .console-line.error { color: #f87171; }
+    .console-line.task { color: #7dd3fc; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(2px); }
+      to   { opacity: .95; transform: none; }
+    }
+
+    /* split-screen */
+    .splitscreen {
+      display: grid;
+      grid-template-columns: 38% 62%;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .splitscreen { grid-template-columns: 1fr; }
+    }
+
+    .chat-feed {
+      background: #0c0c0e;
+      border: 1px solid #18181b;
+      border-radius: 12px;
+      padding: 16px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .bubble {
+      max-width: 85%;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #18181b;
+      color: #e4e4e7;
+      font-size: 13px;
+      line-height: 1.45;
+      margin-bottom: 6px;
+      transition: opacity .15s;
+    }
+    .bubble .sender { font-size: 11px; color: #a1a1aa; font-weight: 500; margin-bottom: 2px; }
+    .bubble.system { background: transparent; color: #71717a; font-style: italic; max-width: 100%; padding: 4px 0; font-size: 11px; }
+    .bubble.dim { opacity: 0.25; }
+
+    .chip {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #27272a;
+      background: transparent;
+      color: #a1a1aa;
+      font-size: 11px;
+      font-weight: 500;
+      transition: all .12s;
+    }
+    .chip:hover { color: #e4e4e7; border-color: #3f3f46; }
+    .chip-active { background: #0c4a6e; color: #e0f2fe; border-color: #0369a1; }
+
+    .category-card {
+      border: 1px solid #18181b;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      background: #0c0c0e;
+    }
+    .category-card .cat-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #18181b;
+      margin-bottom: 4px;
+    }
+    .cat-name { font-size: 13px; font-weight: 600; color: #e4e4e7; }
+    .cat-count { font-size: 11px; color: #71717a; }
+
+    .cat-tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      color: #a1a1aa;
+      background: #18181b;
+      border: 1px solid #27272a;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body class="min-h-screen">
 
-<header class="border-b border-zinc-900 px-6 py-4 flex items-baseline justify-between sticky top-0 z-20 bg-[#0a0a0b]/90 backdrop-blur">
+<header class="border-b border-zinc-900 px-6 py-4 flex items-center justify-between sticky top-0 z-20 bg-[#0a0a0b]/90 backdrop-blur">
   <div class="flex items-baseline gap-4">
     <h1 class="text-sm font-semibold tracking-tight text-zinc-100">Last Minute ChatRojak</h1>
     <span id="summary-line" class="text-xs text-zinc-500"></span>
   </div>
+  <div class="seg" id="mode-toggle">
+    <button data-mode="tasks" class="seg-btn seg-active" onclick="setMode('tasks')">Tasks</button>
+    <button data-mode="upload" class="seg-btn" onclick="setMode('upload')">Upload chat</button>
+  </div>
 </header>
 
-<div class="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-10">
+<div id="tasks-view" class="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-10">
 
   <!-- Left: Input -->
   <aside class="space-y-5">
@@ -115,6 +255,54 @@
       Paste chat messages on the left to begin.
     </div>
   </main>
+
+</div>
+
+<div id="upload-view" class="hidden max-w-6xl mx-auto px-6 py-8">
+
+  <!-- Stage 1: drop zone -->
+  <div id="upload-empty">
+    <div class="dropzone" id="dropzone"
+         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)"
+         onclick="document.getElementById('file-input').click()">
+      <div class="text-5xl mb-4 text-zinc-600">⌂</div>
+      <div class="text-base text-zinc-200 font-medium">Drop your WhatsApp .txt file here</div>
+      <div class="text-xs text-zinc-500 mt-2">or click to choose a file · or <a href="#" onclick="event.preventDefault(); event.stopPropagation(); document.getElementById('paste-fallback').classList.remove('hidden'); document.getElementById('paste-area').focus();" class="text-sky-400 hover:text-sky-300 underline">paste chat manually</a></div>
+      <input id="file-input" type="file" accept=".txt,text/plain" class="hidden" onchange="handleFilePick(event)" />
+    </div>
+
+    <div id="paste-fallback" class="hidden mt-6">
+      <textarea id="paste-area" class="w-full h-40 bg-zinc-900/40 rounded-md p-3 text-sm text-zinc-200 resize-none border border-zinc-800 focus:border-sky-700 focus:outline-none placeholder-zinc-600" placeholder="Paste chat text here..."></textarea>
+      <div class="flex gap-2 mt-2 justify-end">
+        <button onclick="document.getElementById('paste-fallback').classList.add('hidden')" class="ghost-btn">Cancel</button>
+        <button onclick="processPasted()" class="ghost-btn ghost-btn-accent">Process</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 2: processing console -->
+  <div id="upload-processing" class="hidden">
+    <div class="text-xs text-zinc-500 mb-3 flex items-center gap-2">
+      <span class="dot dot-active"></span>
+      <span class="loading-dot">AI processing</span>
+    </div>
+    <div id="console" class="console"></div>
+  </div>
+
+  <!-- Stage 3: split-screen results -->
+  <div id="upload-results" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-xs text-zinc-500" id="results-summary"></div>
+      <button onclick="resetUpload()" class="ghost-btn">New upload</button>
+    </div>
+    <div id="chip-row" class="flex flex-wrap gap-2 mb-4"></div>
+    <div class="splitscreen">
+      <div id="chat-feed" class="chat-feed"></div>
+      <div id="category-panel"></div>
+    </div>
+  </div>
 
 </div>
 
@@ -194,6 +382,19 @@ async function refreshDashboard() {
     const data = await res.json();
     renderDashboard(data);
   } catch (e) { console.error('Dashboard refresh failed:', e); }
+}
+
+async function refreshActiveView() {
+  await refreshDashboard();
+  const upload = document.getElementById('upload-view');
+  const results = document.getElementById('upload-results');
+  if (upload && !upload.classList.contains('hidden') && results && !results.classList.contains('hidden')) {
+    try {
+      const res = await fetch('/api/dashboard');
+      const data = await res.json();
+      renderCategoryPanel(activeTasks(data), data);
+    } catch (e) { console.error('Category panel refresh failed:', e); }
+  }
 }
 
 // --- Rendering ---
@@ -298,7 +499,7 @@ function renderTaskRow(item) {
     <div class="task-row flex items-start gap-3">
       <span class="mt-2">${statusDot(item)}</span>
       <div class="flex-1 min-w-0">
-        <div class="text-sm text-zinc-100 leading-snug">${esc(item.task)}</div>
+        <div class="text-sm text-zinc-100 leading-snug">${esc(item.task)}${item.category ? `<span class="cat-tag">${esc(item.category)}</span>` : ''}</div>
         ${metaLine}
         ${checklistHtml}
       </div>
@@ -448,14 +649,14 @@ function renderImportantInfo(data, active) {
 async function markDone(taskId) {
   try {
     await fetch(`/api/tasks/${encodeURIComponent(taskId)}/complete`, { method: 'POST' });
-    await refreshDashboard();
+    await refreshActiveView();
   } catch (e) { console.error(e); }
 }
 
 async function startTaskAction(taskId) {
   try {
     await fetch(`/api/tasks/${encodeURIComponent(taskId)}/start`, { method: 'POST' });
-    await refreshDashboard();
+    await refreshActiveView();
   } catch (e) { console.error(e); }
 }
 
@@ -468,7 +669,7 @@ async function toggleStep(checkbox) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ index: idx }),
     });
-    await refreshDashboard();
+    await refreshActiveView();
   } catch (e) { console.error(e); }
 }
 
@@ -501,6 +702,256 @@ async function resetAll() {
   await refreshDashboard();
 }
 
+// --- Upload mode ---
+
+let uploadedRawText = '';
+let activeFilters = new Set();
+
+function setMode(mode) {
+  const tasks = document.getElementById('tasks-view');
+  const upload = document.getElementById('upload-view');
+  const buttons = document.querySelectorAll('#mode-toggle .seg-btn');
+  if (mode === 'upload') {
+    tasks.classList.add('hidden');
+    upload.classList.remove('hidden');
+    if (location.hash !== '#upload') location.hash = 'upload';
+  } else {
+    upload.classList.add('hidden');
+    tasks.classList.remove('hidden');
+    if (location.hash === '#upload') history.replaceState(null, '', location.pathname + location.search);
+    refreshDashboard();
+  }
+  buttons.forEach((b) => b.classList.toggle('seg-active', b.dataset.mode === mode));
+}
+
+function showUploadStage(stage) {
+  for (const id of ['upload-empty', 'upload-processing', 'upload-results']) {
+    document.getElementById(id).classList.toggle('hidden', id !== `upload-${stage}`);
+  }
+}
+
+function consoleLine(text, kind = '') {
+  const cls = kind ? `console-line ${kind}` : 'console-line';
+  const el = document.getElementById('console');
+  const div = document.createElement('div');
+  div.className = cls;
+  div.textContent = `> ${text}`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  document.getElementById('dropzone').classList.remove('drag-over');
+  const file = event.dataTransfer?.files?.[0];
+  if (!file) return;
+  readFileAndProcess(file);
+}
+
+function handleFilePick(event) {
+  const file = event.target.files?.[0];
+  if (file) readFileAndProcess(file);
+  event.target.value = '';
+}
+
+function readFileAndProcess(file) {
+  const reader = new FileReader();
+  reader.onload = () => startStreaming(String(reader.result || ''));
+  reader.onerror = () => alert('Could not read file: ' + (reader.error?.message || 'unknown'));
+  reader.readAsText(file);
+}
+
+function processPasted() {
+  const text = document.getElementById('paste-area').value;
+  if (!text.trim()) { document.getElementById('paste-area').focus(); return; }
+  startStreaming(text);
+}
+
+async function startStreaming(text) {
+  uploadedRawText = text;
+  showUploadStage('processing');
+  document.getElementById('console').innerHTML = '';
+  consoleLine(`Uploaded ${text.length.toLocaleString()} chars · ${text.split('\n').filter((l) => l.trim()).length} non-empty lines`);
+
+  try {
+    await streamProcess(text, (kind, data) => {
+      if (kind === 'log')   consoleLine(data.text);
+      else if (kind === 'task')  consoleLine(`extracted ${data.task_id}: ${data.task}  [${data.category || 'Other'}]`, 'task');
+      else if (kind === 'error') consoleLine(`ERROR: ${data.message}`, 'error');
+      else if (kind === 'done')  showResults(data);
+    });
+  } catch (e) {
+    consoleLine(`Stream failed: ${e.message}`, 'error');
+  }
+}
+
+async function streamProcess(text, onEvent) {
+  const res = await fetch('/api/process-stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf('\n\n')) !== -1) {
+      const block = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      const ev = block.match(/^event:\s*(\S+)/m)?.[1];
+      const data = block.match(/^data:\s*(.+)$/m)?.[1];
+      if (ev && data != null) {
+        try { onEvent(ev, JSON.parse(data)); }
+        catch (e) { console.warn('bad SSE payload', block, e); }
+      }
+    }
+  }
+}
+
+function showResults(payload) {
+  setTimeout(() => {
+    showUploadStage('results');
+    const data = payload.dashboard;
+    const items = activeTasks(data);
+    document.getElementById('results-summary').textContent =
+      `${payload.extracted} task(s) extracted · ${payload.plans} planned · ${payload.conflicts} conflict(s)`;
+
+    activeFilters = new Set();
+    renderChatFeed(uploadedRawText);
+    renderCategoryPanel(items, data);
+  }, 350);
+}
+
+function resetUpload() {
+  uploadedRawText = '';
+  activeFilters = new Set();
+  document.getElementById('console').innerHTML = '';
+  document.getElementById('paste-area').value = '';
+  document.getElementById('paste-fallback').classList.add('hidden');
+  showUploadStage('empty');
+}
+
+function parseChatLines(raw) {
+  const lines = raw.split(/\r?\n/);
+  const re = /^([^:]{1,40}):\s*(.+)$/;
+  return lines.map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return null;
+    const m = trimmed.match(re);
+    if (m) return { sender: m[1].trim(), text: m[2].trim() };
+    return { sender: null, text: trimmed };
+  }).filter(Boolean);
+}
+
+function renderChatFeed(raw) {
+  const feed = document.getElementById('chat-feed');
+  const msgs = parseChatLines(raw);
+  if (!msgs.length) {
+    feed.innerHTML = `<div class="text-xs text-zinc-600 text-center py-8">No messages parsed.</div>`;
+    return;
+  }
+  feed.innerHTML = msgs.map((m, i) => {
+    if (!m.sender) return `<div class="bubble system" data-msg-idx="${i}">${esc(m.text)}</div>`;
+    return `
+      <div class="bubble" data-msg-idx="${i}" data-msg-text="${esc(m.text.toLowerCase())}">
+        <div class="sender">${esc(m.sender)}</div>
+        <div>${esc(m.text)}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderCategoryPanel(items, data) {
+  const panel = document.getElementById('category-panel');
+  const chipRow = document.getElementById('chip-row');
+
+  if (!items.length) {
+    chipRow.innerHTML = '';
+    panel.innerHTML = `<div class="text-sm text-zinc-600 py-12 text-center">No actionable tasks found in this chat.</div>`;
+    return;
+  }
+
+  const groups = {};
+  for (const it of items) {
+    const cat = it.category || 'Other';
+    (groups[cat] ||= []).push(it);
+  }
+  const cats = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+
+  const visibleCats = activeFilters.size === 0 ? cats : cats.filter((c) => activeFilters.has(c));
+
+  chipRow.innerHTML = [
+    `<button class="chip ${activeFilters.size === 0 ? 'chip-active' : ''}" onclick="toggleFilter(null)">All · ${items.length}</button>`,
+    ...cats.map((c) =>
+      `<button class="chip ${activeFilters.has(c) ? 'chip-active' : ''}" onclick="toggleFilter('${esc(c).replace(/'/g, "\\'")}')">${esc(c)} · ${groups[c].length}</button>`
+    ),
+  ].join('');
+
+  panel.innerHTML = visibleCats.map((c) => `
+    <div class="category-card">
+      <div class="cat-header">
+        <div class="cat-name">${esc(c)}</div>
+        <div class="cat-count">${groups[c].length} task${groups[c].length === 1 ? '' : 's'}</div>
+      </div>
+      <div>${groups[c].map(renderTaskRow).join('')}</div>
+    </div>`).join('');
+
+  if (data.done?.length) {
+    panel.innerHTML += `
+      <details class="mt-2">
+        <summary class="text-xs text-zinc-500 hover:text-zinc-300 cursor-pointer">${data.done.length} completed ›</summary>
+        <div class="mt-3 space-y-2 px-2">
+          ${data.done.map((d) => `<div class="text-xs text-zinc-600 line-through">${esc(d.task)}${d.category ? ` <span class="cat-tag">${esc(d.category)}</span>` : ''}</div>`).join('')}
+        </div>
+      </details>`;
+  }
+
+  applyFilterDimming(items);
+}
+
+function toggleFilter(cat) {
+  if (cat === null) {
+    activeFilters.clear();
+  } else if (activeFilters.has(cat)) {
+    activeFilters.delete(cat);
+  } else {
+    activeFilters.add(cat);
+  }
+  // re-render with currently fetched dashboard
+  fetch('/api/dashboard').then((r) => r.json()).then((data) => {
+    renderCategoryPanel(activeTasks(data), data);
+  });
+}
+
+function applyFilterDimming(items) {
+  const visibleCats = activeFilters.size === 0
+    ? new Set(items.map((i) => i.category || 'Other'))
+    : activeFilters;
+  const keywords = items
+    .filter((i) => visibleCats.has(i.category || 'Other'))
+    .flatMap((i) => i.task.toLowerCase().split(/\s+/).filter((w) => w.length >= 4));
+  const kwSet = new Set(keywords);
+
+  document.querySelectorAll('.chat-feed .bubble').forEach((b) => {
+    if (activeFilters.size === 0) { b.classList.remove('dim'); return; }
+    const text = b.dataset.msgText || '';
+    const hit = [...kwSet].some((k) => text.includes(k));
+    b.classList.toggle('dim', !hit);
+  });
+}
+
+window.addEventListener('hashchange', () => {
+  setMode(location.hash === '#upload' ? 'upload' : 'tasks');
+});
+
+if (location.hash === '#upload') setMode('upload');
 refreshDashboard();
 </script>
 </body>
