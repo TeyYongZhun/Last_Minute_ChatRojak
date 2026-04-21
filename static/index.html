@@ -5,344 +5,239 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Last Minute ChatRojak</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root { color-scheme: dark; }
-    html, body { font-family: 'Inter', system-ui, sans-serif; }
-    body { background: #0a0a0b; color: #e4e4e7; -webkit-font-smoothing: antialiased; }
+    html, body { font-family: 'Inter', system-ui, sans-serif; height: 100%; margin: 0; overflow: hidden; }
+    body { background: #020617; color: #e2e8f0; -webkit-font-smoothing: antialiased; display: flex; } /* Deep slate background */
 
     details > summary { list-style: none; cursor: pointer; }
     details > summary::-webkit-details-marker { display: none; }
 
-    .dot { width: 6px; height: 6px; border-radius: 999px; display: inline-block; background: #52525b; }
-    .dot-active   { background: #38bdf8; }
-    .dot-needinfo { background: #f59e0b; }
+    /* Colorful Status Dots */
+    .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; background: #475569; box-shadow: 0 0 8px rgba(71,85,105,0.5); }
+    .dot-active   { background: #38bdf8; box-shadow: 0 0 10px rgba(56,189,248,0.6); }
+    .dot-needinfo { background: #f59e0b; box-shadow: 0 0 10px rgba(245,158,11,0.6); }
 
+    /* Interactive Buttons */
     .ghost-btn {
-      padding: 4px 10px;
-      border: 1px solid #27272a;
-      border-radius: 6px;
-      font-size: 11px;
-      color: #a1a1aa;
-      background: transparent;
-      transition: border-color .12s, color .12s;
+      padding: 8px 16px; border: 1px solid #334155; border-radius: 8px;
+      font-size: 13px; font-weight: 500; color: #94a3b8; background: transparent; 
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
     }
-    .ghost-btn:hover { border-color: #3f3f46; color: #e4e4e7; }
-    .ghost-btn-accent { border-color: #0369a1; color: #7dd3fc; }
-    .ghost-btn-accent:hover { border-color: #0ea5e9; color: #e0f2fe; }
+    .ghost-btn:hover { border-color: #64748b; color: #f8fafc; background: #1e293b; transform: translateY(-1px); }
+    .ghost-btn:active { transform: translateY(0); scale: 0.98; }
+    
+    .ghost-btn-accent { border-color: #6366f1; color: #818cf8; background: rgba(99, 102, 241, 0.05); }
+    .ghost-btn-accent:hover { border-color: #818cf8; color: #ffffff; background: #6366f1; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
 
-    .task-row { border-top: 1px solid #18181b; padding: 14px 0; }
-    .task-row:first-child { border-top: none; padding-top: 6px; }
-
-    .info-item {
-      border-left: 2px solid #27272a;
-      padding: 4px 0 4px 12px;
-      margin-bottom: 14px;
-    }
-    .info-item.accent-amber { border-left-color: #b45309; }
-    .info-item.accent-sky { border-left-color: #0369a1; }
+    .task-row { transition: all 0.2s ease; }
+    
+    .info-item { border-left: 4px solid #334155; padding: 12px 16px; margin-bottom: 16px; border-radius: 0 12px 12px 0; }
+    .info-item.accent-amber { border-left-color: #f59e0b; background: linear-gradient(to right, rgba(245,158,11,0.1), transparent); }
 
     .loading-dot::after { content: ''; animation: dots 1.2s steps(3, end) infinite; }
-    @keyframes dots {
-      0%   { content: ''; }
-      33%  { content: '.'; }
-      66%  { content: '..'; }
-      100% { content: '...'; }
-    }
+    @keyframes dots { 0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; } }
 
-    input[type=checkbox] { accent-color: #0ea5e9; }
+    input[type=checkbox] { accent-color: #6366f1; width: 18px; height: 18px; cursor: pointer; }
+    
     .section-label {
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #71717a;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #18181b;
-      margin-bottom: 6px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      color: #64748b; padding-bottom: 12px; border-bottom: 1px solid #1e293b; margin-bottom: 12px;
     }
-    .bucket-label {
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #52525b;
-      margin-top: 14px;
-      margin-bottom: 6px;
-    }
-    .bucket-label:first-child { margin-top: 0; }
 
-    /* segmented toggle */
-    .seg {
-      display: inline-flex;
-      background: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 8px;
-      padding: 2px;
-      gap: 2px;
+    /* Chunky Sidebar Nav Buttons */
+    .nav-btn {
+      display: flex; align-items: center; width: 100%; text-align: left; padding: 12px 16px; border-radius: 12px;
+      font-size: 15px; font-weight: 500; color: #94a3b8; transition: all .2s; margin-bottom: 6px; border: 1px solid transparent;
     }
-    .seg-btn {
-      padding: 4px 12px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 500;
-      color: #a1a1aa;
-      background: transparent;
-      transition: background .12s, color .12s;
+    .nav-btn:hover { background: #0f172a; color: #f8fafc; border-color: #1e293b; transform: translateX(4px); }
+    .nav-btn.active { 
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); 
+      color: #ffffff; 
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+      font-weight: 600;
+      border-color: transparent;
     }
-    .seg-btn:hover { color: #e4e4e7; }
-    .seg-active { background: #0c4a6e; color: #e0f2fe; }
-    .seg-active:hover { color: #f0f9ff; }
+    .nav-btn.active:hover { transform: none; }
 
-    /* upload view */
+    /* Dropzone */
     .dropzone {
-      border: 2px dashed #3f3f46;
-      border-radius: 16px;
-      padding: 64px 32px;
-      text-align: center;
-      transition: border-color .15s, background .15s;
-      cursor: pointer;
-      background: #0c0c0e;
+      border: 2px dashed #475569; border-radius: 20px; padding: 60px 24px; text-align: center;
+      transition: all .2s ease-out; cursor: pointer; background: rgba(30, 41, 59, 0.3);
     }
-    .dropzone:hover, .dropzone.drag-over {
-      border-color: #0ea5e9;
-      background: #0c1923;
+    .dropzone:hover, .dropzone.drag-over { 
+      border-color: #6366f1; 
+      background: rgba(99, 102, 241, 0.05); 
+      transform: scale(1.02);
     }
 
     .console {
-      background: #050507;
-      border: 1px solid #18181b;
-      border-radius: 12px;
-      padding: 18px 20px;
-      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 12px;
-      color: #34d399;
-      max-height: 360px;
-      overflow-y: auto;
-      line-height: 1.7;
+      background: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 20px;
+      font-family: monospace; font-size: 13px; color: #34d399; max-height: 250px; overflow-y: auto;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
     }
-    .console-line { animation: fadeIn .25s ease-out; opacity: 0.95; }
+    .console-line { animation: fadeIn .25s ease-out; opacity: 0.95; margin-bottom: 6px; }
     .console-line.error { color: #f87171; }
-    .console-line.task { color: #7dd3fc; }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(2px); }
-      to   { opacity: .95; transform: none; }
-    }
-
-    /* split-screen */
-    .splitscreen {
-      display: grid;
-      grid-template-columns: 38% 62%;
-      gap: 24px;
-      align-items: start;
-    }
-    @media (max-width: 900px) {
-      .splitscreen { grid-template-columns: 1fr; }
-    }
-
-    .chat-feed {
-      background: #0c0c0e;
-      border: 1px solid #18181b;
-      border-radius: 12px;
-      padding: 16px;
-      max-height: 70vh;
-      overflow-y: auto;
-    }
-    .bubble {
-      max-width: 85%;
-      padding: 8px 12px;
-      border-radius: 10px;
-      background: #18181b;
-      color: #e4e4e7;
-      font-size: 13px;
-      line-height: 1.45;
-      margin-bottom: 6px;
-      transition: opacity .15s;
-    }
-    .bubble .sender { font-size: 11px; color: #a1a1aa; font-weight: 500; margin-bottom: 2px; }
-    .bubble.system { background: transparent; color: #71717a; font-style: italic; max-width: 100%; padding: 4px 0; font-size: 11px; }
-    .bubble.dim { opacity: 0.25; }
-
-    .chip {
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid #27272a;
-      background: transparent;
-      color: #a1a1aa;
-      font-size: 11px;
-      font-weight: 500;
-      transition: all .12s;
-    }
-    .chip:hover { color: #e4e4e7; border-color: #3f3f46; }
-    .chip-active { background: #0c4a6e; color: #e0f2fe; border-color: #0369a1; }
-
-    .category-card {
-      border: 1px solid #18181b;
-      border-radius: 12px;
-      padding: 14px 16px;
-      margin-bottom: 14px;
-      background: #0c0c0e;
-    }
-    .category-card .cat-header {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #18181b;
-      margin-bottom: 4px;
-    }
-    .cat-name { font-size: 13px; font-weight: 600; color: #e4e4e7; }
-    .cat-count { font-size: 11px; color: #71717a; }
-
-    .cat-tag {
-      display: inline-block;
-      padding: 1px 7px;
-      border-radius: 999px;
-      font-size: 10px;
-      color: #a1a1aa;
-      background: #18181b;
-      border: 1px solid #27272a;
-      margin-left: 6px;
-      vertical-align: middle;
-    }
-
+    .console-line.task { color: #818cf8; font-weight: bold; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: .95; transform: none; } }
+    
     .hidden { display: none !important; }
+    
+    /* Custom Scrollbar for a polished look */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
   </style>
 </head>
-<body class="min-h-screen">
+<body>
 
-<header class="border-b border-zinc-900 px-6 py-4 flex items-center justify-between sticky top-0 z-20 bg-[#0a0a0b]/90 backdrop-blur">
-  <div class="flex items-baseline gap-4">
-    <h1 class="text-sm font-semibold tracking-tight text-zinc-100">Last Minute ChatRojak</h1>
-    <span id="summary-line" class="text-xs text-zinc-500"></span>
-  </div>
-  <div class="seg" id="mode-toggle">
-    <button data-mode="tasks" class="seg-btn seg-active" onclick="setMode('tasks')">Tasks</button>
-    <button data-mode="upload" class="seg-btn" onclick="setMode('upload')">Upload chat</button>
-  </div>
-</header>
-
-<div id="tasks-view" class="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-10">
-
-  <!-- Left: Input -->
-  <aside class="space-y-5">
-    <div>
-      <div class="section-label">Chat messages</div>
-      <textarea
-        id="chat-input"
-        class="w-full h-48 bg-zinc-900/40 rounded-md p-3 text-sm text-zinc-200 resize-none border border-zinc-800 focus:border-sky-700 focus:outline-none placeholder-zinc-600 mt-3"
-        placeholder="Paste chat export here..."
-      ></textarea>
-
-      <div class="flex gap-2 mt-3">
-        <button onclick="loadSample()" class="ghost-btn">Load sample</button>
-        <button onclick="processMessages()" id="process-btn" class="flex-1 py-1.5 border border-sky-700 text-sky-300 hover:bg-sky-950/40 disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-xs font-medium transition-colors">
-          Process
-        </button>
-        <button onclick="resetAll()" class="ghost-btn">Reset</button>
-      </div>
-      <button onclick="loadDemo()" class="w-full mt-2 py-1.5 border border-zinc-700 text-zinc-300 hover:bg-zinc-800/40 rounded-md text-xs font-medium transition-colors">
-        Load demo (no API)
-      </button>
-
-      <div id="status-msg" class="mt-3 text-xs text-zinc-500 min-h-4"></div>
+  <aside class="w-72 border-r border-slate-800 bg-slate-950 flex flex-col pt-8 pb-4 px-5 flex-shrink-0 z-10 shadow-xl">
+    <div class="mb-10 px-2">
+      <h1 class="text-lg font-bold tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">Last Minute ChatRojak</h1>
+      <div id="summary-line" class="text-sm font-medium text-slate-400 mt-2 h-5">Loading...</div>
     </div>
+    
+    <nav class="flex-1 space-y-2" id="sidebar-nav">
+      <button data-mode="upload" class="nav-btn active" onclick="setMode('upload')">
+        <span class="mr-3 text-xl">📁</span> Upload Chat
+      </button>
+      <button data-mode="dashboard" class="nav-btn" onclick="setMode('dashboard')">
+        <span class="mr-3 text-xl">🏠</span> Dashboard
+      </button>
+      <button data-mode="checklist" class="nav-btn" onclick="setMode('checklist')">
+        <span class="mr-3 text-xl">✓</span> Checklist
+      </button>
+      <button data-mode="calendar" class="nav-btn" onclick="setMode('calendar')">
+        <span class="mr-3 text-xl">📅</span> Calendar
+      </button>
+    </nav>
   </aside>
 
-  <!-- Right: Dashboard -->
-  <main id="dashboard" class="space-y-10">
-    <div id="empty-state" class="text-sm text-zinc-600 py-24 text-center">
-      Paste chat messages on the left to begin.
+  <main class="flex-1 overflow-y-auto bg-[#020617] relative">
+    <div class="max-w-5xl mx-auto px-10 py-12">
+
+      <div id="view-upload" class="view-section">
+        <h2 class="text-3xl font-bold mb-8 text-white">Import Your Tasks</h2>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-8">
+          <div>
+            <div class="section-label">Paste Raw Text</div>
+            <textarea id="chat-input" class="w-full h-48 bg-slate-900/60 rounded-xl p-4 text-base text-slate-200 resize-none border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-slate-500 shadow-inner mt-2 transition-all" placeholder="Paste WhatsApp chat export here..."></textarea>
+            
+            <div class="flex gap-3 mt-4">
+              <button onclick="loadSample()" class="ghost-btn">Load sample</button>
+              <button onclick="processMessages()" id="process-btn" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">Process Text</button>
+              <button onclick="loadDemo()" class="ghost-btn border-slate-600 text-slate-300">Demo</button>
+            </div>
+            <div id="status-msg" class="mt-4 text-sm font-medium text-slate-400 min-h-5"></div>
+          </div>
+
+          <div>
+             <div class="section-label">Or Upload File</div>
+             <div class="dropzone mt-2" id="dropzone"
+                 ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                 ondragleave="this.classList.remove('drag-over')"
+                 ondrop="handleDrop(event)"
+                 onclick="document.getElementById('file-input').click()">
+              <div class="text-5xl mb-4 opacity-80">📄</div>
+              <div class="text-lg text-slate-200 font-semibold">Drop .txt file here</div>
+              <div class="text-sm text-slate-400 mt-2">or click to browse your computer</div>
+              <input id="file-input" type="file" accept=".txt,text/plain" class="hidden" onchange="handleFilePick(event)" />
+            </div>
+          </div>
+        </div>
+
+        <div id="upload-processing" class="hidden mt-8 border-t border-slate-800 pt-8">
+          <div class="text-sm font-medium text-indigo-400 mb-4 flex items-center gap-3">
+            <span class="dot dot-active"></span>
+            <span class="loading-dot">AI is analyzing conversation</span>
+          </div>
+          <div id="console" class="console"></div>
+          <button onclick="resetUpload()" class="mt-5 ghost-btn">Clear Console</button>
+        </div>
+      </div>
+
+      <div id="view-dashboard" class="view-section hidden">
+        <h2 class="text-3xl font-bold mb-8 text-white">Dashboard Overview</h2>
+        <div id="dash-important-content">
+          <div class="text-base text-slate-500 py-16 text-center border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/20">
+            No data yet. Head to the Upload tab to process a chat.
+          </div>
+        </div>
+      </div>
+
+      <div id="view-checklist" class="view-section hidden">
+        <div class="flex justify-between items-end mb-8 border-b border-slate-800 pb-5">
+          <h2 class="text-3xl font-bold text-white">Task Checklist</h2>
+          <button onclick="resetAll()" class="ghost-btn border-rose-900/50 text-rose-400 hover:border-rose-500 hover:bg-rose-950/30">Reset All Data</button>
+        </div>
+        <div id="checklist-content">
+           <div class="text-base text-slate-500 py-16 text-center bg-slate-900/20 rounded-2xl border border-slate-800/50">No actionable tasks found.</div>
+        </div>
+      </div>
+
+      <div id="view-calendar" class="view-section hidden">
+        <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-5">
+          <h2 class="text-3xl font-bold text-white">Monthly Calendar</h2>
+          <div class="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl p-1.5 shadow-inner">
+            <button onclick="changeMonth(-1)" class="ghost-btn border-none hover:bg-slate-800 px-4 py-2 text-lg">&lt;</button>
+            <span id="calendar-month-label" class="text-base font-bold w-40 text-center inline-block text-white tracking-wide"></span>
+            <button onclick="changeMonth(1)" class="ghost-btn border-none hover:bg-slate-800 px-4 py-2 text-lg">&gt;</button>
+          </div>
+        </div>
+        
+        <div id="calendar-grid" class="grid grid-cols-7 gap-[1px] bg-slate-700 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
+           </div>
+      </div>
+
     </div>
   </main>
 
-</div>
-
-<div id="upload-view" class="hidden max-w-6xl mx-auto px-6 py-8">
-
-  <!-- Stage 1: drop zone -->
-  <div id="upload-empty">
-    <div class="dropzone" id="dropzone"
-         ondragover="event.preventDefault(); this.classList.add('drag-over')"
-         ondragleave="this.classList.remove('drag-over')"
-         ondrop="handleDrop(event)"
-         onclick="document.getElementById('file-input').click()">
-      <div class="text-5xl mb-4 text-zinc-600">⌂</div>
-      <div class="text-base text-zinc-200 font-medium">Drop your WhatsApp .txt file here</div>
-      <div class="text-xs text-zinc-500 mt-2">or click to choose a file · or <a href="#" onclick="event.preventDefault(); event.stopPropagation(); document.getElementById('paste-fallback').classList.remove('hidden'); document.getElementById('paste-area').focus();" class="text-sky-400 hover:text-sky-300 underline">paste chat manually</a></div>
-      <input id="file-input" type="file" accept=".txt,text/plain" class="hidden" onchange="handleFilePick(event)" />
-    </div>
-
-    <div id="paste-fallback" class="hidden mt-6">
-      <textarea id="paste-area" class="w-full h-40 bg-zinc-900/40 rounded-md p-3 text-sm text-zinc-200 resize-none border border-zinc-800 focus:border-sky-700 focus:outline-none placeholder-zinc-600" placeholder="Paste chat text here..."></textarea>
-      <div class="flex gap-2 mt-2 justify-end">
-        <button onclick="document.getElementById('paste-fallback').classList.add('hidden')" class="ghost-btn">Cancel</button>
-        <button onclick="processPasted()" class="ghost-btn ghost-btn-accent">Process</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Stage 2: processing console -->
-  <div id="upload-processing" class="hidden">
-    <div class="text-xs text-zinc-500 mb-3 flex items-center gap-2">
-      <span class="dot dot-active"></span>
-      <span class="loading-dot">AI processing</span>
-    </div>
-    <div id="console" class="console"></div>
-  </div>
-
-  <!-- Stage 3: split-screen results -->
-  <div id="upload-results" class="hidden">
-    <div class="flex items-center justify-between mb-4">
-      <div class="text-xs text-zinc-500" id="results-summary"></div>
-      <button onclick="resetUpload()" class="ghost-btn">New upload</button>
-    </div>
-    <div id="chip-row" class="flex flex-wrap gap-2 mb-4"></div>
-    <div class="splitscreen">
-      <div id="chat-feed" class="chat-feed"></div>
-      <div id="category-panel"></div>
-    </div>
-  </div>
-
-</div>
-
 <script>
+// Navigation Logic
+function setMode(mode) {
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+  document.querySelectorAll('.view-section').forEach(view => view.classList.add('hidden'));
+  document.getElementById(`view-${mode}`).classList.remove('hidden');
+  if (mode !== 'upload') refreshDashboard();
+}
+
+// Data & Global State
+let globalDashboardData = {}; 
+let calDate = new Date(); 
+const answeredQuestions = new Set(); 
+
 const SAMPLE_CHAT = `Dr. Rahman: Submit Assignment 2 by Friday 11:59pm.
 Sarah: ok thanks
 Emma: help with lab report tomorrow?
-CS Society: need volunteers next week.`;
+CS Society: need volunteers next week.
+Jason: Don't forget the group meeting on the 25th!`;
 
 function esc(str) {
   if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function loadSample() { document.getElementById('chat-input').value = SAMPLE_CHAT; }
 
+function setStatus(msg, type = 'info') {
+  const el = document.getElementById('status-msg');
+  const colors = { info: 'text-slate-400', success: 'text-emerald-400', error: 'text-rose-400', loading: 'text-indigo-400' };
+  el.className = `mt-4 text-sm font-medium ${colors[type] || colors.info} min-h-5`;
+  el.innerHTML = msg;
+}
+
+// API Interactions
 async function loadDemo() {
   setStatus('Loading demo…', 'loading');
   try {
     const r = await fetch('/api/demo-seed', { method: 'POST' });
     if (!r.ok) throw new Error((await r.json()).detail || 'Seed failed');
-    setStatus('Demo loaded (no API call).', 'success');
-    await refreshDashboard();
-  } catch (e) {
-    setStatus('Error: ' + e.message, 'error');
-  }
-}
-
-function setStatus(msg, type = 'info') {
-  const el = document.getElementById('status-msg');
-  const colors = {
-    info: 'text-zinc-500',
-    success: 'text-emerald-400',
-    error: 'text-red-400',
-    loading: 'text-sky-400',
-  };
-  el.className = `mt-3 text-xs ${colors[type] || colors.info} min-h-4`;
-  el.innerHTML = msg;
+    setStatus('Demo loaded successfully.', 'success');
+    setMode('dashboard');
+  } catch (e) { setStatus('Error: ' + e.message, 'error'); }
 }
 
 async function processMessages() {
@@ -350,608 +245,307 @@ async function processMessages() {
   if (!text) { setStatus('Paste some chat messages first.', 'error'); return; }
 
   const btn = document.getElementById('process-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="loading-dot">Analyzing</span>';
-  setStatus('<span class="loading-dot">Extracting & planning</span>', 'loading');
+  btn.disabled = true; btn.innerHTML = '<span class="loading-dot">Processing</span>';
+  setStatus('<span class="loading-dot">AI is extracting & planning</span>', 'loading');
 
   try {
-    const res = await fetch('/api/process', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
+    const res = await fetch('/api/process', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Processing failed');
-    if (data.tasks_extracted === 0) {
-      setStatus('No actionable tasks found.', 'info');
-    } else {
-      setStatus(`Found ${data.tasks_extracted} task(s), ${data.plans_created} plan(s)${data.conflicts > 0 ? `, ${data.conflicts} conflict(s)` : ''}.`, 'success');
-    }
-    await refreshDashboard();
+    setStatus(`Found ${data.tasks_extracted} task(s).`, 'success');
+    setMode('dashboard');
   } catch (e) {
     setStatus('Error: ' + esc(e.message), 'error');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Process';
+    btn.disabled = false; btn.textContent = 'Process Text';
   }
 }
 
 async function refreshDashboard() {
   try {
     const res = await fetch('/api/dashboard');
-    const data = await res.json();
-    renderDashboard(data);
-  } catch (e) { console.error('Dashboard refresh failed:', e); }
+    globalDashboardData = await res.json();
+    renderViews(globalDashboardData);
+  } catch (e) { console.error('Data refresh failed:', e); }
 }
-
-async function refreshActiveView() {
-  await refreshDashboard();
-  const upload = document.getElementById('upload-view');
-  const results = document.getElementById('upload-results');
-  if (upload && !upload.classList.contains('hidden') && results && !results.classList.contains('hidden')) {
-    try {
-      const res = await fetch('/api/dashboard');
-      const data = await res.json();
-      renderCategoryPanel(activeTasks(data), data);
-    } catch (e) { console.error('Category panel refresh failed:', e); }
-  }
-}
-
-// --- Rendering ---
 
 function activeTasks(data) {
-  return [
-    ...(data.do_now || []),
-    ...(data.in_progress || []),
-    ...(data.need_info || []),
-    ...(data.schedule || []),
-    ...(data.defer || []),
-  ];
+  return [...(data.do_now || []), ...(data.in_progress || []), ...(data.need_info || []), ...(data.schedule || []), ...(data.defer || [])];
 }
 
-function renderDashboard(data) {
-  const dash = document.getElementById('dashboard');
+function renderViews(data) {
   const summary = document.getElementById('summary-line');
-
   if (!data.total_tasks) {
-    summary.textContent = '';
-    dash.innerHTML = `<div class="text-sm text-zinc-600 py-24 text-center">Paste chat messages on the left to begin.</div>`;
+    summary.textContent = 'No active tasks';
+    document.getElementById('dash-important-content').innerHTML = '<div class="text-base text-slate-500 py-16 text-center border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/20">No data yet. Head to the Upload tab to process a chat.</div>';
+    document.getElementById('checklist-content').innerHTML = '<div class="text-base text-slate-500 py-16 text-center bg-slate-900/20 rounded-2xl border border-slate-800/50">No tasks available.</div>';
+    renderCalendar(data, []);
     return;
   }
 
   const active = activeTasks(data);
-  const dueToday = (active || []).filter((t) => t.deadline_iso && bucketDeadline(t.deadline_iso, new Date()) === 'today').length;
-  const needInfo = (data.need_info || []).length;
-  const parts = [`${active.length} active`];
-  if (dueToday) parts.push(`${dueToday} due today`);
-  if (needInfo) parts.push(`${needInfo} need info`);
-  if (data.done?.length) parts.push(`${data.done.length} done`);
-  summary.textContent = parts.join(' · ');
+  const dueToday = (active || []).filter(t => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
+  
+  const parts = [`${active.length} Active Tasks`];
+  if (dueToday) parts.push(`<span class="text-rose-400 font-semibold">${dueToday} Due Today</span>`);
+  summary.innerHTML = parts.join(' <span class="mx-1 text-slate-600">•</span> ');
 
-  dash.innerHTML = [
-    renderTasks(data, active),
-    renderDeadlines(data, active),
-    renderImportantInfo(data, active),
-  ].join('');
+  document.getElementById('dash-important-content').innerHTML = renderImportantInfo(data, active);
+  document.getElementById('checklist-content').innerHTML = renderTasks(data, active);
+  renderCalendar(data, active);
 }
 
 function statusDot(item) {
-  if (item.status === 'in_progress') return '<span class="dot dot-active" title="in progress"></span>';
-  if (item.decision === 'ask_user')  return '<span class="dot dot-needinfo" title="needs info"></span>';
-  return '<span class="dot" title="pending"></span>';
+  if (item.status === 'in_progress') return '<span class="dot dot-active"></span>';
+  if (item.decision === 'ask_user')  return '<span class="dot dot-needinfo"></span>';
+  return '<span class="dot"></span>';
 }
 
 function renderTasks(data, active) {
-  const rows = active.length
-    ? active.map(renderTaskRow).join('')
-    : `<div class="text-xs text-zinc-600 py-4">No active tasks.</div>`;
+  const rows = active.length ? active.map(renderTaskRow).join('') : `<div class="text-base text-slate-500 py-8">No active tasks.</div>`;
+  return `<div class="space-y-4">${rows}</div>`;
+}
 
-  const doneBlock = data.done?.length
-    ? `<details class="mt-6">
-         <summary class="text-xs text-zinc-500 hover:text-zinc-300">${data.done.length} completed ›</summary>
-         <div class="mt-3 space-y-2">
-           ${data.done.map((d) => `
-             <div class="text-xs text-zinc-600 line-through">${esc(d.task)}</div>
-           `).join('')}
-         </div>
-       </details>`
-    : '';
+// Smart Date Parser
+function parseAnyDate(str) {
+  if (!str) return null;
+  let d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+  const dateRegex = /\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{1,4})\b/;
+  const dateMatch = str.match(dateRegex);
+  const timeRegex = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
+  const timeMatch = str.match(timeRegex);
 
-  return `
-    <section>
-      <div class="section-label">Tasks</div>
-      <div>${rows}</div>
-      ${doneBlock}
-    </section>`;
+  if (dateMatch || timeMatch) {
+    let year = new Date().getFullYear(), month = new Date().getMonth(), day = new Date().getDate();
+    let hours = 0, minutes = 0;
+    if (dateMatch) {
+      day = parseInt(dateMatch[1], 10);
+      month = parseInt(dateMatch[2], 10) - 1; 
+      let y = parseInt(dateMatch[3], 10);
+      year = y < 100 ? 2000 + y : y;
+    }
+    if (timeMatch) {
+      let h = parseInt(timeMatch[1], 10);
+      let m = parseInt(timeMatch[2] || '0', 10);
+      let ampm = timeMatch[3] ? timeMatch[3].toLowerCase() : null;
+      if (ampm === 'pm' && h < 12) h += 12;
+      if (ampm === 'am' && h === 12) h = 0;
+      hours = h; minutes = m;
+    }
+    let parsedDate = new Date(year, month, day, hours, minutes);
+    if (!isNaN(parsedDate.getTime())) return parsedDate;
+  }
+  return null; 
+}
+
+// Visual Formatter
+function formatCustomDate(rawString) {
+  const d = parseAnyDate(rawString);
+  if (!d) return null; 
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayName = days[d.getDay()];
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const year = d.getFullYear().toString().slice(-2);
+  let hours = d.getHours();
+  let minutes = d.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12; hours = hours ? hours : 12; 
+  minutes = minutes < 10 ? '0' + minutes : minutes;
+  return `${dayName} ${day}/${month}/${year} ${hours}:${minutes}${ampm}`;
 }
 
 function renderTaskRow(item) {
   const tid = esc(item.task_id);
-
-  const meta = [];
-  if (item.deadline) meta.push(esc(item.deadline));
-  if (item.assigned_by) meta.push(esc(item.assigned_by));
-  if (item.priority) meta.push(esc(item.priority));
-  const metaLine = meta.length ? `<div class="text-xs text-zinc-500 mt-1">${meta.join(' · ')}</div>` : '';
-
-  const checklist = (item.checklist && item.checklist.length) ? item.checklist : (item.steps || []).map((s) => ({ step: s, done: false }));
-  const doneCount = checklist.filter((x) => x.done).length;
-  const checklistHtml = checklist.length
-    ? `<details class="mt-2" ${item.status === 'in_progress' ? 'open' : ''}>
-         <summary class="text-xs text-zinc-500 hover:text-zinc-300">${doneCount}/${checklist.length} steps</summary>
-         <ul class="mt-2 space-y-1 pl-1">${checklist.map((x, i) => `
-           <li class="flex items-start gap-2 text-xs">
-             <input type="checkbox" ${x.done ? 'checked' : ''} data-tid="${tid}" data-idx="${i}" onchange="toggleStep(this)" class="mt-0.5 cursor-pointer" />
-             <span class="${x.done ? 'text-zinc-600 line-through' : 'text-zinc-400'}">${esc(x.step)}</span>
-           </li>`).join('')}</ul>
-       </details>` : '';
-
-  let actions = '';
-  if (item.status === 'in_progress') {
-    actions = `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Done</button>`;
-  } else if (item.decision !== 'ask_user') {
-    actions = `
-      <button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>
-      <button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Done</button>`;
+  let displayDeadline = 'No deadline';
+  const textToFormat = item.deadline_iso || item.deadline;
+  
+  if (textToFormat) {
+    const formatted = formatCustomDate(textToFormat);
+    displayDeadline = formatted ? `<span class="text-indigo-300 font-medium">${formatted}</span>` : esc(item.deadline);
   }
 
+  const actions = item.status === 'in_progress' 
+    ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`
+    : `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent mr-3">Start Task</button><button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`;
+
+  // Chunky, hoverable row
   return `
-    <div class="task-row flex items-start gap-3">
-      <span class="mt-2">${statusDot(item)}</span>
+    <div class="task-row flex items-center gap-6 bg-slate-900/80 p-6 rounded-2xl border border-slate-700/50 hover:border-indigo-500/50 shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-1">
+      <div class="flex-shrink-0 pt-1">${statusDot(item)}</div>
       <div class="flex-1 min-w-0">
-        <div class="text-sm text-zinc-100 leading-snug">${esc(item.task)}${item.category ? `<span class="cat-tag">${esc(item.category)}</span>` : ''}</div>
-        ${metaLine}
-        ${checklistHtml}
+        <div class="text-xl font-semibold text-white mb-1">${esc(item.task)}</div>
+        <div class="text-sm text-slate-400 flex items-center gap-2">
+          <span class="text-lg">⏰</span> ${displayDeadline}
+        </div>
       </div>
-      <div class="flex gap-2 shrink-0">${actions}</div>
+      <div class="flex shrink-0 items-center">${actions}</div>
     </div>`;
-}
-
-function bucketDeadline(iso, now) {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return 'later';
-  const ms = d.getTime() - now.getTime();
-  if (ms < 0) return 'overdue';
-  const sameDay = d.toDateString() === now.toDateString();
-  if (sameDay) return 'today';
-  const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
-  if (d.toDateString() === tomorrow.toDateString()) return 'tomorrow';
-  if (ms < 7 * 86_400_000) return 'week';
-  return 'later';
-}
-
-function formatDeadline(iso, now) {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '';
-  const ms = d.getTime() - now.getTime();
-  const abs = Math.abs(ms);
-  if (ms < 0) {
-    if (abs < 3600_000) return `${Math.round(abs / 60_000)}m ago`;
-    if (abs < 86400_000) return `${Math.round(abs / 3600_000)}h ago`;
-    return `${Math.round(abs / 86400_000)}d ago`;
-  }
-  const bucket = bucketDeadline(iso, now);
-  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  if (bucket === 'today') return time;
-  if (bucket === 'tomorrow') return `Tomorrow ${time}`;
-  if (bucket === 'week') return d.toLocaleDateString([], { weekday: 'short' }) + ' ' + time;
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
-}
-
-function renderDeadlines(data, active) {
-  const withDeadline = active.filter((t) => t.deadline_iso);
-  if (!withDeadline.length) return '';
-
-  const now = new Date();
-  const buckets = { overdue: [], today: [], tomorrow: [], week: [], later: [] };
-  for (const t of withDeadline) buckets[bucketDeadline(t.deadline_iso, now)].push(t);
-
-  const labels = { overdue: 'Overdue', today: 'Today', tomorrow: 'Tomorrow', week: 'This week', later: 'Later' };
-  const order = ['overdue', 'today', 'tomorrow', 'week', 'later'];
-
-  for (const k of order) {
-    buckets[k].sort((a, b) => new Date(a.deadline_iso) - new Date(b.deadline_iso));
-  }
-
-  let html = '';
-  for (const k of order) {
-    if (!buckets[k].length) continue;
-    const colorClass = k === 'overdue' ? 'text-amber-400' : 'text-zinc-100';
-    html += `<div class="bucket-label">${labels[k]}</div>`;
-    html += buckets[k].map((t) => `
-      <div class="flex items-baseline gap-3 py-1.5 border-t border-zinc-900 first:border-t-0">
-        <div class="flex-1 text-sm ${colorClass} truncate">${esc(t.task)}</div>
-        <div class="text-xs text-zinc-500 shrink-0">${formatDeadline(t.deadline_iso, now)}</div>
-      </div>`).join('');
-  }
-
-  return `
-    <section>
-      <div class="section-label">Deadlines</div>
-      <div>${html}</div>
-    </section>`;
-}
-
-function fieldForQuestion(q) {
-  const lq = q.toLowerCase();
-  if (lq.includes('due') || lq.includes('when')) return 'deadline';
-  if (lq.includes('who') || lq.includes('assigned')) return 'assigned_by';
-  return 'deadline';
 }
 
 function renderImportantInfo(data, active) {
   const items = [];
-
   for (const t of (data.need_info || [])) {
     const tid = esc(t.task_id);
     for (const [i, q] of (t.missing_info_questions || []).entries()) {
+      if (answeredQuestions.has(`${tid}-${i}`)) continue;
+      
       items.push(`
-        <div class="info-item accent-amber">
-          <div class="text-xs text-zinc-400 mb-2">${esc(q)}</div>
-          <div class="flex gap-2">
-            <input type="text" id="q-${tid}-${i}" class="flex-1 bg-zinc-900/60 rounded-md px-2 py-1 text-xs border border-zinc-800 focus:border-amber-700 focus:outline-none placeholder-zinc-600" placeholder="Type answer..." />
-            <button data-tid="${tid}" data-field="${esc(fieldForQuestion(q))}" data-idx="${i}" onclick="answerQuestion(this)" class="ghost-btn">Send</button>
+        <div class="info-item accent-amber bg-slate-900/50 shadow-md">
+          <div class="text-base font-semibold text-amber-400 mb-3 flex items-center gap-2">
+            <span>⚠️</span> ${esc(q)}
+          </div>
+          <div class="flex gap-3">
+            <input type="text" id="q-${tid}-${i}" class="flex-1 bg-slate-950/80 rounded-lg px-4 py-2 text-base border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-slate-200 transition-colors" placeholder="Type your answer here..." />
+            <button data-tid="${tid}" data-field="${esc(q.toLowerCase().includes('due') ? 'deadline' : 'assigned_by')}" data-idx="${i}" onclick="answerQuestion(this)" class="ghost-btn ghost-btn-accent border-amber-600/50 text-amber-400 hover:bg-amber-600 hover:text-white hover:border-amber-500 px-6 font-bold">Submit</button>
           </div>
         </div>`);
     }
   }
+  return items.length ? items.join('') : `<div class="text-lg text-emerald-400 font-medium py-10 flex flex-col items-center gap-3 bg-slate-900/30 rounded-2xl border border-emerald-900/30"><span class="text-4xl">✨</span> All clear! Nothing needs your immediate attention right now.</div>`;
+}
 
-  const seenConflicts = new Set();
-  for (const t of active) {
-    for (const c of (t.conflicts || [])) {
-      if (seenConflicts.has(c)) continue;
-      seenConflicts.add(c);
-      items.push(`<div class="info-item accent-amber"><div class="text-xs text-zinc-300">Conflict: ${esc(c)}</div></div>`);
+// --- CALENDAR LOGIC ---
+function isToday(d) {
+  const today = new Date();
+  return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+}
+
+function changeMonth(direction) {
+  calDate.setMonth(calDate.getMonth() + direction);
+  renderViews(globalDashboardData); 
+}
+
+function renderCalendar(data, activeTasksArray) {
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  document.getElementById('calendar-month-label').textContent = `${monthNames[month]} ${year}`;
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const grid = document.getElementById('calendar-grid');
+
+  const tasksByDate = {};
+  activeTasksArray.forEach(t => {
+    if (t.deadline_iso) {
+      const d = new Date(t.deadline_iso);
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        const dateNum = d.getDate();
+        if (!tasksByDate[dateNum]) tasksByDate[dateNum] = [];
+        tasksByDate[dateNum].push(t);
+      }
     }
+  });
+
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  let html = daysOfWeek.map(d => `<div class="bg-slate-900 text-center text-sm font-bold text-slate-400 py-3 border-b border-slate-800 uppercase tracking-wider">${d}</div>`).join('');
+
+  for (let i = 0; i < firstDayIndex; i++) {
+    html += `<div class="bg-slate-950/50 min-h-[120px] p-2"></div>`;
   }
 
-  for (const n of (data.notifications || [])) {
-    const when = n.fired_at_iso ? new Date(n.fired_at_iso).toLocaleString([], { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' }) : '';
-    items.push(`
-      <div class="info-item accent-sky">
-        <div class="text-xs text-zinc-300">${esc(n.message)}</div>
-        ${when ? `<div class="text-xs text-zinc-600 mt-0.5">${esc(when)}</div>` : ''}
-      </div>`);
-  }
-
-  for (const t of active) {
-    if (typeof t.confidence === 'number' && t.confidence < 0.6) {
-      items.push(`
-        <div class="info-item">
-          <div class="text-xs text-zinc-400">Low-confidence extraction (${Math.round(t.confidence * 100)}%): <span class="text-zinc-300">${esc(t.task)}</span></div>
-        </div>`);
+  const today = new Date();
+  for (let i = 1; i <= daysInMonth; i++) {
+    const isCurrentDay = today.getDate() === i && today.getMonth() === month && today.getFullYear() === year;
+    const dayClass = isCurrentDay ? 'bg-indigo-900/30 border-t-2 border-indigo-400' : 'bg-slate-900/80';
+    const textClass = isCurrentDay ? 'text-indigo-400 font-extrabold text-lg' : 'text-slate-300 font-semibold';
+    
+    let tasksHtml = '';
+    if (tasksByDate[i]) {
+      tasksHtml = tasksByDate[i].map(t => `<div class="text-xs font-medium bg-indigo-600/20 text-indigo-200 rounded-md px-2 py-1.5 mb-1.5 truncate border border-indigo-500/30 cursor-pointer hover:bg-indigo-500 hover:text-white transition-colors shadow-sm" title="${esc(t.task)}">${esc(t.task)}</div>`).join('');
     }
+
+    html += `
+      <div class="${dayClass} min-h-[120px] p-3 hover:bg-slate-800 transition-colors flex flex-col gap-2 relative group">
+        <div class="text-sm ${textClass} text-right w-full">${i}</div>
+        <div class="flex-1 overflow-y-auto custom-scrollbar">${tasksHtml}</div>
+      </div>
+    `;
   }
 
-  const activityHtml = data.replan_events?.length
-    ? `<details class="mt-2">
-         <summary class="text-xs text-zinc-500 hover:text-zinc-300">Show activity (${data.replan_events.length})</summary>
-         <div class="mt-3 space-y-1 font-mono">
-           ${[...data.replan_events].reverse().map((e) => `<div class="text-xs text-zinc-600">${esc(e)}</div>`).join('')}
-         </div>
-       </details>`
-    : '';
+  const totalCells = firstDayIndex + daysInMonth;
+  const trailingEmpty = (7 - (totalCells % 7)) % 7;
+  for (let i = 0; i < trailingEmpty; i++) {
+    html += `<div class="bg-slate-950/50 min-h-[120px] p-2"></div>`;
+  }
 
-  const body = items.length
-    ? items.join('')
-    : `<div class="text-xs text-zinc-600 py-2">Nothing needs your attention.</div>`;
-
-  return `
-    <section>
-      <div class="section-label">Important info</div>
-      <div>${body}</div>
-      ${activityHtml}
-    </section>`;
+  grid.innerHTML = html;
 }
 
 // --- Actions ---
-
-async function markDone(taskId) {
-  try {
-    await fetch(`/api/tasks/${encodeURIComponent(taskId)}/complete`, { method: 'POST' });
-    await refreshActiveView();
-  } catch (e) { console.error(e); }
-}
-
-async function startTaskAction(taskId) {
-  try {
-    await fetch(`/api/tasks/${encodeURIComponent(taskId)}/start`, { method: 'POST' });
-    await refreshActiveView();
-  } catch (e) { console.error(e); }
-}
-
-async function toggleStep(checkbox) {
-  const tid = checkbox.dataset.tid;
-  const idx = Number(checkbox.dataset.idx);
-  try {
-    await fetch(`/api/tasks/${encodeURIComponent(tid)}/step`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ index: idx }),
-    });
-    await refreshActiveView();
-  } catch (e) { console.error(e); }
-}
+async function markDone(taskId) { try { await fetch(`/api/tasks/${encodeURIComponent(taskId)}/complete`, { method: 'POST' }); refreshDashboard(); } catch (e) { console.error(e); } }
+async function startTaskAction(taskId) { try { await fetch(`/api/tasks/${encodeURIComponent(taskId)}/start`, { method: 'POST' }); refreshDashboard(); } catch (e) { console.error(e); } }
 
 async function answerQuestion(btn) {
-  const { tid, field, idx } = btn.dataset;
-  const input = document.getElementById(`q-${tid}-${idx}`);
+  const { tid, field, idx } = btn.dataset; 
+  const input = document.getElementById(`q-${tid}-${idx}`); 
   const value = input?.value?.trim();
+  
   if (!value) { input?.focus(); return; }
-  btn.disabled = true;
-  btn.textContent = '...';
-  try {
-    await fetch('/api/clarify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task_id: tid, field, value }),
-    });
-    await refreshDashboard();
-  } catch (e) {
-    console.error(e);
-    btn.disabled = false;
-    btn.textContent = 'Send';
+  
+  btn.disabled = true; btn.textContent = 'Saving...';
+  
+  try { 
+    answeredQuestions.add(`${tid}-${idx}`);
+    const infoBox = btn.closest('.info-item');
+    if (infoBox) {
+      const parentContainer = infoBox.parentElement;
+      infoBox.style.opacity = '0';
+      infoBox.style.transform = 'translateY(-10px)';
+      setTimeout(() => {
+        infoBox.remove();
+        if (parentContainer.children.length === 0) {
+          parentContainer.innerHTML = `<div class="text-lg text-emerald-400 font-medium py-10 flex flex-col items-center gap-3 bg-slate-900/30 rounded-2xl border border-emerald-900/30 animation-fadeIn"><span class="text-4xl">✨</span> All clear! Nothing needs your immediate attention right now.</div>`;
+        }
+      }, 200);
+    }
+
+    await fetch('/api/clarify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_id: tid, field, value }) }); 
+    refreshDashboard(); 
+  } catch (e) { 
+    console.error(e); btn.disabled = false; btn.textContent = 'Submit'; answeredQuestions.delete(`${tid}-${idx}`); 
   }
 }
+async function resetAll() { if (!confirm('Are you sure you want to delete all tasks? This cannot be undone.')) return; await fetch('/api/reset', { method: 'POST' }); refreshDashboard(); }
 
-async function resetAll() {
-  if (!confirm('Reset all tasks and plans?')) return;
-  await fetch('/api/reset', { method: 'POST' });
-  document.getElementById('summary-line').textContent = '';
-  setStatus('', 'info');
-  await refreshDashboard();
-}
-
-// --- Upload mode ---
-
-let uploadedRawText = '';
-let activeFilters = new Set();
-
-function setMode(mode) {
-  const tasks = document.getElementById('tasks-view');
-  const upload = document.getElementById('upload-view');
-  const buttons = document.querySelectorAll('#mode-toggle .seg-btn');
-  if (mode === 'upload') {
-    tasks.classList.add('hidden');
-    upload.classList.remove('hidden');
-    if (location.hash !== '#upload') location.hash = 'upload';
-  } else {
-    upload.classList.add('hidden');
-    tasks.classList.remove('hidden');
-    if (location.hash === '#upload') history.replaceState(null, '', location.pathname + location.search);
-    refreshDashboard();
-  }
-  buttons.forEach((b) => b.classList.toggle('seg-active', b.dataset.mode === mode));
-}
-
-function showUploadStage(stage) {
-  for (const id of ['upload-empty', 'upload-processing', 'upload-results']) {
-    document.getElementById(id).classList.toggle('hidden', id !== `upload-${stage}`);
-  }
-}
-
+// --- Upload Dropzone Handlers ---
 function consoleLine(text, kind = '') {
-  const cls = kind ? `console-line ${kind}` : 'console-line';
   const el = document.getElementById('console');
   const div = document.createElement('div');
-  div.className = cls;
+  div.className = kind ? `console-line ${kind}` : 'console-line';
   div.textContent = `> ${text}`;
-  el.appendChild(div);
-  el.scrollTop = el.scrollHeight;
+  el.appendChild(div); el.scrollTop = el.scrollHeight;
 }
 
-function handleDrop(event) {
-  event.preventDefault();
-  document.getElementById('dropzone').classList.remove('drag-over');
-  const file = event.dataTransfer?.files?.[0];
-  if (!file) return;
-  readFileAndProcess(file);
-}
-
-function handleFilePick(event) {
-  const file = event.target.files?.[0];
-  if (file) readFileAndProcess(file);
-  event.target.value = '';
-}
-
-function readFileAndProcess(file) {
-  const reader = new FileReader();
-  reader.onload = () => startStreaming(String(reader.result || ''));
-  reader.onerror = () => alert('Could not read file: ' + (reader.error?.message || 'unknown'));
-  reader.readAsText(file);
-}
-
-function processPasted() {
-  const text = document.getElementById('paste-area').value;
-  if (!text.trim()) { document.getElementById('paste-area').focus(); return; }
-  startStreaming(text);
-}
+function handleDrop(e) { e.preventDefault(); document.getElementById('dropzone').classList.remove('drag-over'); const file = e.dataTransfer?.files?.[0]; if (file) readFileAndProcess(file); }
+function handleFilePick(e) { const file = e.target.files?.[0]; if (file) readFileAndProcess(file); e.target.value = ''; }
+function readFileAndProcess(file) { const reader = new FileReader(); reader.onload = () => startStreaming(String(reader.result || '')); reader.readAsText(file); }
 
 async function startStreaming(text) {
-  uploadedRawText = text;
-  showUploadStage('processing');
-  document.getElementById('console').innerHTML = '';
-  consoleLine(`Uploaded ${text.length.toLocaleString()} chars · ${text.split('\n').filter((l) => l.trim()).length} non-empty lines`);
-
+  document.getElementById('upload-processing').classList.remove('hidden'); document.getElementById('console').innerHTML = ''; consoleLine(`Initializing processing engine...`);
   try {
-    await streamProcess(text, (kind, data) => {
-      if (kind === 'log')   consoleLine(data.text);
-      else if (kind === 'task')  consoleLine(`extracted ${data.task_id}: ${data.task}  [${data.category || 'Other'}]`, 'task');
-      else if (kind === 'error') consoleLine(`ERROR: ${data.message}`, 'error');
-      else if (kind === 'done')  showResults(data);
-    });
-  } catch (e) {
-    consoleLine(`Stream failed: ${e.message}`, 'error');
-  }
-}
-
-async function streamProcess(text, onEvent) {
-  const res = await fetch('/api/process-stream', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
-  });
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({}));
-    throw new Error(detail.detail || `HTTP ${res.status}`);
-  }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = '';
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let idx;
-    while ((idx = buf.indexOf('\n\n')) !== -1) {
-      const block = buf.slice(0, idx);
-      buf = buf.slice(idx + 2);
-      const ev = block.match(/^event:\s*(\S+)/m)?.[1];
-      const data = block.match(/^data:\s*(.+)$/m)?.[1];
-      if (ev && data != null) {
-        try { onEvent(ev, JSON.parse(data)); }
-        catch (e) { console.warn('bad SSE payload', block, e); }
+    const res = await fetch('/api/process-stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    const reader = res.body.getReader(); const decoder = new TextDecoder(); let buf = '';
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break; buf += decoder.decode(value, { stream: true }); let idx;
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const block = buf.slice(0, idx); buf = buf.slice(idx + 2);
+        const ev = block.match(/^event:\s*(\S+)/m)?.[1]; const dataStr = block.match(/^data:\s*(.+)$/m)?.[1];
+        if (ev && dataStr != null) {
+          const data = JSON.parse(dataStr);
+          if (ev === 'log') consoleLine(data.text);
+          else if (ev === 'task') consoleLine(`Extracted: ${data.task}`, 'task');
+          else if (ev === 'done') setTimeout(() => setMode('dashboard'), 800);
+        }
       }
     }
-  }
+  } catch (e) { consoleLine(`Failed: ${e.message}`, 'error'); }
 }
+function resetUpload() { document.getElementById('console').innerHTML = ''; document.getElementById('upload-processing').classList.add('hidden'); }
 
-function showResults(payload) {
-  setTimeout(() => {
-    showUploadStage('results');
-    const data = payload.dashboard;
-    const items = activeTasks(data);
-    document.getElementById('results-summary').textContent =
-      `${payload.extracted} task(s) extracted · ${payload.plans} planned · ${payload.conflicts} conflict(s)`;
-
-    activeFilters = new Set();
-    renderChatFeed(uploadedRawText);
-    renderCategoryPanel(items, data);
-  }, 350);
-}
-
-function resetUpload() {
-  uploadedRawText = '';
-  activeFilters = new Set();
-  document.getElementById('console').innerHTML = '';
-  document.getElementById('paste-area').value = '';
-  document.getElementById('paste-fallback').classList.add('hidden');
-  showUploadStage('empty');
-}
-
-function parseChatLines(raw) {
-  const lines = raw.split(/\r?\n/);
-  const re = /^([^:]{1,40}):\s*(.+)$/;
-  return lines.map((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return null;
-    const m = trimmed.match(re);
-    if (m) return { sender: m[1].trim(), text: m[2].trim() };
-    return { sender: null, text: trimmed };
-  }).filter(Boolean);
-}
-
-function renderChatFeed(raw) {
-  const feed = document.getElementById('chat-feed');
-  const msgs = parseChatLines(raw);
-  if (!msgs.length) {
-    feed.innerHTML = `<div class="text-xs text-zinc-600 text-center py-8">No messages parsed.</div>`;
-    return;
-  }
-  feed.innerHTML = msgs.map((m, i) => {
-    if (!m.sender) return `<div class="bubble system" data-msg-idx="${i}">${esc(m.text)}</div>`;
-    return `
-      <div class="bubble" data-msg-idx="${i}" data-msg-text="${esc(m.text.toLowerCase())}">
-        <div class="sender">${esc(m.sender)}</div>
-        <div>${esc(m.text)}</div>
-      </div>`;
-  }).join('');
-}
-
-function renderCategoryPanel(items, data) {
-  const panel = document.getElementById('category-panel');
-  const chipRow = document.getElementById('chip-row');
-
-  if (!items.length) {
-    chipRow.innerHTML = '';
-    panel.innerHTML = `<div class="text-sm text-zinc-600 py-12 text-center">No actionable tasks found in this chat.</div>`;
-    return;
-  }
-
-  const groups = {};
-  for (const it of items) {
-    const cat = it.category || 'Other';
-    (groups[cat] ||= []).push(it);
-  }
-  const cats = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
-
-  const visibleCats = activeFilters.size === 0 ? cats : cats.filter((c) => activeFilters.has(c));
-
-  chipRow.innerHTML = [
-    `<button class="chip ${activeFilters.size === 0 ? 'chip-active' : ''}" onclick="toggleFilter(null)">All · ${items.length}</button>`,
-    ...cats.map((c) =>
-      `<button class="chip ${activeFilters.has(c) ? 'chip-active' : ''}" onclick="toggleFilter('${esc(c).replace(/'/g, "\\'")}')">${esc(c)} · ${groups[c].length}</button>`
-    ),
-  ].join('');
-
-  panel.innerHTML = visibleCats.map((c) => `
-    <div class="category-card">
-      <div class="cat-header">
-        <div class="cat-name">${esc(c)}</div>
-        <div class="cat-count">${groups[c].length} task${groups[c].length === 1 ? '' : 's'}</div>
-      </div>
-      <div>${groups[c].map(renderTaskRow).join('')}</div>
-    </div>`).join('');
-
-  if (data.done?.length) {
-    panel.innerHTML += `
-      <details class="mt-2">
-        <summary class="text-xs text-zinc-500 hover:text-zinc-300 cursor-pointer">${data.done.length} completed ›</summary>
-        <div class="mt-3 space-y-2 px-2">
-          ${data.done.map((d) => `<div class="text-xs text-zinc-600 line-through">${esc(d.task)}${d.category ? ` <span class="cat-tag">${esc(d.category)}</span>` : ''}</div>`).join('')}
-        </div>
-      </details>`;
-  }
-
-  applyFilterDimming(items);
-}
-
-function toggleFilter(cat) {
-  if (cat === null) {
-    activeFilters.clear();
-  } else if (activeFilters.has(cat)) {
-    activeFilters.delete(cat);
-  } else {
-    activeFilters.add(cat);
-  }
-  // re-render with currently fetched dashboard
-  fetch('/api/dashboard').then((r) => r.json()).then((data) => {
-    renderCategoryPanel(activeTasks(data), data);
-  });
-}
-
-function applyFilterDimming(items) {
-  const visibleCats = activeFilters.size === 0
-    ? new Set(items.map((i) => i.category || 'Other'))
-    : activeFilters;
-  const keywords = items
-    .filter((i) => visibleCats.has(i.category || 'Other'))
-    .flatMap((i) => i.task.toLowerCase().split(/\s+/).filter((w) => w.length >= 4));
-  const kwSet = new Set(keywords);
-
-  document.querySelectorAll('.chat-feed .bubble').forEach((b) => {
-    if (activeFilters.size === 0) { b.classList.remove('dim'); return; }
-    const text = b.dataset.msgText || '';
-    const hit = [...kwSet].some((k) => text.includes(k));
-    b.classList.toggle('dim', !hit);
-  });
-}
-
-window.addEventListener('hashchange', () => {
-  setMode(location.hash === '#upload' ? 'upload' : 'tasks');
-});
-
-if (location.hash === '#upload') setMode('upload');
+// Init
 refreshDashboard();
 </script>
 </body>

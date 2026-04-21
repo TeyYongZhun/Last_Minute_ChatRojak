@@ -16,7 +16,7 @@ const PROVIDERS = {
     baseURLEnv: 'GEMINI_BASE_URL',
     modelEnv: 'GEMINI_MODEL',
     defaultModel: 'gemini-2.5-flash',
-  },
+  }
 };
 
 function activeProviderName() {
