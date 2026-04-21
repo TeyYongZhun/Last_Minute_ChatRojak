@@ -11,6 +11,7 @@ For each actionable task found, produce:
 - priority: "high", "medium", or "low" based on urgency and source
 - confidence: 0.0-1.0 how confident you are this is a real actionable task
 - missing_fields: array of important missing fields, e.g. ["deadline"] or ["assigned_by"]
+- category: short label (1-2 words) for the kind of task — pick a natural label from the chat itself, e.g. "Academic", "Finance", "Hostel", "CCA event", "Admin", "Errand". Reuse the same label across related tasks in the same chat.
 
 Rules:
 - Only extract ACTIONABLE tasks that require the reader to DO something
@@ -31,6 +32,7 @@ function normalize(t, index) {
     priority: ['high', 'medium', 'low'].includes(t.priority) ? t.priority : 'medium',
     confidence: typeof t.confidence === 'number' ? Math.max(0, Math.min(1, t.confidence)) : 0.8,
     missing_fields: Array.isArray(t.missing_fields) ? t.missing_fields : [],
+    category: typeof t.category === 'string' && t.category.trim() ? t.category.trim() : 'Other',
     status: 'pending',
   };
 }

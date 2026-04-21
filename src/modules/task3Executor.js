@@ -34,7 +34,7 @@ export function mergeNewTasks(newTasks) {
   saveState(state);
 }
 
-export async function replanAll(now = new Date()) {
+export async function replanAll(now = new Date(), onProgress) {
   const state = loadState();
   const openTasks = state.tasks.filter((t) => t.status !== 'done');
   if (!openTasks.length) {
@@ -44,7 +44,7 @@ export async function replanAll(now = new Date()) {
   }
 
   const prevPlansById = Object.fromEntries(state.plans.map((p) => [p.task_id, p]));
-  const { plans, conflicts } = await planTasks(openTasks, now);
+  const { plans, conflicts } = await planTasks(openTasks, now, onProgress);
 
   const taskById = Object.fromEntries(openTasks.map((t) => [t.id, t]));
   for (const plan of plans) {
@@ -205,6 +205,7 @@ export function getDashboard() {
       missing_info_questions: plan.missing_info_questions,
       status: task.status,
       confidence: task.confidence,
+      category: task.category || 'Other',
     };
     if (task.status === 'done') done.push(item);
     else if (task.status === 'in_progress') in_progress.push(item);

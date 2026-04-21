@@ -95,7 +95,8 @@ function detectConflicts(tasks) {
   return conflicts;
 }
 
-export async function planTasks(tasks, now) {
+export async function planTasks(tasks, now, onProgress) {
+  onProgress?.(`Detecting deadline conflicts across ${tasks.length} task(s)…`);
   const conflicts = detectConflicts(tasks);
   const conflictMsgMap = {};
   for (const c of conflicts) {
@@ -104,6 +105,7 @@ export async function planTasks(tasks, now) {
     }
   }
 
+  onProgress?.(`Generating step-by-step plans for ${tasks.length} task(s)…`);
   const stepsById = await generateStepsBatch(tasks);
 
   const plans = tasks.map((task) => {
