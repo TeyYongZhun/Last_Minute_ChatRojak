@@ -171,6 +171,24 @@ export function toggleStep(taskId, stepIndex) {
   return true;
 }
 
+export function renameCategory(oldName, newName) {
+  const trimmed = newName.trim();
+  if (!trimmed || trimmed === oldName) return false;
+  const state = loadState();
+  let changed = false;
+  for (const task of state.tasks) {
+    if ((task.category || 'Other') === oldName) {
+      task.category = trimmed;
+      changed = true;
+    }
+  }
+  if (changed) {
+    state.replan_events.push(`[${ts()}] Category renamed: '${oldName}' → '${trimmed}'.`);
+    saveState(state);
+  }
+  return changed;
+}
+
 export function getDashboard() {
   const now = new Date();
   const state = loadState();

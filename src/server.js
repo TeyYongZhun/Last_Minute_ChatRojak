@@ -12,6 +12,7 @@ import {
   respondToClarification,
   toggleStep,
   getDashboard,
+  renameCategory,
 } from './modules/task3Executor.js';
 import { clearState } from './state.js';
 import { seedDemo } from './modules/demoSeed.js';
@@ -131,6 +132,13 @@ app.post('/api/clarify', async (req, res) => {
     console.error('[/api/clarify] replan error:', e);
     res.status(500).json({ detail: e.message });
   }
+});
+
+app.post('/api/rename-category', (req, res) => {
+  const { old_name, new_name } = req.body || {};
+  if (!old_name || !new_name) return res.status(400).json({ detail: 'old_name and new_name are required' });
+  const changed = renameCategory(old_name, new_name.trim());
+  res.json({ changed });
 });
 
 app.post('/api/reset', (_req, res) => {

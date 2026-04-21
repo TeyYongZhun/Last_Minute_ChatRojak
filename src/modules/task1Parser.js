@@ -1,6 +1,6 @@
 import { getClient, MODEL, extractJson, withRetry } from '../client.js';
 
-const SYSTEM_PROMPT = `You are a task extraction AI. Given raw chat messages (e.g., from WhatsApp groups), identify and extract actionable tasks.
+const SYSTEM_PROMPT = `You are a task extraction AI. Given raw WhatsApp chat messages, identify and extract actionable tasks.
 
 For each actionable task found, produce:
 - id: unique string starting from t1, t2, ...
@@ -15,7 +15,13 @@ For each actionable task found, produce:
 
 Rules:
 - Only extract ACTIONABLE tasks that require the reader to DO something
-- Ignore casual replies, greetings, acknowledgements ("ok", "noted", "sure np")
+- Ignore casual replies, greetings, acknowledgements ("ok", "noted", "sure np", "lol", "hahaha")
+- DEDUPLICATE: if the same task is mentioned multiple times, extract it ONCE using the most recent confirmed deadline
+- QUESTIONS vs STATEMENTS: Messages ending with "?" are questions/suggestions, NOT confirmed facts. Only treat a time/deadline as confirmed if it is stated as a declaration (e.g. "meeting tmr 3pm"), not as a question (e.g. "meeting tmr 3pm?")
+- When deadlines conflict, use the LATEST authoritative statement from the person who assigned the task
+- "before Friday" means the deadline is end of Thursday (Thursday 11:59pm), NOT Friday
+- "by Friday" means end of Friday (Friday 11:59pm)
+- Relative days like "tmr", "tomorrow", "next Monday" must be resolved using the current time provided
 - If confidence < 0.6 still include it but list missing_fields
 - Generate IDs starting at t1 counting up
 
