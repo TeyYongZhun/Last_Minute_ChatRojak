@@ -31,11 +31,18 @@
 
     .task-row { transition: all 0.2s ease; }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
     .info-item { border-left: 4px solid #334155; padding: 12px 16px; margin-bottom: 16px; border-radius: 0 12px 12px 0; }
     .info-item.accent-amber { border-left-color: #f59e0b; background: linear-gradient(to right, rgba(245,158,11,0.1), transparent); }
 
     .loading-dot::after { content: ''; animation: dots 1.2s steps(3, end) infinite; }
     @keyframes dots { 0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; } }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.8s linear infinite; display: inline-block; }
 
     input[type=checkbox] { accent-color: #6366f1; width: 18px; height: 18px; cursor: pointer; }
 
@@ -80,6 +87,24 @@
 
     .hidden { display: none !important; }
 
+<<<<<<< HEAD
+=======
+    .category-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; display: inline-block; }
+
+    /* Task Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 50;
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn .15s ease-out;
+    }
+    .modal-box {
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 20px;
+      padding: 28px; width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.6); animation: slideUp .2s ease-out;
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -165,15 +190,23 @@
       </button>
     </nav>
 
+<<<<<<< HEAD
     <div class="border-t border-slate-800 pt-4 px-2 text-xs text-slate-500">
       <div id="user-email" class="truncate mb-2"></div>
       <button onclick="logout()" class="text-slate-400 hover:text-rose-400 transition">Log out</button>
+=======
+    <div class="mt-4 pt-4 border-t border-slate-800">
+      <button onclick="resetEverything()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-rose-400 border border-rose-900/40 hover:bg-rose-950/40 hover:border-rose-500 transition-all">
+        <span class="text-lg">🗑️</span> Reset Everything
+      </button>
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
     </div>
   </aside>
 
   <main class="flex-1 overflow-y-auto bg-[#020617] relative">
     <div class="max-w-5xl mx-auto px-10 py-12">
 
+      <!-- Upload View -->
       <div id="view-upload" class="view-section">
         <h2 class="text-3xl font-bold mb-8 text-white">Import Your Tasks</h2>
 
@@ -184,19 +217,21 @@
 
             <div class="flex gap-3 mt-4">
               <button onclick="loadSample()" class="ghost-btn">Load sample</button>
+              <button onclick="clearInput()" class="ghost-btn border-slate-600 text-slate-400 hover:border-rose-500 hover:text-rose-400">Clear</button>
               <button onclick="processMessages()" id="process-btn" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">Process Text</button>
               <button onclick="loadDemo()" class="ghost-btn border-slate-600 text-slate-300">Demo</button>
             </div>
             <div id="status-msg" class="mt-4 text-sm font-medium text-slate-400 min-h-5"></div>
+            <div id="recent-imports-list" class="mt-5"></div>
           </div>
 
           <div>
-             <div class="section-label">Or Upload File</div>
-             <div class="dropzone mt-2" id="dropzone"
-                 ondragover="event.preventDefault(); this.classList.add('drag-over')"
-                 ondragleave="this.classList.remove('drag-over')"
-                 ondrop="handleDrop(event)"
-                 onclick="document.getElementById('file-input').click()">
+            <div class="section-label">Or Upload File</div>
+            <div class="dropzone mt-2" id="dropzone"
+                ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                ondragleave="this.classList.remove('drag-over')"
+                ondrop="handleDrop(event)"
+                onclick="document.getElementById('file-input').click()">
               <div class="text-5xl mb-4 opacity-80">📄</div>
               <div class="text-lg text-slate-200 font-semibold">Drop .txt file here</div>
               <div class="text-sm text-slate-400 mt-2">or click to browse your computer</div>
@@ -215,20 +250,29 @@
         </div>
       </div>
 
+      <!-- Dashboard View -->
       <div id="view-dashboard" class="view-section hidden">
-        <h2 class="text-3xl font-bold mb-8 text-white">Dashboard Overview</h2>
-        <div id="dash-important-content">
-          <div class="text-base text-slate-500 py-16 text-center border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/20">
-            No data yet. Head to the Upload tab to process a chat.
+        <h2 class="text-3xl font-bold mb-6 text-white">Dashboard Overview</h2>
+        <div id="dash-stat-cards" class="grid grid-cols-3 gap-4 mb-6"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <div class="section-label">Needs Clarification</div>
+            <div id="dash-clarifications"></div>
+          </div>
+          <div>
+            <div class="section-label">Up Next</div>
+            <div id="dash-upnext"></div>
           </div>
         </div>
       </div>
 
+      <!-- Checklist View -->
       <div id="view-checklist" class="view-section hidden">
         <div class="flex justify-between items-end mb-6 border-b border-slate-800 pb-5">
           <h2 class="text-3xl font-bold text-white">Task Checklist</h2>
           <button onclick="resetAll()" class="ghost-btn border-rose-900/50 text-rose-400 hover:border-rose-500 hover:bg-rose-950/30">Reset All Data</button>
         </div>
+<<<<<<< HEAD
 
         <div id="filter-toolbar" class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 mb-6 space-y-3">
           <div class="flex flex-wrap items-center gap-3">
@@ -258,11 +302,26 @@
 
         <div id="checklist-content">
            <div class="text-base text-slate-500 py-16 text-center bg-slate-900/20 rounded-2xl border border-slate-800/50">No actionable tasks found.</div>
+=======
+        <div class="flex gap-6">
+          <!-- Filter column -->
+          <div class="w-44 flex-shrink-0">
+            <div class="section-label">Filter by Tag</div>
+            <div id="checklist-filters" class="flex flex-col gap-2"></div>
+          </div>
+          <!-- Task list -->
+          <div class="flex-1 min-w-0">
+            <div id="checklist-content">
+              <div class="text-base text-slate-500 py-16 text-center bg-slate-900/20 rounded-2xl border border-slate-800/50">No actionable tasks found.</div>
+            </div>
+          </div>
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
         </div>
       </div>
 
+      <!-- Calendar View -->
       <div id="view-calendar" class="view-section hidden">
-        <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-5">
+        <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-5">
           <h2 class="text-3xl font-bold text-white">Monthly Calendar</h2>
           <div class="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl p-1.5 shadow-inner">
             <button onclick="changeMonth(-1)" class="ghost-btn border-none hover:bg-slate-800 px-4 py-2 text-lg">&lt;</button>
@@ -271,6 +330,7 @@
           </div>
         </div>
 
+<<<<<<< HEAD
         <div id="calendar-grid" class="grid grid-cols-7 gap-[1px] bg-slate-700 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
         </div>
       </div>
@@ -292,12 +352,66 @@
             <div class="text-xs text-slate-500 mt-2">In Telegram, send <code class="text-slate-300">/link &lt;code&gt;</code> to the bot within 10 minutes.</div>
           </div>
         </div>
+=======
+        <!-- Calendar legend -->
+        <div class="flex items-center gap-5 mb-4 text-xs font-semibold text-slate-400">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> Due &lt; 24h</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> This week</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-indigo-500 inline-block"></span> Later</span>
+        </div>
+
+        <div id="calendar-grid" class="grid grid-cols-7 gap-[1px] bg-slate-700 border border-slate-700 rounded-xl overflow-hidden shadow-xl"></div>
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
       </div>
 
     </div>
   </main>
 
+<!-- Task Detail Modal -->
+<div id="task-modal" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="flex items-start justify-between mb-5">
+      <div class="flex-1 min-w-0 pr-3">
+        <div id="modal-category" class="mb-2"></div>
+        <h3 id="modal-title" class="text-xl font-bold text-white leading-snug"></h3>
+      </div>
+      <button onclick="closeModal()" class="text-slate-500 hover:text-white text-2xl leading-none flex-shrink-0 mt-1">&times;</button>
+    </div>
+
+    <div class="space-y-3 mb-6">
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-slate-500 w-20 flex-shrink-0">Deadline</span>
+        <span id="modal-deadline" class="text-indigo-300 font-medium"></span>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-slate-500 w-20 flex-shrink-0">Priority</span>
+        <span id="modal-priority" class="category-tag"></span>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-slate-500 w-20 flex-shrink-0">Assigned by</span>
+        <span id="modal-assignee" class="text-slate-300"></span>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-slate-500 w-20 flex-shrink-0">Status</span>
+        <span id="modal-status" class="text-slate-300"></span>
+      </div>
+    </div>
+
+    <div id="modal-steps-section" class="mb-6">
+      <div class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Action Steps</div>
+      <ol id="modal-steps" class="space-y-2"></ol>
+    </div>
+
+    <div class="flex gap-3 pt-4 border-t border-slate-800">
+      <button id="modal-start-btn" onclick="modalStartTask()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold transition-all">Start Task</button>
+      <button id="modal-done-btn" onclick="modalMarkDone()" class="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition-all">Mark Done</button>
+      <button onclick="closeModal()" class="px-4 py-2.5 ghost-btn">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
+<<<<<<< HEAD
 // ---------------- Auth ----------------
 let authMode = 'login';
 let currentUser = null;
@@ -385,6 +499,9 @@ async function checkAuth() {
 }
 
 // ---------------- Navigation ----------------
+=======
+// Navigation
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 function setMode(mode) {
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
   document.querySelectorAll('.view-section').forEach(view => view.classList.add('hidden'));
@@ -393,6 +510,7 @@ function setMode(mode) {
   else if (mode !== 'upload') refreshDashboard();
 }
 
+<<<<<<< HEAD
 // ---------------- State ----------------
 let globalDashboardData = {};
 let calDate = new Date();
@@ -428,6 +546,14 @@ function filtersToQuery() {
   const s = p.toString();
   return s ? `?${s}` : '';
 }
+=======
+// Global State
+let globalDashboardData = {};
+let calDate = new Date();
+const answeredQuestions = new Set();
+const dismissedQuestions = new Set();
+let activeFilter = 'All';
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 
 const SAMPLE_CHAT = `Dr. Rahman: Submit Assignment 2 by Friday 11:59pm.
 Sarah: ok thanks
@@ -441,6 +567,7 @@ function esc(str) {
 }
 
 function loadSample() { document.getElementById('chat-input').value = SAMPLE_CHAT; }
+function clearInput() { document.getElementById('chat-input').value = ''; document.getElementById('file-input').value = ''; setStatus(''); }
 
 function setStatus(msg, type = 'info') {
   const el = document.getElementById('status-msg');
@@ -449,7 +576,59 @@ function setStatus(msg, type = 'info') {
   el.innerHTML = msg;
 }
 
+<<<<<<< HEAD
 // ---------------- API actions ----------------
+=======
+// Recent Imports (localStorage)
+const RECENT_KEY = 'chatrojak_recent';
+
+function saveRecentImport(text) {
+  const existing = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+  const preview = text.slice(0, 80) + (text.length > 80 ? '…' : '');
+  const entry = { preview, full: text, ts: Date.now() };
+  const updated = [entry, ...existing.filter(e => e.preview !== preview)].slice(0, 3);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+  renderRecentImports();
+}
+
+function renderRecentImports() {
+  const el = document.getElementById('recent-imports-list');
+  if (!el) return;
+  const items = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+  if (!items.length) { el.innerHTML = ''; return; }
+
+  const rows = items.map((item, i) => {
+    const timeAgo = formatTimeAgo(item.ts);
+    return `<div class="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
+      <div class="flex-1 min-w-0">
+        <div class="text-xs text-slate-500 mb-0.5">${timeAgo}</div>
+        <div class="text-sm text-slate-300 truncate">${esc(item.preview)}</div>
+      </div>
+      <button data-idx="${i}" onclick="reloadImport(${i})" class="ghost-btn text-xs py-1 px-3 flex-shrink-0">Reload</button>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="section-label mt-2">Recent Imports</div>
+    <div class="bg-slate-900/50 rounded-xl border border-slate-800 px-4 py-1">${rows}</div>`;
+}
+
+function reloadImport(idx) {
+  const items = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+  if (items[idx]) document.getElementById('chat-input').value = items[idx].full;
+}
+
+function formatTimeAgo(ts) {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// API Interactions
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 async function loadDemo() {
   setStatus('Loading demo…', 'loading');
   try {
@@ -459,16 +638,26 @@ async function loadDemo() {
   } catch (e) { setStatus('Error: ' + e.message, 'error'); }
 }
 
+const SPINNER_SVG = `<svg class="spin" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"/></svg>`;
+
 async function processMessages() {
   const text = document.getElementById('chat-input').value.trim();
   if (!text) { setStatus('Paste some chat messages first.', 'error'); return; }
 
   const btn = document.getElementById('process-btn');
-  btn.disabled = true; btn.innerHTML = '<span class="loading-dot">Processing</span>';
-  setStatus('<span class="loading-dot">AI is extracting & planning</span>', 'loading');
+  btn.disabled = true;
+  btn.innerHTML = `${SPINNER_SVG}Parsing ChatRojak...`;
+  setStatus('<span class="loading-dot">AI is extracting &amp; planning</span>', 'loading');
 
   try {
+<<<<<<< HEAD
     const data = await api('POST', '/api/process', { text });
+=======
+    const res = await fetch('/api/process', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Processing failed');
+    saveRecentImport(text);
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
     setStatus(`Found ${data.tasks_extracted} task(s).`, 'success');
     setMode('dashboard');
   } catch (e) {
@@ -481,7 +670,17 @@ async function processMessages() {
 async function refreshDashboard() {
   if (!currentUser) return;
   try {
+<<<<<<< HEAD
     globalDashboardData = await api('GET', '/api/dashboard' + filtersToQuery());
+=======
+    const res = await fetch('/api/dashboard');
+    globalDashboardData = await res.json();
+    // Auto-reset filter if the category no longer exists in active tasks
+    if (activeFilter !== 'All') {
+      const stillExists = activeTasks(globalDashboardData).some(t => (t.category || 'Other') === activeFilter);
+      if (!stillExists) activeFilter = 'All';
+    }
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
     renderViews(globalDashboardData);
   } catch (e) {
     if (e.status === 401) { showAuthGate(); return; }
@@ -493,6 +692,7 @@ function activeTasks(data) {
   return [...(data.do_now || []), ...(data.in_progress || []), ...(data.need_info || []), ...(data.schedule || []), ...(data.defer || [])];
 }
 
+<<<<<<< HEAD
 // ---------------- Filters UI ----------------
 function renderFilterToolbar(data) {
   const catSel = document.getElementById('filter-category');
@@ -559,25 +759,97 @@ function clearFilters() {
 }
 
 // ---------------- Rendering ----------------
+=======
+// --- STAT CARDS ---
+function effectiveNeedInfo(data) {
+  // Only count need_info tasks that still have at least one non-dismissed question
+  return (data.need_info || []).filter(t =>
+    (t.missing_info_questions || []).some((_, i) => !dismissedQuestions.has(`${t.task_id}-${i}`))
+  );
+}
+
+function renderStatCards(data, active) {
+  const completedToday = (data.done || []).filter(t => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
+  const pendingClarifications = effectiveNeedInfo(data).length;
+
+  // Active = tasks that are not fully dismissed clarifications
+  const dismissedTaskIds = new Set(
+    (data.need_info || [])
+      .filter(t => (t.missing_info_questions || []).every((_, i) => dismissedQuestions.has(`${t.task_id}-${i}`)))
+      .map(t => t.task_id)
+  );
+  const effectiveActive = active.filter(t => !dismissedTaskIds.has(t.task_id)).length;
+
+  const cards = [
+    { label: 'Active Tasks', value: effectiveActive, icon: '⚡', color: 'text-indigo-400', border: 'border-indigo-500/30' },
+    { label: 'Completed Today', value: completedToday, icon: '✅', color: 'text-emerald-400', border: 'border-emerald-500/30' },
+    { label: 'Need Clarification', value: pendingClarifications, icon: '❓', color: 'text-amber-400', border: 'border-amber-500/30' },
+  ];
+
+  return cards.map(c => `
+    <div class="bg-slate-900/80 rounded-2xl border ${c.border} p-5 flex flex-col gap-2">
+      <div class="text-2xl">${c.icon}</div>
+      <div class="text-3xl font-extrabold ${c.color}">${c.value}</div>
+      <div class="text-sm text-slate-400 font-medium">${c.label}</div>
+    </div>`).join('');
+}
+
+// --- UP NEXT widget ---
+function renderUpNext(data, active) {
+  const withDeadline = active.filter(t => t.deadline_iso).sort((a, b) => new Date(a.deadline_iso) - new Date(b.deadline_iso)).slice(0, 2);
+  if (!withDeadline.length) {
+    return `<div class="text-sm text-slate-500 py-8 text-center bg-slate-900/30 rounded-xl border border-slate-800">No upcoming deadlines.</div>`;
+  }
+  return withDeadline.map(t => {
+    const priorityColors = { high: 'bg-rose-900/60 text-rose-300', medium: 'bg-amber-900/60 text-amber-300', low: 'bg-slate-700 text-slate-300' };
+    const pc = priorityColors[t.priority] || priorityColors.low;
+    const deadline = t.deadline_iso ? formatCustomDate(t.deadline_iso) || esc(t.deadline) : 'No deadline';
+    return `<div class="bg-slate-900/80 rounded-xl border border-slate-700/50 p-4 mb-3 hover:border-indigo-500/40 transition-colors">
+      <div class="flex items-start justify-between gap-2 mb-1">
+        <div class="text-sm font-semibold text-white leading-snug">${esc(t.task)}</div>
+        <span class="category-tag ${pc} flex-shrink-0">${esc(t.priority || 'low')}</span>
+      </div>
+      <div class="text-xs text-slate-400 flex items-center gap-1.5 mt-1.5"><span>⏰</span> ${deadline}</div>
+    </div>`;
+  }).join('');
+}
+
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 function renderViews(data) {
   const summary = document.getElementById('summary-line');
   renderFilterToolbar(data);
   if (!data.total_tasks) {
     summary.textContent = 'No active tasks';
-    document.getElementById('dash-important-content').innerHTML = '<div class="text-base text-slate-500 py-16 text-center border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/20">No data yet. Head to the Upload tab to process a chat.</div>';
+    document.getElementById('dash-stat-cards').innerHTML = '';
+    document.getElementById('dash-clarifications').innerHTML = '<div class="text-sm text-slate-500 py-8 text-center bg-slate-900/30 rounded-xl border border-slate-800">No data yet. Head to Upload to process a chat.</div>';
+    document.getElementById('dash-upnext').innerHTML = '<div class="text-sm text-slate-500 py-8 text-center bg-slate-900/30 rounded-xl border border-slate-800">No upcoming tasks.</div>';
     document.getElementById('checklist-content').innerHTML = '<div class="text-base text-slate-500 py-16 text-center bg-slate-900/20 rounded-2xl border border-slate-800/50">No tasks available.</div>';
     renderCalendar(data, []);
     return;
   }
 
   const active = activeTasks(data);
+<<<<<<< HEAD
   const dueToday = (active || []).filter(t => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
 
   const parts = [`${active.length} Active Tasks`];
+=======
+  const dismissedTaskIds = new Set(
+    (data.need_info || [])
+      .filter(t => (t.missing_info_questions || []).every((_, i) => dismissedQuestions.has(`${t.task_id}-${i}`)))
+      .map(t => t.task_id)
+  );
+  const visibleActive = active.filter(t => !dismissedTaskIds.has(t.task_id));
+  const dueToday = visibleActive.filter(t => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
+
+  const parts = [`${visibleActive.length} Active Tasks`];
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
   if (dueToday) parts.push(`<span class="text-rose-400 font-semibold">${dueToday} Due Today</span>`);
   summary.innerHTML = parts.join(' <span class="mx-1 text-slate-600">•</span> ');
 
-  document.getElementById('dash-important-content').innerHTML = renderImportantInfo(data, active);
+  document.getElementById('dash-stat-cards').innerHTML = renderStatCards(data, active);
+  document.getElementById('dash-clarifications').innerHTML = renderImportantInfo(data, active);
+  document.getElementById('dash-upnext').innerHTML = renderUpNext(data, active);
   document.getElementById('checklist-content').innerHTML = renderTasks(data, active);
   renderCalendar(data, active);
 }
@@ -589,8 +861,115 @@ function statusDot(item) {
 }
 
 function renderTasks(data, active) {
+<<<<<<< HEAD
   const rows = active.length ? active.map(renderTaskRow).join('') : `<div class="text-base text-slate-500 py-8">No active tasks match your filters.</div>`;
   return `<div class="space-y-4">${rows}</div>`;
+=======
+  if (!active.length) {
+    const filtersEl = document.getElementById('checklist-filters');
+    if (filtersEl) filtersEl.innerHTML = '';
+    return `<div class="text-base text-slate-500 py-8 text-center">No active tasks.</div>`;
+  }
+
+  // Build groups for filter sidebar
+  const groups = {};
+  active.forEach(t => {
+    const cat = t.category || 'Other';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(t);
+  });
+
+  const sortedCats = Object.keys(groups).sort((a, b) => {
+    const earliest = arr => arr.filter(t => t.deadline_iso).map(t => new Date(t.deadline_iso).getTime());
+    const aMin = Math.min(...earliest(groups[a]), Infinity);
+    const bMin = Math.min(...earliest(groups[b]), Infinity);
+    return aMin - bMin;
+  });
+
+  // Render filter sidebar
+  const filtersEl = document.getElementById('checklist-filters');
+  if (filtersEl) {
+    const allCount = active.length;
+    const filterBtns = ['All', ...sortedCats].map(cat => {
+      const count = cat === 'All' ? allCount : groups[cat].length;
+      const isActive = activeFilter === cat;
+
+      let urgencyDot = '';
+      if (cat !== 'All') {
+        const soonest = groups[cat].filter(t => t.deadline_iso).sort((a,b) => new Date(a.deadline_iso) - new Date(b.deadline_iso))[0];
+        const hrs = soonest ? (new Date(soonest.deadline_iso) - new Date()) / 3600000 : null;
+        if (hrs !== null && hrs < 24) urgencyDot = `<span class="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0"></span>`;
+        else if (hrs !== null && hrs < 168) urgencyDot = `<span class="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></span>`;
+      }
+
+      const editBtn = cat !== 'All'
+        ? `<button onclick="event.stopPropagation();startRenameTag('${esc(cat)}')" title="Rename tag" class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-200 transition-all text-sm px-1 flex-shrink-0">✏️</button>`
+        : '';
+
+      return `<div class="group flex items-center gap-1">
+        <button onclick="setFilter('${esc(cat)}')" class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm font-medium transition-all ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white border border-slate-800'}">
+          ${urgencyDot}
+          <span class="flex-1 truncate">${cat === 'All' ? '📋 All' : '#' + esc(cat)}</span>
+          <span class="text-xs ${isActive ? 'text-indigo-200' : 'text-slate-600'} font-bold">${count}</span>
+        </button>
+        ${editBtn}
+      </div>`;
+    }).join('');
+    filtersEl.innerHTML = filterBtns;
+  }
+
+  // Filter tasks
+  const filtered = activeFilter === 'All' ? active : active.filter(t => (t.category || 'Other') === activeFilter);
+
+  if (!filtered.length) return `<div class="text-base text-slate-500 py-12 text-center bg-slate-900/20 rounded-2xl border border-slate-800/50">No tasks in this category.</div>`;
+
+  // Group filtered tasks by category for display
+  const displayGroups = {};
+  filtered.forEach(t => {
+    const cat = t.category || 'Other';
+    if (!displayGroups[cat]) displayGroups[cat] = [];
+    displayGroups[cat].push(t);
+  });
+
+  return Object.entries(displayGroups).map(([cat, tasks]) => {
+    const catStyle = getCategoryStyle(cat);
+    const soonest = tasks.filter(t => t.deadline_iso).sort((a, b) => new Date(a.deadline_iso) - new Date(b.deadline_iso))[0];
+    const hoursLeft = soonest ? (new Date(soonest.deadline_iso) - new Date()) / 3600000 : null;
+    const urgencyBadge = hoursLeft !== null && hoursLeft < 24
+      ? `<span class="text-xs font-bold text-rose-400 bg-rose-900/40 px-2 py-0.5 rounded-full">🔥 Due soon</span>`
+      : hoursLeft !== null && hoursLeft < 168
+      ? `<span class="text-xs font-bold text-amber-400 bg-amber-900/40 px-2 py-0.5 rounded-full">This week</span>`
+      : '';
+    return `
+      <div class="mb-5">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="category-tag ${catStyle}">#${esc(cat)}</span>
+          <span class="text-xs text-slate-500">${tasks.length} task${tasks.length > 1 ? 's' : ''}</span>
+          ${urgencyBadge}
+          <div class="flex-1 h-px bg-slate-800"></div>
+        </div>
+        <div class="space-y-2">${tasks.map(renderTaskRow).join('')}</div>
+      </div>`;
+  }).join('');
+}
+
+function setFilter(cat) {
+  activeFilter = cat;
+  document.getElementById('checklist-content').innerHTML = renderTasks(globalDashboardData, activeTasks(globalDashboardData));
+}
+
+function startRenameTag(oldName) {
+  const newName = prompt(`Rename tag "#${oldName}" to:`, oldName);
+  if (!newName || newName.trim() === oldName) return;
+  fetch('/api/rename-category', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ old_name: oldName, new_name: newName.trim() })
+  }).then(() => {
+    if (activeFilter === oldName) activeFilter = newName.trim();
+    refreshDashboard();
+  }).catch(e => console.error('Rename failed:', e));
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 }
 
 function parseAnyDate(str) {
@@ -641,6 +1020,17 @@ function formatCustomDate(rawString) {
   return `${dayName} ${day}/${month}/${year} ${hours}:${minutes}${ampm}`;
 }
 
+// Category tag color mapping
+function getCategoryStyle(category) {
+  if (!category) return 'bg-slate-700/60 text-slate-300';
+  const cat = category.toLowerCase();
+  if (cat.includes('academic') || cat.includes('study') || cat.includes('assignment')) return 'bg-indigo-900/70 text-indigo-300';
+  if (cat.includes('finance') || cat.includes('payment') || cat.includes('money')) return 'bg-emerald-900/70 text-emerald-300';
+  if (cat.includes('event') || cat.includes('social') || cat.includes('cca')) return 'bg-purple-900/70 text-purple-300';
+  if (cat.includes('project') || cat.includes('work')) return 'bg-cyan-900/70 text-cyan-300';
+  return 'bg-slate-700/60 text-slate-300';
+}
+
 function renderTaskRow(item) {
   const tid = esc(item.task_id);
   let displayDeadline = 'No deadline';
@@ -651,6 +1041,7 @@ function renderTaskRow(item) {
     displayDeadline = formatted ? `<span class="text-indigo-300 font-medium">${formatted}</span>` : esc(item.deadline);
   }
 
+<<<<<<< HEAD
   const actions = item.status === 'in_progress'
     ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`
     : `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent mr-3">Start Task</button><button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`;
@@ -662,16 +1053,38 @@ function renderTaskRow(item) {
   const categoryPill = item.category ? `<span class="cat-pill">${esc(item.category)}</span>` : '';
   const metaLine = (categoryPill || tagChips) ? `<div class="flex flex-wrap items-center gap-2 mt-3">${categoryPill} ${tagChips}</div>` : '';
 
+=======
+  let actions;
+  if (item.status === 'done') {
+    actions = `<button class="ghost-btn" disabled style="opacity:0.5;cursor:default">Done</button>`;
+  } else if (item.status === 'in_progress') {
+    actions = `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">In Progress</button>`;
+  } else {
+    actions = `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
+  }
+
+  // Category pill
+  const catStyle = getCategoryStyle(item.category);
+  const catTag = item.category ? `<span class="category-tag ${catStyle} ml-2">#${esc(item.category)}</span>` : '';
+
+  // Assignee avatar
+  const assigneeLetter = item.assigned_by ? esc(item.assigned_by.trim()[0].toUpperCase()) : null;
+  const avatar = assigneeLetter
+    ? `<div class="w-7 h-7 rounded-full bg-purple-700 text-white text-xs font-bold flex items-center justify-center flex-shrink-0" title="${esc(item.assigned_by)}">${assigneeLetter}</div>`
+    : '';
+
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
   return `
-    <div class="task-row flex items-center gap-6 bg-slate-900/80 p-6 rounded-2xl border border-slate-700/50 hover:border-indigo-500/50 shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-1">
-      <div class="flex-shrink-0 pt-1">${statusDot(item)}</div>
+    <div class="task-row flex items-center gap-3 bg-slate-900/80 px-4 py-3 rounded-xl border border-slate-700/50 hover:border-indigo-500/50 shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-0.5">
+      <div class="flex-shrink-0">${statusDot(item)}</div>
       <div class="flex-1 min-w-0">
-        <div class="text-xl font-semibold text-white mb-1">${esc(item.task)}</div>
-        <div class="text-sm text-slate-400 flex items-center gap-2">
-          <span class="text-lg">⏰</span> ${displayDeadline}
+        <div class="text-base font-semibold text-white mb-0.5 truncate">${esc(item.task)}</div>
+        <div class="text-xs text-slate-400 flex items-center flex-wrap gap-1">
+          <span class="text-base">⏰</span> ${displayDeadline}${catTag}
         </div>
         ${metaLine}
       </div>
+      ${avatar}
       <div class="flex shrink-0 items-center">${actions}</div>
     </div>`;
 }
@@ -681,24 +1094,70 @@ function renderImportantInfo(data, active) {
   for (const t of (data.need_info || [])) {
     const tid = esc(t.task_id);
     for (const [i, q] of (t.missing_info_questions || []).entries()) {
+<<<<<<< HEAD
       if (answeredQuestions.has(`${tid}-${i}`)) continue;
+=======
+      const key = `${tid}-${i}`;
+      if (answeredQuestions.has(key) || dismissedQuestions.has(key)) continue;
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 
       items.push(`
-        <div class="info-item accent-amber bg-slate-900/50 shadow-md">
-          <div class="text-base font-semibold text-amber-400 mb-3 flex items-center gap-2">
-            <span>⚠️</span> ${esc(q)}
+        <div id="clarify-${tid}-${i}" class="info-item accent-amber bg-slate-900/50 shadow-md">
+          <div class="flex items-start justify-between gap-2 mb-3">
+            <div class="text-sm font-semibold text-amber-400 flex items-center gap-2">
+              <span>⚠️</span> ${esc(q)}
+            </div>
+            <button data-tid="${tid}" data-idx="${i}" onclick="dismissQuestion(this)" title="Not important" class="text-slate-600 hover:text-slate-300 text-lg leading-none flex-shrink-0 transition-colors">&times;</button>
           </div>
           <div class="flex gap-3">
-            <input type="text" id="q-${tid}-${i}" class="flex-1 bg-slate-950/80 rounded-lg px-4 py-2 text-base border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-slate-200 transition-colors" placeholder="Type your answer here..." />
-            <button data-tid="${tid}" data-field="${esc(q.toLowerCase().includes('due') ? 'deadline' : 'assigned_by')}" data-idx="${i}" onclick="answerQuestion(this)" class="ghost-btn ghost-btn-accent border-amber-600/50 text-amber-400 hover:bg-amber-600 hover:text-white hover:border-amber-500 px-6 font-bold">Submit</button>
+            <input type="text" id="q-${tid}-${i}" class="flex-1 bg-slate-950/80 rounded-lg px-3 py-2 text-sm border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-slate-200 transition-colors" placeholder="Type your answer..." />
+            <button data-tid="${tid}" data-field="${esc(q.toLowerCase().includes('due') ? 'deadline' : 'assigned_by')}" data-idx="${i}" onclick="answerQuestion(this)" class="ghost-btn ghost-btn-accent border-amber-600/50 text-amber-400 hover:bg-amber-600 hover:text-white hover:border-amber-500 px-4 font-bold text-xs">Submit</button>
           </div>
         </div>`);
     }
   }
-  return items.length ? items.join('') : `<div class="text-lg text-emerald-400 font-medium py-10 flex flex-col items-center gap-3 bg-slate-900/30 rounded-2xl border border-emerald-900/30"><span class="text-4xl">✨</span> All clear! Nothing needs your immediate attention right now.</div>`;
+  if (!items.length) {
+    return `<div class="text-sm text-emerald-400 font-medium py-6 flex flex-col items-center gap-2 bg-slate-900/30 rounded-xl border border-emerald-900/30"><span class="text-2xl">✨</span> All clear!</div>`;
+  }
+  return items.join('');
 }
 
+<<<<<<< HEAD
 // ---------------- Calendar ----------------
+=======
+function dismissQuestion(btn) {
+  const { tid, idx } = btn.dataset;
+  const key = `${tid}-${idx}`;
+  dismissedQuestions.add(key);
+  const box = document.getElementById(`clarify-${tid}-${idx}`);
+  if (!box) return;
+  box.style.transition = 'opacity 0.2s, transform 0.2s';
+  box.style.opacity = '0';
+  box.style.transform = 'translateX(10px)';
+  setTimeout(() => {
+    box.remove();
+    const container = document.getElementById('dash-clarifications');
+    if (container && !container.querySelector('.info-item')) {
+      container.innerHTML = `<div class="text-sm text-emerald-400 font-medium py-6 flex flex-col items-center gap-2 bg-slate-900/30 rounded-xl border border-emerald-900/30"><span class="text-2xl">✨</span> All clear!</div>`;
+    }
+    // Re-render stat cards and sidebar to reflect dismissed count
+    const active = activeTasks(globalDashboardData);
+    document.getElementById('dash-stat-cards').innerHTML = renderStatCards(globalDashboardData, active);
+    const dismissedTaskIds = new Set(
+      (globalDashboardData.need_info || [])
+        .filter(t => (t.missing_info_questions || []).every((_, i) => dismissedQuestions.has(`${t.task_id}-${i}`)))
+        .map(t => t.task_id)
+    );
+    const visibleCount = active.filter(t => !dismissedTaskIds.has(t.task_id)).length;
+    const dueToday = active.filter(t => !dismissedTaskIds.has(t.task_id) && t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
+    const parts = [`${visibleCount} Active Tasks`];
+    if (dueToday) parts.push(`<span class="text-rose-400 font-semibold">${dueToday} Due Today</span>`);
+    document.getElementById('summary-line').innerHTML = parts.join(' <span class="mx-1 text-slate-600">•</span> ');
+  }, 200);
+}
+
+// --- CALENDAR ---
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 function isToday(d) {
   const today = new Date();
   return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
@@ -707,6 +1166,17 @@ function isToday(d) {
 function changeMonth(direction) {
   calDate.setMonth(calDate.getMonth() + direction);
   renderViews(globalDashboardData);
+<<<<<<< HEAD
+=======
+}
+
+function getTaskPillStyle(task) {
+  if (!task.deadline_iso) return 'bg-indigo-600/20 text-indigo-200 border-indigo-500/30 hover:bg-indigo-500';
+  const hoursLeft = (new Date(task.deadline_iso) - new Date()) / 3600000;
+  if (hoursLeft < 24)  return 'bg-rose-600/30 text-rose-200 border-rose-500/40 hover:bg-rose-500';
+  if (hoursLeft < 168) return 'bg-amber-600/25 text-amber-200 border-amber-500/30 hover:bg-amber-500';
+  return 'bg-indigo-600/20 text-indigo-200 border-indigo-500/30 hover:bg-indigo-500';
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 }
 
 function renderCalendar(data, activeTasksArray) {
@@ -746,13 +1216,16 @@ function renderCalendar(data, activeTasksArray) {
 
     let tasksHtml = '';
     if (tasksByDate[i]) {
-      tasksHtml = tasksByDate[i].map(t => `<div class="text-xs font-medium bg-indigo-600/20 text-indigo-200 rounded-md px-2 py-1.5 mb-1.5 truncate border border-indigo-500/30 cursor-pointer hover:bg-indigo-500 hover:text-white transition-colors shadow-sm" title="${esc(t.task)}">${esc(t.task)}</div>`).join('');
+      tasksHtml = tasksByDate[i].map(t => {
+        const pillStyle = getTaskPillStyle(t);
+        return `<div onclick="openTaskModal('${esc(t.task_id)}')" class="text-xs font-medium ${pillStyle} rounded-md px-2 py-1.5 mb-1.5 truncate border cursor-pointer hover:text-white hover:scale-[1.02] transition-all shadow-sm select-none" title="${esc(t.task)}">${esc(t.task)}</div>`;
+      }).join('');
     }
 
     html += `
       <div class="${dayClass} min-h-[120px] p-3 hover:bg-slate-800 transition-colors flex flex-col gap-2 relative group">
         <div class="text-sm ${textClass} text-right w-full">${i}</div>
-        <div class="flex-1 overflow-y-auto custom-scrollbar">${tasksHtml}</div>
+        <div class="flex-1 overflow-y-auto">${tasksHtml}</div>
       </div>
     `;
   }
@@ -766,9 +1239,101 @@ function renderCalendar(data, activeTasksArray) {
   grid.innerHTML = html;
 }
 
+<<<<<<< HEAD
 // ---------------- Actions ----------------
 async function markDone(taskId) { try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/complete`); refreshDashboard(); } catch (e) { console.error(e); } }
 async function startTaskAction(taskId) { try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/start`); refreshDashboard(); } catch (e) { console.error(e); } }
+=======
+// --- Task Modal ---
+let modalTaskId = null;
+
+function openTaskModal(taskId) {
+  const all = [
+    ...(globalDashboardData.do_now || []),
+    ...(globalDashboardData.in_progress || []),
+    ...(globalDashboardData.need_info || []),
+    ...(globalDashboardData.schedule || []),
+    ...(globalDashboardData.defer || []),
+    ...(globalDashboardData.done || []),
+  ];
+  const t = all.find(x => x.task_id === taskId);
+  if (!t) return;
+  modalTaskId = taskId;
+
+  document.getElementById('modal-title').textContent = t.task;
+
+  const catStyle = getCategoryStyle(t.category);
+  document.getElementById('modal-category').innerHTML = t.category
+    ? `<span class="category-tag ${catStyle}">#${esc(t.category)}</span>` : '';
+
+  const deadline = t.deadline_iso ? formatCustomDate(t.deadline_iso) || esc(t.deadline) : 'No deadline';
+  document.getElementById('modal-deadline').innerHTML = `⏰ ${deadline}`;
+
+  const pColors = { high: 'bg-rose-900/70 text-rose-300', medium: 'bg-amber-900/70 text-amber-300', low: 'bg-slate-700 text-slate-300' };
+  const pc = pColors[t.priority] || pColors.low;
+  document.getElementById('modal-priority').className = `category-tag ${pc}`;
+  document.getElementById('modal-priority').textContent = t.priority || 'low';
+
+  document.getElementById('modal-assignee').textContent = t.assigned_by || '—';
+
+  const statusMap = { pending: '⬜ Pending', in_progress: '🔵 In Progress', done: '✅ Done', blocked_waiting_info: '🟡 Needs Info' };
+  document.getElementById('modal-status').textContent = statusMap[t.status] || t.status;
+
+  const steps = t.steps || [];
+  const stepsSection = document.getElementById('modal-steps-section');
+  const stepsList = document.getElementById('modal-steps');
+  if (steps.length) {
+    stepsSection.classList.remove('hidden');
+    stepsList.innerHTML = steps.map((s, i) => `
+      <li class="flex gap-3 text-sm text-slate-300">
+        <span class="w-5 h-5 rounded-full bg-indigo-900 text-indigo-300 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">${i + 1}</span>
+        <span>${esc(s)}</span>
+      </li>`).join('');
+  } else {
+    stepsSection.classList.add('hidden');
+  }
+
+  const isDone = t.status === 'done';
+  const isActive = t.status === 'in_progress';
+  document.getElementById('modal-start-btn').textContent = isActive ? 'In Progress…' : 'Start Task';
+  document.getElementById('modal-start-btn').disabled = isActive || isDone;
+  document.getElementById('modal-done-btn').textContent = isDone ? '✅ Completed' : 'Mark Done';
+  document.getElementById('modal-done-btn').disabled = isDone;
+
+  document.getElementById('task-modal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('task-modal').classList.add('hidden');
+  modalTaskId = null;
+}
+
+async function modalStartTask() {
+  if (!modalTaskId) return;
+  await startTaskAction(modalTaskId);
+  openTaskModal(modalTaskId);
+}
+
+async function modalMarkDone() {
+  if (!modalTaskId) return;
+  await markDone(modalTaskId);
+  closeModal();
+}
+
+// --- Actions ---
+async function markDone(taskId) {
+  try {
+    await fetch(`/api/tasks/${encodeURIComponent(taskId)}/complete`, { method: 'POST' });
+    // If the completed task was the last in its active filter category, reset filter
+    if (activeFilter !== 'All') {
+      const remaining = activeTasks(globalDashboardData).filter(t => t.task_id !== taskId && (t.category || 'Other') === activeFilter);
+      if (!remaining.length) activeFilter = 'All';
+    }
+    refreshDashboard();
+  } catch (e) { console.error(e); }
+}
+async function startTaskAction(taskId) { try { await fetch(`/api/tasks/${encodeURIComponent(taskId)}/start`, { method: 'POST' }); refreshDashboard(); } catch (e) { console.error(e); } }
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 
 async function answerQuestion(btn) {
   const { tid, field, idx } = btn.dataset;
@@ -789,20 +1354,50 @@ async function answerQuestion(btn) {
       setTimeout(() => {
         infoBox.remove();
         if (parentContainer.children.length === 0) {
-          parentContainer.innerHTML = `<div class="text-lg text-emerald-400 font-medium py-10 flex flex-col items-center gap-3 bg-slate-900/30 rounded-2xl border border-emerald-900/30 animation-fadeIn"><span class="text-4xl">✨</span> All clear! Nothing needs your immediate attention right now.</div>`;
+          parentContainer.innerHTML = `<div class="text-sm text-emerald-400 font-medium py-6 flex flex-col items-center gap-2 bg-slate-900/30 rounded-xl border border-emerald-900/30"><span class="text-2xl">✨</span> All clear!</div>`;
         }
       }, 200);
     }
 
+<<<<<<< HEAD
     await api('POST', '/api/clarify', { task_id: tid, field, value });
+=======
+    await fetch('/api/clarify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_id: tid, field, value }) });
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
     refreshDashboard();
   } catch (e) {
     console.error(e); btn.disabled = false; btn.textContent = 'Submit'; answeredQuestions.delete(`${tid}-${idx}`);
   }
 }
+<<<<<<< HEAD
 async function resetAll() { if (!confirm('Are you sure you want to delete all your tasks? This cannot be undone.')) return; try { await api('POST', '/api/reset'); refreshDashboard(); } catch (e) { console.error(e); } }
 
 // ---------------- Upload streaming ----------------
+=======
+
+async function resetAll() { if (!confirm('Are you sure you want to delete all tasks? This cannot be undone.')) return; await fetch('/api/reset', { method: 'POST' }); refreshDashboard(); }
+
+async function resetEverything() {
+  if (!confirm('Reset everything? This clears all tasks, plans, and imports. Cannot be undone.')) return;
+  await fetch('/api/reset', { method: 'POST' });
+  document.getElementById('chat-input').value = '';
+  document.getElementById('file-input').value = '';
+  document.getElementById('console').innerHTML = '';
+  document.getElementById('upload-processing').classList.add('hidden');
+  localStorage.removeItem('chatrojak_recent');
+  setStatus('');
+  answeredQuestions.clear();
+  dismissedQuestions.clear();
+  activeFilter = 'All';
+  const filtersEl = document.getElementById('checklist-filters');
+  if (filtersEl) filtersEl.innerHTML = '';
+  renderRecentImports();
+  refreshDashboard();
+  setMode('upload');
+}
+
+// --- Upload Dropzone Handlers ---
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 function consoleLine(text, kind = '') {
   const el = document.getElementById('console');
   const div = document.createElement('div');
@@ -816,7 +1411,13 @@ function handleFilePick(e) { const file = e.target.files?.[0]; if (file) readFil
 function readFileAndProcess(file) { const reader = new FileReader(); reader.onload = () => startStreaming(String(reader.result || '')); reader.readAsText(file); }
 
 async function startStreaming(text) {
-  document.getElementById('upload-processing').classList.remove('hidden'); document.getElementById('console').innerHTML = ''; consoleLine(`Initializing processing engine...`);
+  const btn = document.getElementById('process-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = `${SPINNER_SVG}Parsing ChatRojak...`; }
+  document.getElementById('upload-processing').classList.remove('hidden');
+  document.getElementById('console').innerHTML = '';
+  consoleLine(`Initializing processing engine...`);
+
+  let finalText = text;
   try {
     const res = await fetch('/api/process-stream', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
     if (res.status === 401) { showAuthGate(); return; }
@@ -829,15 +1430,25 @@ async function startStreaming(text) {
         if (ev && dataStr != null) {
           const data = JSON.parse(dataStr);
           if (ev === 'log') consoleLine(data.text);
+<<<<<<< HEAD
           else if (ev === 'task') consoleLine(`Extracted: ${data.task}${data.tags?.length ? ' · #' + data.tags.join(' #') : ''}`, 'task');
           else if (ev === 'done') setTimeout(() => setMode('dashboard'), 800);
+=======
+          else if (ev === 'task') consoleLine(`Extracted: ${data.task}`, 'task');
+          else if (ev === 'done') { saveRecentImport(finalText); setTimeout(() => setMode('dashboard'), 800); }
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
         }
       }
     }
   } catch (e) { consoleLine(`Failed: ${e.message}`, 'error'); }
+  finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Process Text'; }
+  }
 }
+
 function resetUpload() { document.getElementById('console').innerHTML = ''; document.getElementById('upload-processing').classList.add('hidden'); }
 
+<<<<<<< HEAD
 // ---------------- Account ----------------
 async function refreshAccount() {
   if (!currentUser) return;
@@ -873,6 +1484,11 @@ async function generateLinkCode() {
   const ok = await checkAuth();
   if (ok) refreshDashboard();
 })();
+=======
+// Init
+refreshDashboard();
+renderRecentImports();
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 </script>
 </body>
 </html>

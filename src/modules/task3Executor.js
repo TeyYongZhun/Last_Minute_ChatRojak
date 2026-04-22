@@ -148,6 +148,7 @@ export function startTask(userId, taskId) {
   return true;
 }
 
+<<<<<<< HEAD
 export function completeTask(userId, taskId) {
   const task = getTask(userId, taskId);
   if (!task) return false;
@@ -161,6 +162,31 @@ export function completeTask(userId, taskId) {
   tx();
   return true;
 }
+=======
+export function renameCategory(oldName, newName) {
+  const trimmed = newName.trim();
+  if (!trimmed || trimmed === oldName) return false;
+  const state = loadState();
+  let changed = false;
+  for (const task of state.tasks) {
+    if ((task.category || 'Other') === oldName) {
+      task.category = trimmed;
+      changed = true;
+    }
+  }
+  if (changed) {
+    state.replan_events.push(`[${ts()}] Category renamed: '${oldName}' → '${trimmed}'.`);
+    saveState(state);
+  }
+  return changed;
+}
+
+export function getDashboard() {
+  const now = new Date();
+  const state = loadState();
+  sweepDueReminders(state, now);
+  saveState(state);
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 
 export function respondToClarification(userId, taskId, field, value) {
   const task = getTask(userId, taskId);

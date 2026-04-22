@@ -14,7 +14,11 @@ import {
   respondToClarification,
   toggleStep,
   getDashboard,
+<<<<<<< HEAD
   resetUser,
+=======
+  renameCategory,
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 } from './modules/task3Executor.js';
 import { seedDemo } from './modules/demoSeed.js';
 import { startTelegramBot, isBotEnabled } from './modules/telegramBot.js';
@@ -163,8 +167,20 @@ app.post('/api/clarify', requireUser, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 app.post('/api/reset', requireUser, (req, res) => {
   resetUser(req.user.id);
+=======
+app.post('/api/rename-category', (req, res) => {
+  const { old_name, new_name } = req.body || {};
+  if (!old_name || !new_name) return res.status(400).json({ detail: 'old_name and new_name are required' });
+  const changed = renameCategory(old_name, new_name.trim());
+  res.json({ changed });
+});
+
+app.post('/api/reset', (_req, res) => {
+  clearState();
+>>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
   res.json({ status: 'reset' });
 });
 
