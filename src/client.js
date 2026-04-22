@@ -68,16 +68,34 @@ function isRetryable(err) {
   return false;
 }
 
-export async function withRetry(fn, { retries = 3, baseMs = 400 } = {}) {
+export async function withRetry(fn, { retries = 4, baseMs = 400 } = {}) {
   let attempt = 0;
   while (true) {
     try {
       return await fn();
     } catch (err) {
-      if (attempt >= retries || !isRetryable(err)) throw err;
-      const jitter = Math.random() * 0.3 + 0.85;
-      const waitMs = Math.round(baseMs * 2 ** attempt * jitter);
-      console.warn(`[withRetry] attempt ${attempt + 1} failed (${err.status || err.code || err.message}), retrying in ${waitMs}ms`);
+      if (attempt >= retries || !isRetryable(err)) {
+        if (err.status === 429) {
+          err.message = 'API rate limit reached. Please wait a moment and try again.';
+        }
+        throw err;
+      }
+      let waitMs;
+      if (err.status === 429) {
+        // Honour Retry-After header if the API sends one (value is in seconds)
+        const retryAfterSec = Number(err.headers?.['retry-after'] ?? err.headers?.get?.('retry-after') ?? 0);
+        if (retryAfterSec > 0) {
+          waitMs = retryAfterSec * 1000 + 500;
+        } else {
+          // Gemini/z.ai free tier resets every ~60s; back off long enough to clear the window
+          const jitter = Math.random() * 0.2 + 0.9;
+          waitMs = Math.round(15000 * 2 ** attempt * jitter);
+        }
+      } else {
+        const jitter = Math.random() * 0.3 + 0.85;
+        waitMs = Math.round(baseMs * 2 ** attempt * jitter);
+      }
+      console.warn(`[withRetry] attempt ${attempt + 1} failed (${err.status || err.code || err.message}), retrying in ${Math.round(waitMs / 1000)}s`);
       await new Promise((r) => setTimeout(r, waitMs));
       attempt += 1;
     }

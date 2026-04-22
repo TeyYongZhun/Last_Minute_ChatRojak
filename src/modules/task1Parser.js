@@ -27,6 +27,7 @@ For each actionable task found, produce:
 Rules:
 - Only extract ACTIONABLE tasks that require the reader to DO something
 - Ignore casual replies, greetings, acknowledgements ("ok", "noted", "sure np", "lol", "hahaha")
+- TIMEFRAME FILTER: If a timeframe filter is specified in the user message, read the timestamps on each chat message carefully. Completely skip and ignore any messages outside the allowed date range — do not extract tasks from them.
 - DEDUPLICATE: if the same task is mentioned multiple times, extract it ONCE using the most recent confirmed deadline
 - QUESTIONS vs STATEMENTS: Messages ending with "?" are questions/suggestions, NOT confirmed facts. Only treat a time/deadline as confirmed if it is stated as a declaration (e.g. "meeting tmr 3pm"), not as a question (e.g. "meeting tmr 3pm?")
 - When deadlines conflict, use the LATEST authoritative statement from the person who assigned the task
@@ -82,18 +83,38 @@ function normalize(t, index) {
   };
 }
 
-export async function parseMessages(rawText, now) {
+function buildTimeframeInstruction(timeframe, now) {
+  if (timeframe === 'last7') {
+    const cutoff = new Date(now);
+    cutoff.setDate(cutoff.getDate() - 7);
+    return `Timeframe filter: Only extract tasks from messages dated on or after ${cutoff.toDateString()} (last 7 days). Completely ignore messages with timestamps before this date.`;
+  }
+  if (timeframe === 'thisMonth') {
+    const cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+    return `Timeframe filter: Only extract tasks from messages dated on or after ${cutoff.toDateString()} (this calendar month). Completely ignore messages with timestamps before this date.`;
+  }
+  return '';
+}
+
+export async function parseMessages(rawText, now, timeframe = 'all') {
   const client = getClient();
+  const timeframeNote = buildTimeframeInstruction(timeframe, now);
+  const userContent = [
+    `Current time: ${now.toISOString()}`,
+    timeframeNote,
+    '',
+    'Chat messages to analyze:',
+    '',
+    rawText,
+  ].filter(Boolean).join('\n');
+
   const response = await withRetry(() =>
     client.chat.completions.create({
       model: MODEL,
       temperature: 0.3,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: `Current time: ${now.toISOString()}\n\nChat messages to analyze:\n\n${rawText}`,
-        },
+        { role: 'user', content: userContent },
       ],
     })
   );

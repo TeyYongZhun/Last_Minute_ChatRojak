@@ -17,7 +17,6 @@ import {
   resetUser,
   renameCategory,
 } from './modules/task3Executor.js';
-import { seedDemo } from './modules/demoSeed.js';
 import { startTelegramBot, isBotEnabled } from './modules/telegramBot.js';
 import { processWithEvents } from './modules/processStream.js';
 import { getProviderName, MODEL } from './client.js';
@@ -62,13 +61,13 @@ function parseFilters(query) {
 }
 
 app.post('/api/process', requireUser, async (req, res) => {
-  const text = req.body?.text;
+  const { text, timeframe = 'all' } = req.body || {};
   if (!text || !text.trim()) {
     return res.status(400).json({ detail: 'No text provided' });
   }
   try {
     const now = new Date();
-    const tasks = await parseMessages(text, now);
+    const tasks = await parseMessages(text, now, timeframe);
     if (!tasks.length) {
       return res.json({
         tasks_extracted: 0,
@@ -91,7 +90,8 @@ app.post('/api/process', requireUser, async (req, res) => {
 });
 
 app.post('/api/process-stream', requireUser, async (req, res) => {
-  const text = (req.body?.text || '').trim();
+  const { text: rawText, timeframe = 'all' } = req.body || {};
+  const text = (rawText || '').trim();
   if (!text) {
     return res.status(400).json({ detail: 'No text provided' });
   }
@@ -104,7 +104,7 @@ app.post('/api/process-stream', requireUser, async (req, res) => {
     res.write(`event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`);
   };
   try {
-    await processWithEvents(req.user.id, text, new Date(), emit);
+    await processWithEvents(req.user.id, text, new Date(), emit, timeframe);
   } catch (e) {
     console.error('[/api/process-stream] error:', e);
     emit('error', { message: e.message || 'Processing failed' });
@@ -206,10 +206,6 @@ app.post('/api/reset', requireUser, (req, res) => {
   res.json({ status: 'reset' });
 });
 
-app.post('/api/demo-seed', requireUser, (req, res) => {
-  seedDemo(req.user.id);
-  res.json({ status: 'seeded' });
-});
 
 export function createApp() {
   return app;

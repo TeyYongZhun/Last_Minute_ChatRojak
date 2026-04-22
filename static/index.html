@@ -186,11 +186,17 @@
             <div class="section-label">Paste Raw Text</div>
             <textarea id="chat-input" class="w-full h-48 bg-slate-900/60 rounded-xl p-4 text-base text-slate-200 resize-none border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-slate-500 shadow-inner mt-2 transition-all" placeholder="Paste WhatsApp chat export here..."></textarea>
 
-            <div class="flex gap-3 mt-4">
-              <button onclick="loadSample()" class="ghost-btn">Load sample</button>
-              <button onclick="clearInput()" class="ghost-btn border-slate-600 text-slate-400 hover:border-rose-500 hover:text-rose-400">Clear</button>
+            <div class="flex items-center gap-3 mt-4 mb-2">
+              <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex-shrink-0">Timeframe</label>
+              <select id="timeframe-select" class="filter-select">
+                <option value="all">All Time</option>
+                <option value="last7" selected>Last 7 Days</option>
+                <option value="thisMonth">This Month</option>
+              </select>
+            </div>
+            <div class="flex gap-3">
+<button onclick="clearInput()" class="ghost-btn border-slate-600 text-slate-400 hover:border-rose-500 hover:text-rose-400">Clear</button>
               <button onclick="processMessages()" id="process-btn" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">Process Text</button>
-              <button onclick="loadDemo()" class="ghost-btn border-slate-600 text-slate-300">Demo</button>
             </div>
             <div id="status-msg" class="mt-4 text-sm font-medium text-slate-400 min-h-5"></div>
             <div id="recent-imports-list" class="mt-5"></div>
@@ -306,6 +312,12 @@
             <code class="text-2xl font-bold text-indigo-300 tracking-widest" id="link-code-value"></code>
             <div class="text-xs text-slate-500 mt-2">In Telegram, send <code class="text-slate-300">/link &lt;code&gt;</code> to the bot within 10 minutes.</div>
           </div>
+        </div>
+
+        <div class="bg-slate-900/60 border border-rose-900/30 rounded-xl p-6 mt-6">
+          <div class="section-label text-rose-400">Danger Zone</div>
+          <p class="text-sm text-slate-400 mb-4">Permanently delete all your tasks, plans, and history. This cannot be undone.</p>
+          <button onclick="resetAll()" class="ghost-btn border-rose-900/50 text-rose-400 hover:border-rose-500 hover:bg-rose-950/30">Reset All Data</button>
         </div>
       </div>
 
@@ -487,18 +499,11 @@ function filtersToQuery() {
   return s ? `?${s}` : '';
 }
 
-const SAMPLE_CHAT = `Dr. Rahman: Submit Assignment 2 by Friday 11:59pm.
-Sarah: ok thanks
-Emma: help with lab report tomorrow?
-CS Society: need volunteers next week.
-Jason: Don't forget the group meeting on the 25th!`;
-
 function esc(str) {
   if (str == null) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function loadSample() { document.getElementById('chat-input').value = SAMPLE_CHAT; }
 function clearInput() { document.getElementById('chat-input').value = ''; document.getElementById('file-input').value = ''; setStatus(''); }
 
 function setStatus(msg, type = 'info') {
@@ -509,20 +514,12 @@ function setStatus(msg, type = 'info') {
 }
 
 // ---------------- API actions ----------------
-async function loadDemo() {
-  setStatus('Loading demo…', 'loading');
-  try {
-    await api('POST', '/api/demo-seed');
-    setStatus('Demo loaded successfully.', 'success');
-    setMode('dashboard');
-  } catch (e) { setStatus('Error: ' + e.message, 'error'); }
-}
-
 const SPINNER_SVG = `<svg class="spin" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"/></svg>`;
 
 async function processMessages() {
   const text = document.getElementById('chat-input').value.trim();
   if (!text) { setStatus('Paste some chat messages first.', 'error'); return; }
+  const timeframe = document.getElementById('timeframe-select')?.value || 'all';
 
   const btn = document.getElementById('process-btn');
   btn.disabled = true;
@@ -530,7 +527,7 @@ async function processMessages() {
   setStatus('<span class="loading-dot">AI is extracting &amp; planning</span>', 'loading');
 
   try {
-    const data = await api('POST', '/api/process', { text });
+    const data = await api('POST', '/api/process', { text, timeframe });
     setStatus(`Found ${data.tasks_extracted} task(s).`, 'success');
     setMode('dashboard');
   } catch (e) {
@@ -1148,10 +1145,11 @@ async function startStreaming(text) {
   document.getElementById('upload-processing').classList.remove('hidden');
   document.getElementById('console').innerHTML = '';
   consoleLine(`Initializing processing engine...`);
+  const timeframe = document.getElementById('timeframe-select')?.value || 'all';
 
   let finalText = text;
   try {
-    const res = await fetch('/api/process-stream', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    const res = await fetch('/api/process-stream', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, timeframe }) });
     if (res.status === 401) { showAuthGate(); return; }
     const reader = res.body.getReader(); const decoder = new TextDecoder(); let buf = '';
     while (true) {

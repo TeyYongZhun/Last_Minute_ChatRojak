@@ -52,6 +52,9 @@ function semanticKey(task) {
 
 export function mergeNewTasks(userId, newTasks) {
   const db = getDb();
+  const prefix = userId.replace(/-/g, '').slice(0, 8);
+  const idRegex = new RegExp(`^${prefix}(\\d+)$`);
+
   const tx = db.transaction(() => {
     const allTasks = listTasks(userId);
     const existing = new Set(allTasks.map((t) => t.id));
@@ -62,7 +65,7 @@ export function mergeNewTasks(userId, newTasks) {
     let nextIdNum = (() => {
       let maxN = 0;
       for (const id of existing) {
-        const m = /^t(\d+)$/.exec(id);
+        const m = idRegex.exec(id);
         if (m) maxN = Math.max(maxN, Number(m[1]));
       }
       return maxN;
@@ -76,11 +79,11 @@ export function mergeNewTasks(userId, newTasks) {
       } else if (openSemanticKeys.has(key)) {
         continue;
       }
-      if (!t.id || existing.has(t.id)) {
+      if (!t.id || !idRegex.test(t.id) || existing.has(t.id)) {
         nextIdNum += 1;
-        t.id = `t${nextIdNum}`;
+        t.id = `${prefix}${nextIdNum}`;
       } else {
-        const m = /^t(\d+)$/.exec(t.id);
+        const m = idRegex.exec(t.id);
         if (m) nextIdNum = Math.max(nextIdNum, Number(m[1]));
       }
       insertTask(userId, t);
