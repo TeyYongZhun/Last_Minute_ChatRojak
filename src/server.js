@@ -14,11 +14,8 @@ import {
   respondToClarification,
   toggleStep,
   getDashboard,
-<<<<<<< HEAD
   resetUser,
-=======
   renameCategory,
->>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
 } from './modules/task3Executor.js';
 import { seedDemo } from './modules/demoSeed.js';
 import { startTelegramBot, isBotEnabled } from './modules/telegramBot.js';
@@ -121,10 +118,25 @@ app.get('/api/dashboard', requireUser, (req, res) => {
 });
 
 app.post('/api/tasks/:taskId/start', requireUser, (req, res) => {
-  if (!startTask(req.user.id, req.params.taskId)) {
-    return res.status(404).json({ detail: 'Task not found' });
+  const { result, missing_fields } = startTask(req.user.id, req.params.taskId);
+  switch (result) {
+    case 'ok':
+      return res.json({ status: 'in_progress' });
+    case 'already_started':
+      return res.json({ status: 'in_progress', already_started: true });
+    case 'not_found':
+      return res.status(404).json({ detail: 'Task not found' });
+    case 'done':
+      return res.status(409).json({ detail: 'Task is already completed', reason: 'done' });
+    case 'blocked':
+      return res.status(409).json({
+        detail: 'Task is blocked — clarification needed before it can be started',
+        reason: 'blocked_waiting_info',
+        missing_fields: missing_fields || [],
+      });
+    default:
+      return res.status(500).json({ detail: 'Unknown start result' });
   }
-  res.json({ status: 'in_progress' });
 });
 
 app.post('/api/tasks/:taskId/complete', requireUser, async (req, res) => {
@@ -167,20 +179,30 @@ app.post('/api/clarify', requireUser, async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-app.post('/api/reset', requireUser, (req, res) => {
-  resetUser(req.user.id);
-=======
-app.post('/api/rename-category', (req, res) => {
+app.post('/api/replan', requireUser, async (req, res) => {
+  try {
+    const result = await replanAll(req.user.id, new Date());
+    res.json({
+      plans_created: result.plans.length,
+      conflicts: result.conflicts.length,
+    });
+  } catch (e) {
+    console.error('[/api/replan] error:', e);
+    res.status(500).json({ detail: e.message || 'Replan failed' });
+  }
+});
+
+app.post('/api/rename-category', requireUser, (req, res) => {
   const { old_name, new_name } = req.body || {};
-  if (!old_name || !new_name) return res.status(400).json({ detail: 'old_name and new_name are required' });
-  const changed = renameCategory(old_name, new_name.trim());
+  if (!old_name || !new_name) {
+    return res.status(400).json({ detail: 'old_name and new_name are required' });
+  }
+  const changed = renameCategory(req.user.id, old_name, new_name);
   res.json({ changed });
 });
 
-app.post('/api/reset', (_req, res) => {
-  clearState();
->>>>>>> e2054c5691498fb624e7b834622e5ed51a7843a4
+app.post('/api/reset', requireUser, (req, res) => {
+  resetUser(req.user.id);
   res.json({ status: 'reset' });
 });
 

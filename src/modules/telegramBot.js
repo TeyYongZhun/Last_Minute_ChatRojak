@@ -202,8 +202,19 @@ async function handleCommandLinked(chatId, userId, cmd, args) {
     case 'start_task': {
       const id = args.trim();
       if (!id) return void (await sendMessage(chatId, 'Usage: /start_task <task_id>'));
-      if (!startTask(userId, id)) return void (await sendMessage(chatId, `Task ${id} not found.`));
-      await sendMessage(chatId, `Started ${id}.`);
+      const { result, missing_fields } = startTask(userId, id);
+      if (result === 'ok') {
+        await sendMessage(chatId, `Started ${id}.`);
+      } else if (result === 'already_started') {
+        await sendMessage(chatId, `Task ${id} is already in progress.`);
+      } else if (result === 'not_found') {
+        await sendMessage(chatId, `Task ${id} not found.`);
+      } else if (result === 'done') {
+        await sendMessage(chatId, `Task ${id} is already done.`);
+      } else if (result === 'blocked') {
+        const fields = (missing_fields || []).join(', ') || 'clarification';
+        await sendMessage(chatId, `Task ${id} is blocked — need ${fields} before starting.`);
+      }
       return;
     }
     case 'answer': {

@@ -151,3 +151,10 @@ export function deleteAllForUser(userId) {
   const db = getDb();
   db.prepare('DELETE FROM tasks WHERE user_id = ?').run(userId);
 }
+
+export function renameTaskCategory(userId, oldName, newName) {
+  const db = getDb();
+  return db
+    .prepare('UPDATE tasks SET category = ? WHERE user_id = ? AND category = ?')
+    .run(newName, userId, oldName).changes;
+}
