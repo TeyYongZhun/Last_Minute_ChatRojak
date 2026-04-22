@@ -2,7 +2,7 @@ import { parseMessages } from './task1Parser.js';
 import { mergeNewTasks, replanAll, getDashboard } from './task3Executor.js';
 import { MODEL, getProviderName } from '../client.js';
 
-export async function processWithEvents(text, now, emit) {
+export async function processWithEvents(userId, text, now, emit) {
   const lineCount = text.split('\n').filter((l) => l.trim().length > 0).length;
   emit('log', { text: `Parsing ${lineCount} message line(s)…` });
 
@@ -15,7 +15,7 @@ export async function processWithEvents(text, now, emit) {
       extracted: 0,
       plans: 0,
       conflicts: 0,
-      dashboard: getDashboard(),
+      dashboard: getDashboard(userId),
     });
     return;
   }
@@ -27,15 +27,18 @@ export async function processWithEvents(text, now, emit) {
       category: t.category,
       deadline: t.deadline,
       assigned_by: t.assigned_by,
+      tags: t.tags,
     });
   }
 
   const cats = [...new Set(tasks.map((t) => t.category || 'Other'))];
   emit('log', { text: `Categorized → ${cats.join(', ')}` });
+  const allTags = [...new Set(tasks.flatMap((t) => t.tags || []))];
+  if (allTags.length) emit('log', { text: `Tagged → ${allTags.join(', ')}` });
 
-  mergeNewTasks(tasks);
+  mergeNewTasks(userId, tasks);
 
-  const result = await replanAll(now, (msg) => emit('log', { text: msg }));
+  const result = await replanAll(userId, now, (msg) => emit('log', { text: msg }));
 
   for (const c of result.conflicts) {
     emit('log', { text: `Conflict: ${c.ids.join(' ↔ ')} — ${c.message}` });
@@ -49,6 +52,6 @@ export async function processWithEvents(text, now, emit) {
     extracted: tasks.length,
     plans: result.plans.length,
     conflicts: result.conflicts.length,
-    dashboard: getDashboard(),
+    dashboard: getDashboard(userId),
   });
 }

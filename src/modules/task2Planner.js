@@ -1,6 +1,6 @@
 import { getClient, MODEL, extractJson, withRetry } from '../client.js';
 
-function scoreUrgency(deadlineIso, now) {
+export function scoreUrgency(deadlineIso, now) {
   if (!deadlineIso) return 20;
   const d = new Date(deadlineIso);
   if (isNaN(d.getTime())) return 20;
@@ -13,7 +13,7 @@ function scoreUrgency(deadlineIso, now) {
   return 30;
 }
 
-function scoreImportance(assignedBy, priority) {
+export function scoreImportance(assignedBy, priority) {
   let score = 0;
   if (assignedBy) {
     const al = assignedBy.toLowerCase();
@@ -33,7 +33,7 @@ function scoreImportance(assignedBy, priority) {
   return Math.min(score, 55);
 }
 
-function scoreEffort(taskDesc) {
+export function scoreEffort(taskDesc) {
   const words = taskDesc.split(/\s+/).length;
   if (words > 15) return 5;
   if (words > 8) return 10;
