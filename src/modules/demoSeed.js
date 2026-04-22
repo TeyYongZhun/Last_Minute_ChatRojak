@@ -1,4 +1,10 @@
-import { saveState } from '../state.js';
+import { getDb } from '../db/index.js';
+import { insertTask, setTaskTags } from '../db/repos/tasks.js';
+import { upsertPlan } from '../db/repos/plans.js';
+import { replaceChecklist } from '../db/repos/checklists.js';
+import { addNotification } from '../db/repos/notifications.js';
+import { addReplanEvent } from '../db/repos/replanEvents.js';
+import { resetUser } from './task3Executor.js';
 
 function atIso(base, dayOffset, hour, minute) {
   const d = new Date(base);
@@ -13,7 +19,7 @@ function daysUntilFriday(now) {
   return diff === 0 ? 7 : diff;
 }
 
-export function seedDemo() {
+export function seedDemo(userId) {
   const now = new Date();
   const fri = daysUntilFriday(now);
 
@@ -31,6 +37,7 @@ export function seedDemo() {
       confidence: 0.95,
       missing_fields: [],
       category: 'Academic',
+      tags: ['urgent', 'solo'],
       status: 'pending',
     },
     {
@@ -43,6 +50,7 @@ export function seedDemo() {
       confidence: 0.85,
       missing_fields: [],
       category: 'Academic',
+      tags: ['group-work', 'short'],
       status: 'pending',
     },
     {
@@ -55,6 +63,7 @@ export function seedDemo() {
       confidence: 0.7,
       missing_fields: ['deadline'],
       category: 'CCA event',
+      tags: ['group-work', 'waiting-on-others'],
       status: 'blocked_waiting_info',
     },
   ];
@@ -89,28 +98,30 @@ export function seedDemo() {
     },
   ];
 
-  const actions = [
-    { type: 'checklist', task_id: 't1', items: plans[0].steps.map((s) => ({ step: s, done: false })) },
-    { type: 'checklist', task_id: 't2', items: plans[1].steps.map((s) => ({ step: s, done: false })) },
-  ];
+  const db = getDb();
+  const tx = db.transaction(() => {
+    resetUser(userId);
+    for (const t of tasks) {
+      insertTask(userId, t);
+      setTaskTags(t.id, t.tags || []);
+    }
+    for (const p of plans) upsertPlan(userId, p);
+    replaceChecklist('t1', plans[0].steps);
+    replaceChecklist('t2', plans[1].steps);
 
-  const notifications = [
-    {
+    addNotification(userId, {
       type: 'reminder',
       task_id: 't2',
       message: "Reminder: 'Help with lab report' due in 24h",
       fired_at_iso: now.toISOString(),
-    },
-  ];
+    });
 
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const replan_events = [
-    `[${hh}:${mm}] t1 planned (priority 88, decision do_now)`,
-    `[${hh}:${mm}] t2 planned (priority 62, decision schedule)`,
-    `[${hh}:${mm}] t3 planned (priority 35, decision ask_user)`,
-    `[${hh}:${mm}] Reminder fired for t2`,
-  ];
-
-  saveState({ tasks, plans, replan_events, actions, notifications });
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    addReplanEvent(userId, `[${hh}:${mm}] t1 planned (priority 88, decision do_now)`);
+    addReplanEvent(userId, `[${hh}:${mm}] t2 planned (priority 62, decision schedule)`);
+    addReplanEvent(userId, `[${hh}:${mm}] t3 planned (priority 35, decision ask_user)`);
+    addReplanEvent(userId, `[${hh}:${mm}] Reminder fired for t2`);
+  });
+  tx();
 }

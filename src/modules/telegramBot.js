@@ -1,4 +1,3 @@
-import { loadState, saveState, clearState } from '../state.js';
 import { parseMessages } from './task1Parser.js';
 import {
   mergeNewTasks,
@@ -7,14 +6,26 @@ import {
   completeTask,
   respondToClarification,
   getDashboard,
+  resetUser,
 } from './task3Executor.js';
 import { subscribe } from './notifier.js';
 import { withRetry } from '../client.js';
+import {
+  getUserIdForChat,
+  getChatIdForUser,
+  linkUserToChat,
+  consumeLinkCode,
+  getPollCursor,
+  setPollCursor,
+  appendBufferMessage,
+  readAndClearBuffer,
+  bufferSize,
+  hasSentKey,
+  markSentKey,
+} from '../db/repos/telegram.js';
 
 const API_BASE = 'https://api.telegram.org';
 const POLL_TIMEOUT_SEC = 25;
-const MAX_BUFFER_SIZE = 200;
-const MAX_SENT_KEYS = 200;
 
 let running = false;
 
@@ -63,17 +74,6 @@ function senderLabel(msg) {
   return 'Unknown';
 }
 
-function bufferFor(state, chatId) {
-  const key = String(chatId);
-  state.telegram.buffers[key] ||= [];
-  return state.telegram.buffers[key];
-}
-
-function clearBuffer(state, chatId) {
-  const key = String(chatId);
-  state.telegram.buffers[key] = [];
-}
-
 function parseCommand(text) {
   if (!text || !text.startsWith('/')) return null;
   const firstSpace = text.indexOf(' ');
@@ -91,7 +91,8 @@ function renderDashboardText(data) {
     for (const it of items) {
       const dl = it.deadline ? ` · ${it.deadline}` : '';
       const by = it.assigned_by ? ` · ${it.assigned_by}` : '';
-      lines.push(`${it.task_id}  ${it.task}${dl}${by}  [${it.priority_score}]`);
+      const tags = it.tags?.length ? ` · #${it.tags.join(' #')}` : '';
+      lines.push(`${it.task_id}  ${it.task}${dl}${by}  [${it.priority_score}]${tags}`);
     }
   };
   push('In progress', data.in_progress);
@@ -104,49 +105,76 @@ function renderDashboardText(data) {
   return `Dashboard (${data.total_tasks} total):` + lines.join('\n');
 }
 
-const HELP_TEXT = [
+const HELP_TEXT_UNLINKED = [
+  'This chat is not yet linked to an account.',
+  '',
+  '1. Sign up on the web app.',
+  '2. Go to account settings and request a link code.',
+  '3. Send: /link <6-digit-code>',
+  '',
+  'Once linked, send chat messages and /process to extract tasks.',
+].join('\n');
+
+const HELP_TEXT_LINKED = [
   'Commands:',
-  '/start — register this chat for push notifications',
   '/process — flush buffered messages into the task parser',
   '/dashboard — show current tasks',
   '/start_task <id> — mark task in progress',
   '/done <id> — mark task done',
   '/answer <id> <field>: <value> — answer a clarification question',
-  '/reset — clear all state',
+  '/reset — clear your tasks',
+  '/unlink — detach this chat from your account',
   '/help — show this list',
   '',
   'Any other message is buffered until you run /process.',
 ].join('\n');
 
-async function handleCommand(chatId, cmd, args, state) {
+async function handleLinkCommand(chatId, args) {
+  const code = args.trim();
+  if (!code) {
+    await sendMessage(chatId, 'Usage: /link <6-digit-code>');
+    return;
+  }
+  const userId = consumeLinkCode(code);
+  if (!userId) {
+    await sendMessage(chatId, 'That code is invalid or expired. Generate a new one on the web app.');
+    return;
+  }
+  linkUserToChat(userId, chatId);
+  await sendMessage(chatId, 'Linked! Send chat messages and /process to extract tasks. /help for commands.');
+}
+
+async function handleCommandLinked(chatId, userId, cmd, args) {
   switch (cmd) {
-    case 'start': {
-      state.telegram.active_chat_id = chatId;
-      await sendMessage(chatId, 'Registered. Send messages, then /process to extract tasks. /help for commands.');
-      return true;
-    }
-    case 'help': {
-      await sendMessage(chatId, HELP_TEXT);
-      return false;
-    }
+    case 'start':
+    case 'help':
+      await sendMessage(chatId, HELP_TEXT_LINKED);
+      return;
+    case 'link':
+      await sendMessage(chatId, 'This chat is already linked.');
+      return;
+    case 'unlink':
+      await sendMessage(
+        chatId,
+        'To unlink, revoke the link from the web app. (Unlink-from-telegram not yet supported here.)'
+      );
+      return;
     case 'process': {
-      const buf = bufferFor(state, chatId);
-      if (!buf.length) {
+      const messages = readAndClearBuffer(chatId);
+      if (!messages.length) {
         await sendMessage(chatId, 'Buffer is empty. Send some messages first.');
-        return false;
+        return;
       }
-      const text = buf.join('\n');
-      clearBuffer(state, chatId);
-      saveState(state);
+      const text = messages.join('\n');
       try {
         const now = new Date();
         const tasks = await parseMessages(text, now);
         if (!tasks.length) {
           await sendMessage(chatId, 'No actionable tasks found in those messages.');
-          return false;
+          return;
         }
-        mergeNewTasks(tasks);
-        const replan = await replanAll(now);
+        mergeNewTasks(userId, tasks);
+        const replan = await replanAll(userId, now);
         await sendMessage(
           chatId,
           `Extracted ${tasks.length} task(s). ${replan.plans.length} planned, ${replan.conflicts.length} conflict(s).`
@@ -155,127 +183,107 @@ async function handleCommand(chatId, cmd, args, state) {
         console.error('[telegram] /process error:', e);
         await sendMessage(chatId, `Error while processing: ${e.message}`);
       }
-      return false;
+      return;
     }
     case 'dashboard':
     case 'list': {
-      const data = getDashboard();
+      const data = getDashboard(userId);
       await sendMessage(chatId, renderDashboardText(data));
-      return false;
+      return;
     }
     case 'done': {
       const id = args.trim();
       if (!id) return void (await sendMessage(chatId, 'Usage: /done <task_id>'));
-      if (!completeTask(id)) return void (await sendMessage(chatId, `Task ${id} not found.`));
-      try { await replanAll(new Date()); } catch (e) { console.error('[telegram] replan after /done:', e); }
+      if (!completeTask(userId, id)) return void (await sendMessage(chatId, `Task ${id} not found.`));
+      try { await replanAll(userId, new Date()); } catch (e) { console.error('[telegram] replan after /done:', e); }
       await sendMessage(chatId, `Marked ${id} done.`);
-      return false;
+      return;
     }
     case 'start_task': {
       const id = args.trim();
       if (!id) return void (await sendMessage(chatId, 'Usage: /start_task <task_id>'));
-      if (!startTask(id)) return void (await sendMessage(chatId, `Task ${id} not found.`));
+      if (!startTask(userId, id)) return void (await sendMessage(chatId, `Task ${id} not found.`));
       await sendMessage(chatId, `Started ${id}.`);
-      return false;
+      return;
     }
     case 'answer': {
       const m = args.match(/^(\S+)\s+(\S+)\s*:\s*(.+)$/);
       if (!m) {
         await sendMessage(chatId, 'Usage: /answer <task_id> <field>: <value>\nExample: /answer t3 deadline: next Friday 5pm');
-        return false;
+        return;
       }
       const [, id, field, value] = m;
-      if (!respondToClarification(id, field, value.trim())) {
+      if (!respondToClarification(userId, id, field, value.trim())) {
         await sendMessage(chatId, `Task ${id} not found.`);
-        return false;
+        return;
       }
-      try { await replanAll(new Date()); } catch (e) { console.error('[telegram] replan after /answer:', e); }
+      try { await replanAll(userId, new Date()); } catch (e) { console.error('[telegram] replan after /answer:', e); }
       await sendMessage(chatId, `Recorded ${field}='${value.trim()}' for ${id}.`);
-      return false;
+      return;
     }
     case 'reset': {
-      clearState();
-      await sendMessage(chatId, 'State cleared.');
-      return false;
+      resetUser(userId);
+      await sendMessage(chatId, 'Your tasks have been cleared.');
+      return;
     }
-    default: {
+    default:
       await sendMessage(chatId, `Unknown command: /${cmd}. Send /help for the list.`);
-      return false;
-    }
   }
 }
 
 async function handleUpdate(update) {
-  const state = loadState();
-  if ((update.update_id || 0) > state.telegram.last_update_id) {
-    state.telegram.last_update_id = update.update_id;
-  }
+  setPollCursor(update.update_id || 0);
 
   const msg = update.message || update.edited_message;
-  if (!msg || !msg.chat) {
-    saveState(state);
-    return;
-  }
+  if (!msg || !msg.chat) return;
   const chatId = msg.chat.id;
   const text = msg.text || msg.caption || '';
 
   const parsed = parseCommand(text);
+  const userId = getUserIdForChat(chatId);
+
   if (parsed) {
-    const stateChanged = await handleCommand(chatId, parsed.cmd, parsed.args, state);
-    if (stateChanged) saveState(state);
-    else {
-      const fresh = loadState();
-      fresh.telegram.last_update_id = Math.max(fresh.telegram.last_update_id, update.update_id || 0);
-      saveState(fresh);
+    if (!userId) {
+      if (parsed.cmd === 'link') {
+        await handleLinkCommand(chatId, parsed.args);
+      } else {
+        await sendMessage(chatId, HELP_TEXT_UNLINKED);
+      }
+      return;
+    }
+    await handleCommandLinked(chatId, userId, parsed.cmd, parsed.args);
+    return;
+  }
+
+  if (!text.trim()) return;
+
+  if (!userId) {
+    if (bufferSize(chatId) === 0) {
+      await sendMessage(chatId, HELP_TEXT_UNLINKED);
     }
     return;
   }
 
-  if (!text.trim()) {
-    saveState(state);
-    return;
-  }
-
-  const buf = bufferFor(state, chatId);
-  buf.push(`${senderLabel(msg)}: ${text.trim()}`);
-  if (buf.length > MAX_BUFFER_SIZE) buf.splice(0, buf.length - MAX_BUFFER_SIZE);
-  saveState(state);
-}
-
-function hasSentKey(key) {
-  const state = loadState();
-  return state.telegram.sent_notification_keys.includes(key);
-}
-
-function markSent(key) {
-  const state = loadState();
-  const keys = state.telegram.sent_notification_keys;
-  if (!keys.includes(key)) {
-    keys.push(key);
-    if (keys.length > MAX_SENT_KEYS) keys.splice(0, keys.length - MAX_SENT_KEYS);
-    saveState(state);
-  }
-}
-
-function activeChatId() {
-  return loadState().telegram.active_chat_id;
+  appendBufferMessage(chatId, `${senderLabel(msg)}: ${text.trim()}`);
 }
 
 function wireNotifier() {
   subscribe(async (kind, payload) => {
     if (!token()) return;
-    const chatId = activeChatId();
+    const userId = payload.user_id;
+    if (!userId) return;
+    const chatId = getChatIdForUser(userId);
     if (!chatId) return;
 
     if (kind === 'reminder') {
       const key = `reminder:${payload.key}`;
-      if (hasSentKey(key)) return;
-      markSent(key);
+      if (hasSentKey(userId, key)) return;
+      markSentKey(userId, key);
       await sendMessage(chatId, `⏰ ${payload.message}`);
     } else if (kind === 'clarification_needed') {
       const key = `clarify:${payload.task_id}:${payload.questions.join('|')}`;
-      if (hasSentKey(key)) return;
-      markSent(key);
+      if (hasSentKey(userId, key)) return;
+      markSentKey(userId, key);
       const lines = [
         `❓ Need info on ${payload.task_id} (${payload.task}):`,
         ...payload.questions.map((q) => `  • ${q}`),
@@ -285,8 +293,8 @@ function wireNotifier() {
       await sendMessage(chatId, lines.join('\n'));
     } else if (kind === 'conflict') {
       const key = `conflict:${payload.key}`;
-      if (hasSentKey(key)) return;
-      markSent(key);
+      if (hasSentKey(userId, key)) return;
+      markSentKey(userId, key);
       await sendMessage(chatId, `⚠️ Conflict (${payload.ids.join(' ↔ ')}): ${payload.message}`);
     }
   });
@@ -296,8 +304,7 @@ async function pollLoop() {
   const idleMs = Number(process.env.TELEGRAM_POLL_INTERVAL_MS) || 1500;
   while (running) {
     try {
-      const state = loadState();
-      const offset = (state.telegram.last_update_id || 0) + 1;
+      const offset = getPollCursor() + 1;
       const updates = await telegramApi('getUpdates', {
         offset,
         timeout: POLL_TIMEOUT_SEC,
@@ -335,12 +342,4 @@ export function startTelegramBot() {
 
 export function isBotEnabled() {
   return !!token();
-}
-
-export function getActiveChatId() {
-  try {
-    return loadState().telegram.active_chat_id;
-  } catch {
-    return null;
-  }
 }
