@@ -192,6 +192,10 @@
       border-bottom: 1px solid var(--border-soft);
       background: #FBFAF8;
     }
+    .quadrant[data-quadrant="do"]    .quadrant-header { background: #FFF0ED; border-bottom-color: #F5C4B8; }
+    .quadrant[data-quadrant="plan"]  .quadrant-header { background: #E8F4FD; border-bottom-color: #B3D9F5; }
+    .quadrant[data-quadrant="quick"] .quadrant-header { background: #EDFAF3; border-bottom-color: #B2E8CD; }
+    .quadrant[data-quadrant="later"] .quadrant-header { background: #F2F0F7; border-bottom-color: #D5CFE8; }
     .quadrant-title {
       font-family: var(--font-serif);
       font-size: 22px;
@@ -1862,8 +1866,8 @@ function renderCalendar(data, activeTasksArray) {
   const today = new Date();
   for (let i = 1; i <= daysInMonth; i++) {
     const isCurrentDay = today.getDate() === i && today.getMonth() === month && today.getFullYear() === year;
-    const dayClass = isCurrentDay ? 'bg-white border-t-2 border-[var(--primary)]' : 'bg-white';
-    const textClass = isCurrentDay ? 'font-serif text-[color:var(--primary)] font-normal text-2xl' : 'text-[color:var(--heading-2)] font-semibold';
+    const dayClass = isCurrentDay ? 'bg-[#EDE0FF] border-t-2 border-[#7C3AED]' : 'bg-white';
+    const textClass = isCurrentDay ? 'font-serif text-[#7C3AED] font-bold text-2xl' : 'text-[color:var(--heading-2)] font-semibold';
 
     let tasksHtml = '';
     if (tasksByDate[i]) {
