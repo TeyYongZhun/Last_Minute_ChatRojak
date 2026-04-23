@@ -129,6 +129,23 @@
     .tag-chip:hover { background: var(--accent); }
     .tag-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 2px rgba(55,50,47,0.2); }
 
+    .quad-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 14px; border-radius: 999px;
+      font-size: 13px; font-weight: 600; letter-spacing: .01em;
+      background: #FFFFFF; color: var(--foreground);
+      border: 1px solid var(--border);
+      cursor: pointer; transition: all .15s;
+      user-select: none;
+    }
+    .quad-chip:hover { background: var(--accent); border-color: rgba(55,50,47,0.2); }
+    .quad-chip input { margin: 0; width: 16px; height: 16px; cursor: pointer; }
+    .quad-chip .quad-dot { width: 10px; height: 10px; border-radius: 999px; display:inline-block; }
+    .quad-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 2px rgba(55,50,47,0.2); }
+    .quad-chip.active .quad-dot { box-shadow: 0 0 0 2px rgba(255,255,255,0.35); }
+
+    .task-tick { width: 22px; height: 22px; border-radius: 6px; cursor: pointer; accent-color: var(--primary); }
+
     .cat-pill {
       display: inline-flex; align-items: center;
       padding: 2px 10px; border-radius: 999px;
@@ -642,42 +659,51 @@
 
       <!-- Checklist View -->
       <div id="view-checklist" class="view-section hidden">
-        <div class="flex justify-between items-end mb-6 border-b border-[var(--border-soft)] pb-5">
-          <h2 class="font-serif text-5xl font-normal text-[color:var(--foreground)] leading-none">Task Checklist</h2>
+        <!-- Today hero -->
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] p-8 mb-6">
+          <div class="flex items-start justify-between gap-6 flex-wrap">
+            <div>
+              <div class="font-serif leading-none text-[color:var(--foreground)]" style="font-size:96px;letter-spacing:-0.03em;">Today</div>
+              <div class="flex items-baseline gap-4 mt-3">
+                <div id="hero-time" class="font-serif leading-none text-[color:var(--foreground)]" style="font-size:56px;letter-spacing:-0.02em;">—</div>
+                <div id="hero-day" class="text-2xl font-medium text-[color:var(--muted-foreground)]">—</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 bg-[var(--accent)] rounded-[var(--radius-xl)] px-6 py-4 border border-[var(--border-soft)]">
+              <div id="hero-weather-icon" style="font-size:56px;line-height:1;">☀️</div>
+              <div>
+                <div id="hero-temp" class="font-serif leading-none text-[color:var(--foreground)]" style="font-size:48px;letter-spacing:-0.02em;">31°</div>
+                <div id="hero-weather-label" class="text-sm text-[color:var(--muted-foreground)] mt-1">Sunny · Singapore</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quadrant picker (check up to 4) -->
+          <div class="mt-7 pt-6 border-t border-[var(--border-soft)]">
+            <div class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-3">Pick a quadrant to see tasks</div>
+            <div id="quadrant-picker" class="flex flex-wrap gap-2">
+              <label class="quad-chip" data-quad="do_now"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#37322F"></span>Do now</label>
+              <label class="quad-chip" data-quad="schedule"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#5B7D4E"></span>Plan</label>
+              <label class="quad-chip" data-quad="quick"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#B4822A"></span>Quick wins</label>
+              <label class="quad-chip" data-quad="defer"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#8A837F"></span>Later</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end items-center mb-4">
           <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
         </div>
 
-        <div id="filter-toolbar" class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-4 mb-6 space-y-3 shadow-[var(--shadow-xs)]">
-          <div class="flex flex-wrap items-center gap-3">
-            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Filters:</span>
-            <select id="filter-bucket" class="filter-select" onchange="applyFilters()">
-              <option value="">All categories</option>
-              <option value="Academic">Academic</option>
-              <option value="Co-curricular">Co-curricular</option>
-              <option value="Others">Others</option>
-            </select>
-            <select id="filter-priority" class="filter-select" onchange="applyFilters()">
-              <option value="">All priorities</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-            <select id="filter-status" class="filter-select" onchange="applyFilters()">
-              <option value="active">Active</option>
-              <option value="done">Done</option>
-              <option value="">All</option>
-            </select>
-            <input id="filter-q" class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Search…" oninput="applyFiltersDebounced()" />
-            <button onclick="clearFilters()" class="ghost-btn">Clear</button>
-          </div>
-          <div class="flex flex-wrap items-center gap-2" id="tag-chips">
-            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>
-            <span class="text-xs text-[color:var(--muted-foreground)]">none yet</span>
-          </div>
+        <div id="filter-toolbar" class="hidden">
+          <input id="filter-bucket" type="hidden" value="" />
+          <input id="filter-priority" type="hidden" value="" />
+          <input id="filter-status" type="hidden" value="active" />
+          <input id="filter-q" type="hidden" value="" />
+          <div id="tag-chips" class="hidden"></div>
         </div>
 
         <div id="checklist-content">
-           <div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No actionable tasks found.</div>
+           <div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">Pick a quadrant above to see tasks.</div>
         </div>
       </div>
 
@@ -1107,9 +1133,12 @@ function loadFilters() {
       status: f.status ?? 'active',
       q: f.q || '',
       tags: Array.isArray(f.tags) ? f.tags : [],
+      quadrants: (f.quadrants && typeof f.quadrants === 'object')
+        ? { do_now: !!f.quadrants.do_now, schedule: !!f.quadrants.schedule, quick: !!f.quadrants.quick, defer: !!f.quadrants.defer }
+        : { do_now: false, schedule: false, quick: false, defer: false },
     };
   } catch {
-    return { status: 'active', tags: [] };
+    return { status: 'active', tags: [], quadrants: { do_now: false, schedule: false, quick: false, defer: false } };
   }
 }
 function saveFilters() { localStorage.setItem('filters', JSON.stringify(filters)); }
@@ -1175,14 +1204,16 @@ function sortByUrgency(items, now = new Date()) {
 }
 
 function activeTasks(data) {
-  const combined = [
-    ...(data.do_now || []),
-    ...(data.in_progress || []),
-    ...(data.need_info || []),
-    ...(data.schedule || []),
-    ...(data.defer || []),
-  ];
-  return sortByUrgency(combined);
+  const q = filters.quadrants || { do_now: false, schedule: false, quick: false, defer: false };
+  if (!q.do_now && !q.schedule && !q.quick && !q.defer) return [];
+  const isQuick = (t) => (t.eisenhower === 'quick');
+  const keep = [];
+  const pushAll = (arr, ok) => { for (const t of (arr || [])) if (ok(t)) keep.push(t); };
+  pushAll(data.do_now,      t => (isQuick(t) ? q.quick : q.do_now));
+  pushAll(data.in_progress, t => (isQuick(t) ? q.quick : q.do_now));
+  pushAll(data.schedule,    t => q.schedule);
+  pushAll(data.defer,       t => (isQuick(t) ? q.quick : q.defer));
+  return sortByUrgency(keep);
 }
 
 // ---------------- Filters UI ----------------
@@ -1225,6 +1256,17 @@ function applyFilters() {
   filters.priority = document.getElementById('filter-priority').value;
   filters.status = document.getElementById('filter-status').value;
   filters.q = document.getElementById('filter-q').value;
+  const quadBoxes = document.querySelectorAll('#quadrant-picker .quad-chip');
+  if (quadBoxes.length) {
+    const q = {};
+    quadBoxes.forEach(lbl => {
+      const name = lbl.dataset.quad;
+      const cb = lbl.querySelector('input');
+      q[name] = !!cb.checked;
+      lbl.classList.toggle('active', !!cb.checked);
+    });
+    filters.quadrants = q;
+  }
   saveFilters();
   refreshDashboard();
 }
@@ -1235,7 +1277,7 @@ function applyFiltersDebounced() {
 }
 
 function clearFilters() {
-  filters = { status: 'active', tags: [] };
+  filters = { status: 'active', tags: [], quadrants: { do_now: false, schedule: false, quick: false, defer: false } };
   saveFilters();
   refreshDashboard();
 }
@@ -1432,8 +1474,10 @@ function renderTaskRow(item) {
   const actions = item.status === 'done'
     ? ''
     : item.status === 'in_progress'
-    ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`
-    : `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent mr-3">Start Task</button><button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`;
+    ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Pending</button>`
+    : `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
+
+  const tickbox = `<input type="checkbox" class="task-tick" ${item.status === 'done' ? 'checked' : ''} data-tid="${tid}" onclick="event.stopPropagation()" onchange="markDone(this.dataset.tid)" title="Mark done" />`;
 
   const tagChips = (item.tags || []).map(t =>
     `<button class="tag-chip" onclick="toggleTag('${esc(t)}')">#${esc(t)}</button>`
@@ -1451,11 +1495,11 @@ function renderTaskRow(item) {
   const statusText = `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--heading-2)] font-medium">${statusLabel(item)}</span>`;
 
   return `
-    <div class="task-row flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')) return; openTaskModal('${tid}')">
-      <div class="flex-shrink-0">${statusDot(item)}</div>
+    <div class="task-row flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')||event.target.closest('input')) return; openTaskModal('${tid}')">
+      <div class="flex-shrink-0">${tickbox}</div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-0.5">
-          <div class="text-base font-semibold text-[color:var(--foreground)] truncate">${esc(item.task)}</div>
+          <div class="text-base font-semibold text-[color:var(--foreground)] truncate ${item.status === 'done' ? 'line-through opacity-60' : ''}">${esc(item.task)}</div>
           ${overdueBadge}
         </div>
         <div class="text-xs text-[color:var(--muted-foreground)] flex items-center flex-wrap gap-1">
@@ -2903,7 +2947,25 @@ function handleAvatarUpload(input) {
 (async () => {
   const ok = await checkAuth();
   if (ok) refreshDashboard();
+  startHeroClock();
 })();
+
+function startHeroClock() {
+  const timeEl = document.getElementById('hero-time');
+  const dayEl = document.getElementById('hero-day');
+  if (!timeEl || !dayEl) return;
+  const tick = () => {
+    const d = new Date();
+    const hh = d.getHours(), mm = d.getMinutes();
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const h12 = ((hh + 11) % 12) + 1;
+    timeEl.textContent = `${h12}:${String(mm).padStart(2,'0')} ${ampm}`;
+    const fmt = new Intl.DateTimeFormat(undefined, { weekday:'long', day:'numeric', month:'long' });
+    dayEl.textContent = fmt.format(d);
+  };
+  tick();
+  setInterval(tick, 1000 * 15);
+}
 </script>
 </body>
 </html>
