@@ -28,6 +28,14 @@ const PROVIDERS = {
     modelEnv: 'GEMINI_MODEL',
     defaultModel: 'gemini-2.5-flash',
   },
+  ilmuglm: {
+    kind: 'openai',
+    apiKeyEnv: 'ILMU_API_KEY',
+    defaultBaseURL: 'https://api.ilmu.ai/openai/',
+    baseURLEnv: 'ILMU_BASE_URL',
+    modelEnv: 'ILMU_MODEL',
+    defaultModel: 'glm-5.1',
+  },
 };
 
 function activeProviderName() {
@@ -37,6 +45,14 @@ function activeProviderName() {
 
 export function getProviderName() {
   return activeProviderName();
+}
+
+export function getProviderConfig() {
+  return PROVIDERS[activeProviderName()];
+}
+
+export function getProviderKeyEnv() {
+  return getProviderConfig().apiKeyEnv;
 }
 
 // Translates OpenAI chat/completions calls to Anthropic Messages calls and
@@ -97,7 +113,7 @@ function createAnthropicShim({ apiKey, baseURL }) {
 export function getClient() {
   if (_client) return _client;
   const name = activeProviderName();
-  const cfg = PROVIDERS[name];
+  const cfg = getProviderConfig();
   const key = process.env[cfg.apiKeyEnv];
   if (!key) {
     throw new Error(`${cfg.apiKeyEnv} is not set. Copy .env.example to .env and add your ${name} key.`);
@@ -112,7 +128,7 @@ export function getClient() {
 }
 
 export const MODEL = (() => {
-  const cfg = PROVIDERS[activeProviderName()];
+  const cfg = getProviderConfig();
   return process.env[cfg.modelEnv] || cfg.defaultModel;
 })();
 
