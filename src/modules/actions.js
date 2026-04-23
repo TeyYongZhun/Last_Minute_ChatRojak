@@ -24,20 +24,27 @@ function reminderId(taskId, fireAtIso) {
 export function generateActionsForPlan(userId, plan, task, now) {
   replaceChecklist(task.id, plan.steps || []);
 
-  if (plan.decision === 'waiting') return;
-  if (!task.deadline_iso) return;
+  if (plan.decision === 'waiting') {
+    if (getGoogleTokens(userId)) {
+      upsertCalendarEvent(userId, task, plan, now)
+        .catch((err) => console.error('[actions] calendar sync error:', err.message));
+    }
+    return;
+  }
 
-  const schedule = computeSchedule(task, plan, now);
-  if (!schedule.length) return;
-
-  for (const item of schedule) {
-    const id = reminderId(task.id, item.fire_at_iso);
-    upsertReminder(userId, {
-      id,
-      task_id: task.id,
-      fire_at_iso: item.fire_at_iso,
-      message: item.message,
-    });
+  if (task.deadline_iso) {
+    const schedule = computeSchedule(task, plan, now);
+    for (const item of schedule) {
+      const id = reminderId(task.id, item.fire_at_iso);
+      upsertReminder(userId, {
+        id,
+        task_id: task.id,
+        fire_at_iso: item.fire_at_iso,
+        message: item.message,
+      });
+    }
+  } else {
+    deleteRemindersForTask(task.id);
   }
 
   if (getGoogleTokens(userId)) {

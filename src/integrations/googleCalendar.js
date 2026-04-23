@@ -108,18 +108,45 @@ export function disconnect(userId) {
   deleteTokens(userId);
 }
 
-function defaultStartIso(now = new Date()) {
-  const d = new Date(now);
-  d.setDate(d.getDate() + 1);
-  d.setHours(9, 0, 0, 0);
-  return d.toISOString();
+const OFFSET_SUFFIX_RE = /(Z|[+-]\d{2}:\d{2})$/;
+const RFC3339_WITH_OFFSET_RE =
+  /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+
+export function isValidDeadlineIso(s) {
+  if (typeof s !== 'string' || !RFC3339_WITH_OFFSET_RE.test(s)) return false;
+  const d = new Date(s);
+  return !Number.isNaN(d.getTime());
+}
+
+function resolveDurationMinutes(task) {
+  const raw = task?.user_duration_minutes ?? task?.ai_duration_minutes ?? 30;
+  const n = Math.round(Number(raw));
+  if (!Number.isFinite(n)) return 30;
+  return Math.max(5, Math.min(1440, n));
+}
+
+export function computeEndDateTime(startIso, durationMinutes) {
+  const match = startIso.match(OFFSET_SUFFIX_RE);
+  const offset = match ? match[1] : 'Z';
+  const endEpoch = new Date(startIso).getTime() + durationMinutes * 60 * 1000;
+  const asUtc = new Date(endEpoch).toISOString();
+  if (offset === 'Z') return asUtc;
+  const sign = offset[0] === '-' ? -1 : 1;
+  const [hh, mm] = offset.slice(1).split(':').map(Number);
+  const offsetMinutes = sign * (hh * 60 + mm);
+  const shifted = new Date(endEpoch + offsetMinutes * 60 * 1000).toISOString();
+  return shifted.replace(/Z$/, offset);
 }
 
 function buildEventBody(task, plan, now) {
-  const startIso = task.deadline_iso || defaultStartIso(now);
-  const start = new Date(startIso);
-  const end = new Date(start.getTime() + 30 * 60 * 1000);
-  const schedule = computeSchedule({ ...task, deadline_iso: startIso }, plan, now);
+  if (!isValidDeadlineIso(task.deadline_iso)) {
+    throw new Error('buildEventBody: task.deadline_iso must be a valid RFC-3339 datetime with explicit offset');
+  }
+  const startIso = task.deadline_iso;
+  const durationMinutes = resolveDurationMinutes(task);
+  const endIso = computeEndDateTime(startIso, durationMinutes);
+
+  const schedule = computeSchedule(task, plan, now);
   const overrides = schedule.map((s) => ({
     method: 'popup',
     minutes: Math.min(40320, Math.max(1, s.hours_before * 60)),
@@ -137,11 +164,13 @@ function buildEventBody(task, plan, now) {
   return {
     summary: task.task,
     description,
-    start: { dateTime: start.toISOString() },
-    end: { dateTime: end.toISOString() },
+    start: { dateTime: startIso },
+    end: { dateTime: endIso },
     reminders: overrides.length ? { useDefault: false, overrides } : { useDefault: true },
   };
 }
+
+export { buildEventBody };
 
 async function apiFetch(userId, method, path, body) {
   const token = await getAccessToken(userId);
@@ -172,6 +201,36 @@ export async function upsertEvent(userId, task, plan, now = new Date()) {
   const tokens = getTokens(userId);
   if (!tokens) return { skipped: true, reason: 'not_linked' };
   const calendarId = tokens.calendar_id || 'primary';
+
+  if (task.deadline_iso == null) {
+    const existing = getEventForTask(task.id);
+    if (existing?.event_id) {
+      try {
+        await apiFetch(
+          userId,
+          'DELETE',
+          `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(existing.event_id)}`
+        );
+      } catch (err) {
+        if (err.status !== 404 && err.status !== 410) {
+          addTaskEvent(userId, task.id, 'calendar_sync_failed', { error: err.message, action: 'delete_on_null_deadline' });
+          return { skipped: true, reason: 'no_deadline', error: err.message };
+        }
+      }
+      deleteEventMapping(task.id);
+    }
+    addTaskEvent(userId, task.id, 'calendar_sync_skipped', { reason: 'no_deadline' });
+    return { skipped: true, reason: 'no_deadline' };
+  }
+
+  if (!isValidDeadlineIso(task.deadline_iso)) {
+    addTaskEvent(userId, task.id, 'calendar_sync_skipped', {
+      reason: 'invalid_deadline',
+      value_len: String(task.deadline_iso).length,
+    });
+    return { skipped: true, reason: 'invalid_deadline' };
+  }
+
   const body = buildEventBody(task, plan, now);
   const existing = getEventForTask(task.id);
   try {
