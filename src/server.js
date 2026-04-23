@@ -25,7 +25,7 @@ import {
 import { runChain } from './modules/promptChain.js';
 import { startTelegramBot, isBotEnabled } from './modules/telegramBot.js';
 import { processWithEvents } from './modules/processStream.js';
-import { getProviderName, MODEL } from './client.js';
+import { getProviderName, getProviderKeyEnv, MODEL } from './client.js';
 import { runMigrations } from './db/migrate.js';
 import { startScheduler } from './scheduler.js';
 import authRouter from './routes/auth.js';
@@ -383,7 +383,7 @@ if (process.env.NODE_ENV !== 'test' && !process.env.SKIP_SERVER_START) {
     const provider = getProviderName();
     console.log(`Last Minute ChatRojak running at http://localhost:${PORT}`);
     console.log(`AI provider: ${provider} · model: ${MODEL}`);
-    const keyEnv = provider === 'gemini' ? 'GEMINI_API_KEY' : 'Z_AI_API_KEY';
+    const keyEnv = getProviderKeyEnv();
     if (!process.env[keyEnv]) {
       console.warn(`WARNING: ${keyEnv} not set. Copy .env.example to .env and add your key.`);
     }
