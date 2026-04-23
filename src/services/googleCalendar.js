@@ -1,3 +1,9 @@
+/**
+ * @deprecated dev-only stub used exclusively by src/testCalendar.js.
+ * Production code must use src/integrations/googleCalendar.js, which enforces
+ * strict `summary = task.task` and `start = task.deadline_iso` rules.
+ * Do not import from this module in request handlers or sync pipelines.
+ */
 import fs from "fs";
 import { google } from "googleapis";
 

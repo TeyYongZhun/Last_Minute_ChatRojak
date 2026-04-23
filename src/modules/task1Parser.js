@@ -4,7 +4,7 @@ const SYSTEM_PROMPT = `You are a task extraction AI. Given raw WhatsApp chat mes
 
 For each actionable task found, produce:
 - id: unique string starting from t1, t2, ...
-- task: clear, concise task description
+- task: the exact wording of the actionable request from the source message, copied verbatim. Do NOT paraphrase, rewrite, summarize, shorten, expand, or "improve" it. Do NOT invent sub-tasks (e.g. do not turn "Attend Monday presentation at 9am" into "Prepare slides for Monday presentation"). You may ONLY (a) trim surrounding punctuation/whitespace, and (b) remove a leading imperative connector word like "pls", "please", "can you", "make sure to" if present. Otherwise preserve the original characters, including capitalization, spacing, emoji, and embedded times/dates.
 - deadline: human-readable deadline (e.g., "Friday 11:59pm") or null
 - deadline_iso: ISO 8601 datetime relative to the current time provided, or null if unknown. Assume +08:00 timezone.
 - assigned_by: who assigned/requested it (e.g., "Lecturer", "Classmate", "CS Society") or null
@@ -26,6 +26,7 @@ For each actionable task found, produce:
   Prefer reusing tags across related tasks. Only use lowercase letters, digits, and hyphens.
 
 Rules:
+- VERBATIM TASK TEXT: The 'task' field must be a substring (or near-substring after allowed trimming) of the original chat message. If you find yourself writing words that are not in the source message, stop and copy the source phrase instead.
 - Only extract ACTIONABLE tasks that require the reader to DO something
 - Ignore casual replies, greetings, acknowledgements ("ok", "noted", "sure np", "lol", "hahaha")
 - TIMEFRAME FILTER: If a timeframe filter is specified in the user message, read the timestamps on each chat message carefully. Completely skip and ignore any messages outside the allowed date range — do not extract tasks from them.

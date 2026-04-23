@@ -421,11 +421,22 @@
             </div>
             <div class="text-xs text-[color:var(--muted-foreground)] mt-1" id="auth-password-hint">At least 8 characters</div>
           </div>
+          <div id="auth-new-password-row" class="hidden">
+            <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">New password</label>
+            <input id="auth-new-password" type="password" autocomplete="new-password" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+            <div class="text-xs text-[color:var(--muted-foreground)] mt-1">At least 8 characters</div>
+          </div>
           <div id="auth-error" class="text-sm text-[color:var(--destructive)] min-h-5"></div>
           <button id="auth-submit" onclick="submitAuth()" class="w-full py-2.5 bg-[var(--primary)] hover:brightness-110 text-white rounded-full text-sm font-bold shadow-[var(--shadow-xs)] transition-all">Log in</button>
-          <div class="text-center text-sm text-[color:var(--muted-foreground)]">
+          <div id="auth-forgot-row" class="text-center text-sm">
+            <button onclick="enterForgotMode()" class="text-[color:var(--primary)] hover:underline font-semibold">Forgot password?</button>
+          </div>
+          <div id="auth-switch-row" class="text-center text-sm text-[color:var(--muted-foreground)]">
             <span id="auth-switch-label">Don't have an account?</span>
             <button onclick="toggleAuthMode()" class="ml-2 text-[color:var(--primary)] hover:underline font-semibold" id="auth-switch-btn">Sign up</button>
+          </div>
+          <div id="auth-back-row" class="hidden text-center text-sm">
+            <button onclick="exitSecondaryMode()" class="text-[color:var(--primary)] hover:underline font-semibold">Back to login</button>
           </div>
         </div>
       </div>
@@ -711,6 +722,24 @@
           <div class="font-serif text-2xl text-[color:var(--foreground)]" id="account-email">—</div>
         </div>
 
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mb-6 shadow-[var(--shadow-xs)]">
+          <div class="section-label">Password</div>
+          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">Update the password for this account. Other devices will be signed out.</p>
+          <div class="space-y-3 max-w-sm">
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Current password</label>
+              <input id="cp-current" type="password" autocomplete="current-password" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">New password</label>
+              <input id="cp-new" type="password" autocomplete="new-password" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+              <div class="text-xs text-[color:var(--muted-foreground)] mt-1">At least 8 characters</div>
+            </div>
+            <div id="cp-status" class="text-sm min-h-5"></div>
+            <button id="cp-submit" onclick="submitChangePassword()" class="ghost-btn ghost-btn-accent">Change password</button>
+          </div>
+        </div>
+
         <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 shadow-[var(--shadow-xs)]">
           <div class="section-label">Telegram</div>
           <div id="telegram-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">Checking…</div>
@@ -901,36 +930,129 @@ function togglePasswordVisibility() {
   }
 }
 
+function renderAuthMode() {
+  const subtitle = document.getElementById('auth-subtitle');
+  const submit = document.getElementById('auth-submit');
+  const switchRow = document.getElementById('auth-switch-row');
+  const forgotRow = document.getElementById('auth-forgot-row');
+  const backRow = document.getElementById('auth-back-row');
+  const emailInput = document.getElementById('auth-email');
+  const emailRow = emailInput.parentElement;
+  const passwordRow = document.getElementById('auth-password').parentElement.parentElement;
+  const newPasswordRow = document.getElementById('auth-new-password-row');
+
+  document.getElementById('auth-error').textContent = '';
+
+  const show = (el, cond) => el.classList.toggle('hidden', !cond);
+
+  if (authMode === 'login' || authMode === 'signup') {
+    subtitle.textContent = authMode === 'login' ? 'Sign in to continue' : 'Create a new account';
+    submit.textContent = authMode === 'login' ? 'Log in' : 'Sign up';
+    document.getElementById('auth-switch-label').textContent = authMode === 'login' ? "Don't have an account?" : 'Already have one?';
+    document.getElementById('auth-switch-btn').textContent = authMode === 'login' ? 'Sign up' : 'Log in';
+    document.getElementById('auth-password').autocomplete = authMode === 'login' ? 'current-password' : 'new-password';
+    show(emailRow, true);
+    show(passwordRow, true);
+    show(newPasswordRow, false);
+    show(switchRow, true);
+    show(forgotRow, authMode === 'login');
+    show(backRow, false);
+  } else if (authMode === 'forgot') {
+    subtitle.textContent = 'Enter your email and a new password';
+    submit.textContent = 'Reset password';
+    show(emailRow, true);
+    show(passwordRow, false);
+    show(newPasswordRow, true);
+    show(switchRow, false);
+    show(forgotRow, false);
+    show(backRow, true);
+  }
+}
+
 function toggleAuthMode() {
   authMode = authMode === 'login' ? 'signup' : 'login';
-  document.getElementById('auth-subtitle').textContent = authMode === 'login' ? 'Sign in to continue' : 'Create a new account';
-  document.getElementById('auth-submit').textContent = authMode === 'login' ? 'Log in' : 'Sign up';
-  document.getElementById('auth-switch-label').textContent = authMode === 'login' ? "Don't have an account?" : 'Already have one?';
-  document.getElementById('auth-switch-btn').textContent = authMode === 'login' ? 'Sign up' : 'Log in';
-  document.getElementById('auth-password').autocomplete = authMode === 'login' ? 'current-password' : 'new-password';
-  document.getElementById('auth-error').textContent = '';
+  renderAuthMode();
+}
+
+function enterForgotMode() {
+  authMode = 'forgot';
+  renderAuthMode();
+}
+
+function exitSecondaryMode() {
+  authMode = 'login';
+  const np = document.getElementById('auth-new-password');
+  if (np) np.value = '';
+  renderAuthMode();
 }
 
 async function submitAuth() {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
   const errEl = document.getElementById('auth-error');
   errEl.textContent = '';
-  if (!email || !password) { errEl.textContent = 'Fill in both fields.'; return; }
   const btn = document.getElementById('auth-submit');
+  const restoreLabel = btn.textContent;
   btn.disabled = true; btn.textContent = '…';
   try {
-    const data = await api('POST', `/api/auth/${authMode}`, { email, password });
-    currentUser = data;
-    hideAuthGate();
-    document.getElementById('user-email').textContent = data.email;
-    loadAvatarFromStorage();
-    await refreshDashboard();
+    if (authMode === 'login' || authMode === 'signup') {
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      if (!email || !password) throw new Error('Fill in both fields.');
+      const data = await api('POST', `/api/auth/${authMode}`, { email, password });
+      currentUser = data;
+      hideAuthGate();
+      document.getElementById('user-email').textContent = data.email;
+      loadAvatarFromStorage();
+      await refreshDashboard();
+    } else if (authMode === 'forgot') {
+      const email = document.getElementById('auth-email').value.trim();
+      const newPassword = document.getElementById('auth-new-password').value;
+      if (!email || !newPassword) throw new Error('Fill in both fields.');
+      await api('POST', '/api/auth/reset-password', { email, new_password: newPassword });
+      currentUser = await api('GET', '/api/auth/me');
+      hideAuthGate();
+      document.getElementById('user-email').textContent = currentUser.email;
+      document.getElementById('auth-new-password').value = '';
+      loadAvatarFromStorage();
+      await refreshDashboard();
+    }
   } catch (e) {
     errEl.textContent = e.message;
   } finally {
     btn.disabled = false;
-    btn.textContent = authMode === 'login' ? 'Log in' : 'Sign up';
+    btn.textContent = restoreLabel;
+  }
+}
+
+async function submitChangePassword() {
+  const cur = document.getElementById('cp-current');
+  const next = document.getElementById('cp-new');
+  const status = document.getElementById('cp-status');
+  const btn = document.getElementById('cp-submit');
+  status.textContent = '';
+  status.className = 'text-sm min-h-5';
+  if (!cur.value || !next.value) {
+    status.textContent = 'Fill in both fields.';
+    status.className = 'text-sm min-h-5 text-[color:var(--destructive)]';
+    return;
+  }
+  btn.disabled = true;
+  const restore = btn.textContent;
+  btn.textContent = 'Saving…';
+  try {
+    await api('POST', '/api/auth/change-password', {
+      current_password: cur.value,
+      new_password: next.value,
+    });
+    cur.value = '';
+    next.value = '';
+    status.textContent = 'Password changed. Other devices have been signed out.';
+    status.className = 'text-sm min-h-5 text-[color:var(--primary)]';
+  } catch (e) {
+    status.textContent = e.message;
+    status.className = 'text-sm min-h-5 text-[color:var(--destructive)]';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = restore;
   }
 }
 

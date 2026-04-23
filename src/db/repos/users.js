@@ -23,3 +23,10 @@ export function getUserById(id) {
   const db = getDb();
   return db.prepare('SELECT * FROM users WHERE id = ?').get(id) || null;
 }
+
+export function updatePassword(userId, passwordHash) {
+  const db = getDb();
+  return db
+    .prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+    .run(passwordHash, userId).changes;
+}

@@ -10,9 +10,8 @@ import {
   replanAll,
   startTask,
   completeTask,
+  pauseTask,
   respondToClarification,
-  setUserPriority,
-  setBucket,
   setUserEisenhower,
   setUserDurationMinutes,
   addTaskDependency,
@@ -226,6 +225,23 @@ app.post('/api/tasks/:taskId/complete', requireUser, async (req, res) => {
   res.json({ status: 'done' });
 });
 
+app.post('/api/tasks/:taskId/pause', requireUser, async (req, res) => {
+  const out = pauseTask(req.user.id, req.params.taskId);
+  switch (out.result) {
+    case 'ok':
+      try { await replanAll(req.user.id, new Date()); } catch (e) { console.error('[/api/tasks/:id/pause] replan error:', e); }
+      return res.json({ status: 'pending' });
+    case 'not_found':
+      return res.status(404).json({ detail: 'Task not found' });
+    case 'already_done':
+      return res.status(409).json({ detail: 'Task is already completed', reason: 'done' });
+    case 'not_in_progress':
+      return res.status(409).json({ detail: 'Task is not in progress', reason: 'not_in_progress' });
+    default:
+      return res.status(500).json({ detail: 'Unknown pause result' });
+  }
+});
+
 app.post('/api/tasks/:taskId/step', requireUser, (req, res) => {
   const { index } = req.body || {};
   if (typeof index !== 'number') {
@@ -235,34 +251,6 @@ app.post('/api/tasks/:taskId/step', requireUser, (req, res) => {
     return res.status(404).json({ detail: 'Task or step not found' });
   }
   res.json({ status: 'toggled' });
-});
-
-app.post('/api/tasks/:taskId/priority', requireUser, async (req, res) => {
-  const { priority } = req.body || {};
-  const allowed = [null, 'high', 'medium', 'low'];
-  if (!allowed.includes(priority)) {
-    return res.status(400).json({ detail: 'priority must be high, medium, low, or null' });
-  }
-  if (!setUserPriority(req.user.id, req.params.taskId, priority)) {
-    return res.status(404).json({ detail: 'Task not found' });
-  }
-  try {
-    await replanAll(req.user.id, new Date());
-  } catch (e) {
-    console.error('[/api/tasks/:id/priority] replan error:', e);
-  }
-  res.json({ ok: true });
-});
-
-app.post('/api/tasks/:taskId/bucket', requireUser, async (req, res) => {
-  const { bucket } = req.body || {};
-  if (!['Academic', 'Co-curricular', 'Others'].includes(bucket)) {
-    return res.status(400).json({ detail: 'bucket must be Academic, Co-curricular, or Others' });
-  }
-  if (!setBucket(req.user.id, req.params.taskId, bucket)) {
-    return res.status(404).json({ detail: 'Task not found' });
-  }
-  res.json({ ok: true });
 });
 
 app.post('/api/tasks/:taskId/eisenhower', requireUser, async (req, res) => {
