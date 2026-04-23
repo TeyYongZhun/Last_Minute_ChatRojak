@@ -13,8 +13,6 @@ import {
   respondToClarification,
   setUserPriority,
   setBucket,
-  setUserEisenhower,
-  setUserDurationMinutes,
   addTaskDependency,
   removeTaskDependency,
   toggleStep,
@@ -260,30 +258,6 @@ app.post('/api/tasks/:taskId/bucket', requireUser, async (req, res) => {
     return res.status(400).json({ detail: 'bucket must be Academic, Co-curricular, or Others' });
   }
   if (!setBucket(req.user.id, req.params.taskId, bucket)) {
-    return res.status(404).json({ detail: 'Task not found' });
-  }
-  res.json({ ok: true });
-});
-
-app.post('/api/tasks/:taskId/eisenhower', requireUser, async (req, res) => {
-  const { quadrant } = req.body || {};
-  const allowed = [null, 'do', 'plan', 'quick', 'later'];
-  if (!allowed.includes(quadrant)) {
-    return res.status(400).json({ detail: 'quadrant must be do, plan, quick, later, or null' });
-  }
-  if (!setUserEisenhower(req.user.id, req.params.taskId, quadrant)) {
-    return res.status(404).json({ detail: 'Task not found' });
-  }
-  res.json({ ok: true });
-});
-
-app.post('/api/tasks/:taskId/duration', requireUser, async (req, res) => {
-  const raw = req.body?.minutes;
-  const minutes = raw === null || raw === undefined || raw === '' ? null : Number(raw);
-  if (minutes !== null && (!isFinite(minutes) || minutes < 5 || minutes > 1440)) {
-    return res.status(400).json({ detail: 'minutes must be null or a number between 5 and 1440' });
-  }
-  if (!setUserDurationMinutes(req.user.id, req.params.taskId, minutes)) {
     return res.status(404).json({ detail: 'Task not found' });
   }
   res.json({ ok: true });

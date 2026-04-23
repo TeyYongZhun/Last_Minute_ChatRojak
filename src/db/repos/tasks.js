@@ -2,7 +2,6 @@ import { getDb } from '../index.js';
 
 const VALID_BUCKETS = new Set(['Academic', 'Co-curricular', 'Others']);
 const VALID_PRIORITIES = new Set(['high', 'medium', 'low']);
-const VALID_QUADRANTS = new Set(['do', 'plan', 'quick', 'later']);
 
 function normaliseRow(row) {
   if (!row) return null;
@@ -18,10 +17,6 @@ function normaliseRow(row) {
     user_priority: row.user_priority || null,
     ai_priority_score: row.ai_priority_score ?? null,
     user_adjusted_score: row.user_adjusted_score ?? null,
-    ai_eisenhower: row.ai_eisenhower || null,
-    user_eisenhower: row.user_eisenhower || null,
-    ai_duration_minutes: row.ai_duration_minutes ?? null,
-    user_duration_minutes: row.user_duration_minutes ?? null,
     confidence: row.confidence,
     category: row.category,
     category_bucket: row.category_bucket || 'Others',
@@ -82,19 +77,13 @@ export function insertTask(userId, task) {
   const priority = VALID_PRIORITIES.has(task.priority) ? task.priority : 'medium';
   const aiPriority = VALID_PRIORITIES.has(task.ai_priority) ? task.ai_priority : priority;
 
-  const aiQuadrant = VALID_QUADRANTS.has(task.ai_eisenhower) ? task.ai_eisenhower : null;
-  const aiDuration = task.ai_duration_minutes == null
-    ? null
-    : Math.max(5, Math.min(1440, Math.round(Number(task.ai_duration_minutes))));
-
   db.prepare(
     `INSERT INTO tasks (
        id, user_id, task, deadline, deadline_iso, assigned_by,
        priority, confidence, category, missing_fields, status, created_at,
        ai_priority, user_priority, ai_priority_score, user_adjusted_score,
-       category_bucket, updated_at, completed_at, complexity,
-       ai_eisenhower, user_eisenhower, ai_duration_minutes, user_duration_minutes
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       category_bucket, updated_at, completed_at, complexity
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     task.id,
     userId,
@@ -115,11 +104,7 @@ export function insertTask(userId, task) {
     bucket,
     now,
     null,
-    task.complexity ?? null,
-    aiQuadrant,
-    null,
-    aiDuration,
-    null
+    task.complexity ?? null
   );
 }
 
@@ -214,50 +199,6 @@ export function setPriorityScores(userId, taskId, { aiScore, userScore }) {
       'UPDATE tasks SET ai_priority_score = ?, user_adjusted_score = ?, updated_at = ? WHERE user_id = ? AND id = ?'
     )
     .run(aiScore ?? null, userScore ?? null, Date.now(), userId, taskId).changes;
-}
-
-export function setAiEisenhower(userId, taskId, quadrant) {
-  if (quadrant && !VALID_QUADRANTS.has(quadrant)) {
-    throw new Error(`setAiEisenhower: invalid quadrant '${quadrant}'`);
-  }
-  const db = getDb();
-  return db
-    .prepare(
-      'UPDATE tasks SET ai_eisenhower = ?, updated_at = ? WHERE user_id = ? AND id = ?'
-    )
-    .run(quadrant || null, Date.now(), userId, taskId).changes;
-}
-
-export function setUserEisenhower(userId, taskId, quadrant) {
-  if (quadrant !== null && !VALID_QUADRANTS.has(quadrant)) {
-    throw new Error(`setUserEisenhower: invalid quadrant '${quadrant}'`);
-  }
-  const db = getDb();
-  return db
-    .prepare(
-      'UPDATE tasks SET user_eisenhower = ?, updated_at = ? WHERE user_id = ? AND id = ?'
-    )
-    .run(quadrant, Date.now(), userId, taskId).changes;
-}
-
-export function setAiDurationMinutes(userId, taskId, minutes) {
-  const m = minutes == null ? null : Math.max(5, Math.min(1440, Math.round(Number(minutes))));
-  const db = getDb();
-  return db
-    .prepare(
-      'UPDATE tasks SET ai_duration_minutes = ?, updated_at = ? WHERE user_id = ? AND id = ?'
-    )
-    .run(m, Date.now(), userId, taskId).changes;
-}
-
-export function setUserDurationMinutes(userId, taskId, minutes) {
-  const m = minutes == null ? null : Math.max(5, Math.min(1440, Math.round(Number(minutes))));
-  const db = getDb();
-  return db
-    .prepare(
-      'UPDATE tasks SET user_duration_minutes = ?, updated_at = ? WHERE user_id = ? AND id = ?'
-    )
-    .run(m, Date.now(), userId, taskId).changes;
 }
 
 export function setTaskTags(taskId, tags) {

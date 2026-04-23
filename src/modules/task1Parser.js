@@ -9,7 +9,6 @@ For each actionable task found, produce:
 - deadline_iso: ISO 8601 datetime relative to the current time provided, or null if unknown. Assume +08:00 timezone.
 - assigned_by: who assigned/requested it (e.g., "Lecturer", "Classmate", "CS Society") or null
 - priority: "high", "medium", or "low" based on urgency and source
-- estimated_duration_minutes: integer 5..1440, best guess of focused work time needed. Do not pad for breaks. Examples: a 30-second reply ≈ 5, a short reading ≈ 15, a problem set ≈ 90, a full essay draft ≈ 240.
 - confidence: 0.0-1.0 how confident you are this is a real actionable task
 - missing_fields: array of important missing fields, e.g. ["deadline"] or ["assigned_by"]
 - category: short label (1-2 words) for the kind of task — pick a natural label from the chat itself, e.g. "Academic", "CCA", "Admin", "Errand". Reuse the same label across related tasks in the same chat.
@@ -70,10 +69,6 @@ function normaliseTags(raw) {
 
 function normalize(t, index) {
   const priority = ['high', 'medium', 'low'].includes(t.priority) ? t.priority : 'medium';
-  const rawDur = t.estimated_duration_minutes;
-  const estimated_duration_minutes = typeof rawDur === 'number' && isFinite(rawDur)
-    ? Math.max(5, Math.min(1440, Math.round(rawDur)))
-    : null;
   return {
     id: String(t.id || `t${index + 1}`),
     task: String(t.task || '').trim(),
@@ -89,7 +84,6 @@ function normalize(t, index) {
     category_bucket: null,
     tags: normaliseTags(t.tags),
     complexity: null,
-    estimated_duration_minutes,
     status: 'pending',
   };
 }
