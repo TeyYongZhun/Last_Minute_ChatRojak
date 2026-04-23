@@ -170,6 +170,174 @@
     .edge-hatch {
       background-image: repeating-linear-gradient(-45deg, rgba(55,50,47,0.08) 0 0.5px, transparent 0.5px 14px);
     }
+
+    /* Power Grid (Eisenhower 2x2) */
+    .power-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .quadrant {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-xs);
+      display: flex; flex-direction: column;
+      min-height: 260px;
+      overflow: hidden;
+    }
+    .quadrant-header {
+      position: relative;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border-soft);
+      background: #FBFAF8;
+    }
+    .quadrant-title {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      line-height: 1.1;
+      color: var(--foreground);
+    }
+    .quadrant-sub {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted-foreground);
+      margin-top: 2px;
+    }
+    .quadrant-tally {
+      position: absolute;
+      right: 14px; top: 12px;
+      font-size: 11px; font-weight: 600;
+      color: var(--muted-foreground);
+    }
+    .quadrant-body {
+      flex: 1;
+      padding: 10px;
+      display: flex; flex-direction: column; gap: 8px;
+      min-height: 120px;
+      transition: background 0.15s;
+    }
+    .quadrant-body.drag-over {
+      background: var(--accent);
+    }
+    .quadrant-body .empty {
+      color: var(--muted-foreground);
+      font-size: 12px;
+      font-style: italic;
+      padding: 16px 8px;
+      text-align: center;
+    }
+    .task-block {
+      position: relative;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-xs);
+      padding: 10px 12px 14px;
+      cursor: grab;
+      user-select: none;
+      transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s;
+      display: flex; flex-direction: column; gap: 4px;
+      overflow: hidden;
+    }
+    .task-block:hover {
+      box-shadow: var(--shadow-sm);
+      border-color: rgba(55,50,47,0.2);
+    }
+    .task-block.dragging {
+      opacity: 0.45;
+      cursor: grabbing;
+    }
+    .task-block.pending {
+      opacity: 0.7;
+    }
+    .task-block.missing-info {
+      opacity: 0.6;
+      border-style: dashed;
+      background: repeating-linear-gradient(-45deg, #FBFAF8 0 6px, #fff 6px 12px);
+    }
+    .task-block-title {
+      font-size: 13px; font-weight: 600;
+      color: var(--foreground);
+      line-height: 1.25;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .task-block-meta {
+      font-size: 11px;
+      color: var(--muted-foreground);
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: auto;
+    }
+    .task-block-badge {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 1px 6px; border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .task-block-badge.overdue {
+      background: var(--destructive); color: #fff;
+    }
+    .task-block-badge.needs-info {
+      background: rgba(180,130,42,0.12);
+      color: var(--warn);
+      border-color: rgba(180,130,42,0.35);
+    }
+    .task-block-resize {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 8px;
+      cursor: ns-resize;
+      background: linear-gradient(to bottom, transparent 0, rgba(55,50,47,0.08) 100%);
+      display: flex; justify-content: center; align-items: flex-end; padding-bottom: 1px;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .task-block:hover .task-block-resize,
+    .task-block.resizing .task-block-resize {
+      opacity: 1;
+    }
+    .task-block-resize::after {
+      content: '';
+      width: 28px; height: 2px;
+      border-radius: 2px;
+      background: rgba(55,50,47,0.3);
+    }
+    .task-block.resizing {
+      box-shadow: var(--shadow-sm);
+      border-color: var(--primary);
+    }
+    .task-block.resizing .task-block-meta::after {
+      content: attr(data-live-duration);
+      font-size: 11px; font-weight: 700;
+      color: var(--primary);
+      margin-left: auto;
+    }
+
+    .pill-quadrant {
+      display: inline-flex; align-items: center;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 2px 8px; border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .pill-quadrant.q-do     { background: var(--primary);      color: #fff; }
+    .pill-quadrant.q-plan   { background: var(--success);      color: #fff; }
+    .pill-quadrant.q-quick  { background: var(--warn);         color: #fff; }
+    .pill-quadrant.q-later  { background: var(--accent);       color: var(--muted-foreground); border-color: var(--border); }
+
+    .pill-duration {
+      display: inline-flex; align-items: center;
+      font-size: 11px; font-weight: 600;
+      color: var(--heading-2);
+      padding: 2px 8px; border-radius: 999px;
+      background: #fff; border: 1px solid var(--border);
+    }
+
+    /* Hide legacy Up Next mount (kept in DOM for back-compat with renderViews) */
+    #dash-upnext { display: none !important; }
   </style>
 </head>
 <body>
@@ -326,17 +494,53 @@
 
       <!-- Dashboard View -->
       <div id="view-dashboard" class="view-section hidden">
-        <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Dashboard Overview</h2>
-        <div id="dash-stat-cards" class="grid grid-cols-3 gap-4 mb-6"></div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <div class="section-label">Needs Clarification</div>
-            <div id="dash-clarifications"></div>
+        <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Power Grid</h2>
+
+        <!-- Stat strip -->
+        <div id="dash-stat-cards" class="grid gap-3 mb-5" style="grid-template-columns:repeat(4,minmax(0,1fr));"></div>
+
+        <!-- Overload warning banner -->
+        <div id="overload-banner" class="hidden mb-5"></div>
+
+        <!-- 2x2 Eisenhower Grid -->
+        <div class="power-grid mb-8">
+          <div class="quadrant" data-quadrant="do">
+            <div class="quadrant-header">
+              <div class="quadrant-title">Do Now</div>
+              <div class="quadrant-sub">Urgent &amp; Important</div>
+              <div class="quadrant-tally" data-quadrant-tally="do"></div>
+            </div>
+            <div class="quadrant-body" data-dropzone="do"></div>
           </div>
-          <div>
-            <div class="section-label">Up Next</div>
-            <div id="dash-upnext"></div>
+          <div class="quadrant" data-quadrant="plan">
+            <div class="quadrant-header">
+              <div class="quadrant-title">Plan</div>
+              <div class="quadrant-sub">Important · Not Urgent</div>
+              <div class="quadrant-tally" data-quadrant-tally="plan"></div>
+            </div>
+            <div class="quadrant-body" data-dropzone="plan"></div>
           </div>
+          <div class="quadrant" data-quadrant="quick">
+            <div class="quadrant-header">
+              <div class="quadrant-title">Quick Wins</div>
+              <div class="quadrant-sub">Urgent · Not Important</div>
+              <div class="quadrant-tally" data-quadrant-tally="quick"></div>
+            </div>
+            <div class="quadrant-body" data-dropzone="quick"></div>
+          </div>
+          <div class="quadrant" data-quadrant="later">
+            <div class="quadrant-header">
+              <div class="quadrant-title">Later</div>
+              <div class="quadrant-sub">Not Urgent · Not Important</div>
+              <div class="quadrant-tally" data-quadrant-tally="later"></div>
+            </div>
+            <div class="quadrant-body" data-dropzone="later"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Needs Clarification</div>
+          <div id="dash-clarifications"></div>
         </div>
         <div class="mt-6">
           <div class="section-label">Clarification Inbox (AI is waiting for your answer)</div>
@@ -346,6 +550,9 @@
           <div class="section-label">Dependency Graph</div>
           <div id="dash-dependencies" class="text-sm text-[color:var(--muted-foreground)]"></div>
         </div>
+
+        <!-- Legacy mount point kept so renderViews still has a target; hidden via CSS -->
+        <div id="dash-upnext" class="hidden"></div>
       </div>
 
       <!-- Checklist View -->
@@ -442,10 +649,10 @@
         </div>
 
         <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
-          <div class="section-label">Adaptive Priority Learning</div>
+          <div class="section-label">AI Memory</div>
           <div id="adaptation-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">—</div>
-          <button onclick="resetAdaptation()" class="ghost-btn">Reset adaptation</button>
-          <div class="text-xs text-[color:var(--muted-foreground)] mt-3">The system learns from your priority overrides to better rank future tasks.</div>
+          <button onclick="resetAdaptation()" class="ghost-btn">Reset AI memory</button>
+          <div class="text-xs text-[color:var(--muted-foreground)] mt-3">The AI learns from every priority change, duration resize, and quadrant drag. These memories shape future extractions.</div>
         </div>
 
         <div class="bg-white border border-[rgba(199,68,58,0.3)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
@@ -495,6 +702,24 @@
           <option value="Co-curricular">Co-curricular</option>
           <option value="Others">Others</option>
         </select>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Quadrant</span>
+        <select id="modal-eisenhower" onchange="modalSetEisenhower()" class="filter-select">
+          <option value="">Use AI quadrant</option>
+          <option value="do">Do Now</option>
+          <option value="plan">Plan</option>
+          <option value="quick">Quick Wins</option>
+          <option value="later">Later</option>
+        </select>
+        <span id="modal-eisenhower-ai" class="text-xs text-[color:var(--muted-foreground)]"></span>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Duration</span>
+        <input id="modal-duration" type="number" min="5" max="1440" step="5" onchange="modalSetDuration()"
+               class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-2 py-1 text-sm w-20 text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
+        <span class="text-xs text-[color:var(--muted-foreground)]">minutes</span>
+        <span id="modal-duration-ai" class="text-xs text-[color:var(--muted-foreground)]"></span>
       </div>
       <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Assigned by</span>
@@ -824,8 +1049,9 @@ function renderViews(data) {
   summary.innerHTML = parts.join(' <span class="mx-1 text-[color:var(--muted-foreground)]">•</span> ');
 
   safeRender('dash-stat-cards', () => renderStatCards(data, active));
+  try { renderPowerGrid(active); } catch (e) { console.error('renderPowerGrid failed:', e); }
+  try { renderOverloadBanner(active); } catch (e) { console.error('renderOverloadBanner failed:', e); }
   safeRender('dash-clarifications', () => renderImportantInfo(data, active));
-  safeRender('dash-upnext', () => renderUpNext(data, active));
   safeRender('checklist-content', () => renderTasks(data, active));
   try { renderClarificationThreads(data); } catch (e) { console.error('renderClarificationThreads failed:', e); }
   try { renderDependencyGraph(data); } catch (e) { console.error('renderDependencyGraph failed:', e); }
@@ -1000,11 +1226,14 @@ function renderTaskRow(item) {
     `<button class="tag-chip" onclick="toggleTag('${esc(t)}')">#${esc(t)}</button>`
   ).join(' ');
 
-  const bucketPill = item.category_bucket ? `<span class="cat-pill">${esc(item.category_bucket)}</span>` : '';
-  const scoreChip = typeof item.user_adjusted_score === 'number'
-    ? `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-[var(--accent)] text-[color:var(--heading-2)] border border-[var(--border)]" title="AI ${item.ai_priority_score ?? '—'} / adjusted ${item.user_adjusted_score}">score ${item.user_adjusted_score}</span>`
+  const quadrantLabel = { do: 'Do Now', plan: 'Plan', quick: 'Quick Wins', later: 'Later' };
+  const qKey = effectiveQuadrant(item);
+  const quadrantPill = `<span class="pill-quadrant q-${qKey}">${quadrantLabel[qKey] || 'Later'}</span>`;
+  const durVal = effectiveDuration(item);
+  const durationPill = durVal != null
+    ? `<span class="pill-duration">${fmtDuration(durVal)}</span>`
     : '';
-  const metaChips = [bucketPill, priorityPill(item.user_priority || item.priority), scoreChip, tagChips].filter(Boolean).join(' ');
+  const metaChips = [quadrantPill, durationPill, tagChips].filter(Boolean).join(' ');
   const assignedBy = item.assigned_by ? `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--muted-foreground)]">by ${esc(item.assigned_by)}</span>` : '';
   const statusText = `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--heading-2)] font-medium">${statusLabel(item)}</span>`;
 
@@ -1029,6 +1258,10 @@ function renderStatCards(data, active) {
   const total = active.length;
   const dueToday = active.filter((t) => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
   const completed = (data.done || []).length;
+  const withDur = active.filter((t) => typeof t.duration_minutes === 'number');
+  const avgDur = withDur.length
+    ? Math.round(withDur.reduce((s, t) => s + t.duration_minutes, 0) / withDur.length)
+    : 0;
   const card = (value, label, valueClass) => `
     <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)]">
       <div class="font-serif text-4xl font-normal leading-none ${valueClass}">${value}</div>
@@ -1038,7 +1271,240 @@ function renderStatCards(data, active) {
     card(total, 'Active', 'text-[color:var(--foreground)]'),
     card(dueToday, 'Due Today', dueToday ? 'text-[color:var(--destructive)]' : 'text-[color:var(--foreground)]'),
     card(completed, 'Completed', 'text-[color:var(--success)]'),
+    card(avgDur ? fmtDuration(avgDur) : '—', 'Avg Duration', 'text-[color:var(--heading-2)]'),
   ].join('');
+}
+
+// ---------------- Power Grid ----------------
+function fmtDuration(min) {
+  if (min == null || !isFinite(min)) return '—';
+  const m = Math.max(0, Math.round(min));
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  return rem ? `${h}h ${rem}m` : `${h}h`;
+}
+
+function effectiveQuadrant(item) {
+  return item.eisenhower || item.user_eisenhower || item.ai_eisenhower || 'later';
+}
+function effectiveDuration(item) {
+  if (typeof item.duration_minutes === 'number') return item.duration_minutes;
+  if (typeof item.user_duration_minutes === 'number') return item.user_duration_minutes;
+  if (typeof item.ai_duration_minutes === 'number') return item.ai_duration_minutes;
+  return null;
+}
+function blockHeightForMinutes(min) {
+  if (min == null) return 52;
+  return Math.max(52, Math.min(320, Math.round(28 + min * 1.1)));
+}
+function minutesForBlockHeight(px) {
+  // Inverse of blockHeightForMinutes with 15-min snapping
+  const raw = (Math.max(52, Math.min(320, px)) - 28) / 1.1;
+  const snapped = Math.round(raw / 15) * 15;
+  return Math.max(5, Math.min(1440, snapped));
+}
+
+function renderTaskBlock(item) {
+  const dur = effectiveDuration(item);
+  const h = blockHeightForMinutes(dur);
+  const missing = Array.isArray(item.missing_fields) && item.missing_fields.length > 0;
+  const now = new Date();
+  const isOverdue = item.deadline_iso && new Date(item.deadline_iso) < now && item.status !== 'done';
+  const rawDeadline = item.deadline_iso || item.deadline;
+  const deadlineText = rawDeadline ? (formatCustomDate(rawDeadline) || esc(item.deadline || '')) : 'No deadline';
+  const badges = [];
+  if (isOverdue) badges.push(`<span class="task-block-badge overdue">Overdue</span>`);
+  if (missing) badges.push(`<span class="task-block-badge needs-info">Needs info</span>`);
+  const classes = ['task-block'];
+  if (missing) classes.push('missing-info');
+  return `<div class="${classes.join(' ')}"
+               draggable="true"
+               data-task-id="${esc(item.task_id)}"
+               data-duration="${dur ?? ''}"
+               style="height:${h}px;"
+               ondragstart="onBlockDragStart(event)"
+               ondragend="onBlockDragEnd(event)"
+               onclick="if(event.target.closest('.task-block-resize')) return; openTaskModal('${esc(item.task_id)}')">
+    <div class="task-block-title">${esc(item.task || '')}</div>
+    <div class="task-block-meta">
+      ${dur != null ? `<span>${fmtDuration(dur)}</span>` : ''}
+      <span>${esc(deadlineText)}</span>
+      ${badges.join('')}
+    </div>
+    <div class="task-block-resize" onmousedown="onBlockResizeStart(event)"></div>
+  </div>`;
+}
+
+function renderPowerGrid(active) {
+  const buckets = { do: [], plan: [], quick: [], later: [] };
+  for (const item of (active || [])) {
+    if (item.status === 'done') continue;
+    const q = effectiveQuadrant(item);
+    (buckets[q] || buckets.later).push(item);
+  }
+  // Within each quadrant, sort: overdue > nearest deadline > largest duration
+  const now = Date.now();
+  const rank = (t) => {
+    const d = t.deadline_iso ? new Date(t.deadline_iso).getTime() : Infinity;
+    const overdue = d < now && t.status !== 'done' ? 0 : 1;
+    return [overdue, d, -(effectiveDuration(t) || 0)];
+  };
+  const cmp = (a, b) => {
+    const ra = rank(a), rb = rank(b);
+    for (let i = 0; i < ra.length; i++) { if (ra[i] !== rb[i]) return ra[i] - rb[i]; }
+    return 0;
+  };
+  for (const q of Object.keys(buckets)) buckets[q].sort(cmp);
+
+  for (const q of ['do', 'plan', 'quick', 'later']) {
+    const zone = document.querySelector(`[data-dropzone="${q}"]`);
+    const tally = document.querySelector(`[data-quadrant-tally="${q}"]`);
+    if (!zone) continue;
+    const items = buckets[q];
+    if (!items.length) {
+      zone.innerHTML = `<div class="empty">Drop tasks here</div>`;
+    } else {
+      zone.innerHTML = items.map(renderTaskBlock).join('');
+    }
+    if (tally) {
+      const totalMin = items.reduce((s, t) => s + (effectiveDuration(t) || 0), 0);
+      tally.textContent = items.length ? `${items.length} · ${fmtDuration(totalMin)}` : '';
+    }
+    zone.ondragover = onQuadrantDragOver;
+    zone.ondragleave = onQuadrantDragLeave;
+    zone.ondrop = onQuadrantDrop;
+  }
+}
+
+function renderOverloadBanner(active) {
+  const el = document.getElementById('overload-banner');
+  if (!el) return;
+  const now = Date.now();
+  const horizonMs = 24 * 3600 * 1000;
+  const soon = (active || []).filter((t) =>
+    effectiveQuadrant(t) === 'do' &&
+    t.deadline_iso &&
+    new Date(t.deadline_iso).getTime() - now < horizonMs &&
+    t.status !== 'done'
+  );
+  const totalMin = soon.reduce((s, t) => s + (effectiveDuration(t) || 0), 0);
+  const capacityMin = 360; // ~6 productive hours/day
+  if (totalMin > capacityMin && soon.length > 0) {
+    el.className = 'mb-5';
+    el.innerHTML = `<div class="flex items-center gap-3 bg-[rgba(199,68,58,0.08)] border border-[rgba(199,68,58,0.3)] rounded-[var(--radius-xl)] px-4 py-3">
+      <span style="font-size:18px;">⚠</span>
+      <div class="flex-1 text-sm text-[color:var(--heading-2)]">
+        <strong class="text-[color:var(--destructive)]">${fmtDuration(totalMin)} of Do Now work</strong> is due in the next 24 hours — typical capacity is about <strong>6h</strong>. Consider moving some to Plan or trimming scope.
+      </div>
+    </div>`;
+  } else {
+    el.className = 'hidden';
+    el.innerHTML = '';
+  }
+}
+
+// ---------------- Drag & Drop ----------------
+let dragState = null;
+
+function onBlockDragStart(ev) {
+  const block = ev.target.closest('.task-block');
+  if (!block) return;
+  block.classList.add('dragging');
+  const tid = block.dataset.taskId;
+  const srcZone = block.closest('[data-dropzone]');
+  const srcQuadrant = srcZone?.dataset.dropzone || 'later';
+  dragState = { taskId: tid, fromQuadrant: srcQuadrant, element: block };
+  try {
+    ev.dataTransfer.setData('text/plain', tid);
+    ev.dataTransfer.effectAllowed = 'move';
+  } catch {}
+}
+function onBlockDragEnd(ev) {
+  const block = ev.target.closest('.task-block');
+  if (block) block.classList.remove('dragging');
+  dragState = null;
+  document.querySelectorAll('.quadrant-body.drag-over').forEach((el) => el.classList.remove('drag-over'));
+}
+function onQuadrantDragOver(ev) {
+  if (!dragState) return;
+  ev.preventDefault();
+  this.classList.add('drag-over');
+  ev.dataTransfer.dropEffect = 'move';
+}
+function onQuadrantDragLeave(ev) {
+  if (ev.target === this) this.classList.remove('drag-over');
+}
+async function onQuadrantDrop(ev) {
+  ev.preventDefault();
+  this.classList.remove('drag-over');
+  if (!dragState) return;
+  const toQuadrant = this.dataset.dropzone;
+  const { taskId, fromQuadrant, element } = dragState;
+  if (fromQuadrant === toQuadrant) return;
+  // Optimistic move
+  element.classList.add('pending');
+  this.appendChild(element);
+  // Remove any empty-state placeholder in this zone now that we have a task
+  const emptyEl = this.querySelector('.empty');
+  if (emptyEl) emptyEl.remove();
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/eisenhower`, { quadrant: toQuadrant });
+    await refreshDashboard();
+  } catch (e) {
+    console.error('drop failed:', e);
+    element.classList.remove('pending');
+    alert('Failed to move task: ' + (e.message || 'unknown error'));
+    refreshDashboard();
+  }
+}
+
+// ---------------- Block Resize ----------------
+let resizeState = null;
+
+function onBlockResizeStart(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  const block = ev.currentTarget.closest('.task-block');
+  if (!block) return;
+  block.classList.add('resizing');
+  resizeState = {
+    block,
+    startY: ev.clientY,
+    startHeight: block.offsetHeight,
+    taskId: block.dataset.taskId,
+  };
+  document.addEventListener('mousemove', onBlockResizeMove);
+  document.addEventListener('mouseup', onBlockResizeEnd, { once: true });
+}
+function onBlockResizeMove(ev) {
+  if (!resizeState) return;
+  const dy = ev.clientY - resizeState.startY;
+  const newH = Math.max(52, Math.min(320, resizeState.startHeight + dy));
+  resizeState.block.style.height = newH + 'px';
+  const minutes = minutesForBlockHeight(newH);
+  resizeState.block.dataset.liveDuration = minutes;
+  resizeState.block.setAttribute('data-live-duration', fmtDuration(minutes));
+}
+async function onBlockResizeEnd() {
+  document.removeEventListener('mousemove', onBlockResizeMove);
+  if (!resizeState) return;
+  const { block, taskId } = resizeState;
+  const finalMinutes = minutesForBlockHeight(block.offsetHeight);
+  const previous = Number(block.dataset.duration) || null;
+  block.classList.remove('resizing');
+  block.removeAttribute('data-live-duration');
+  resizeState = null;
+  if (previous === finalMinutes) return;
+  block.classList.add('pending');
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/duration`, { minutes: finalMinutes });
+    await refreshDashboard();
+  } catch (e) {
+    console.error('resize failed:', e);
+    alert('Failed to set duration: ' + (e.message || 'unknown error'));
+    refreshDashboard();
+  }
 }
 
 function renderUpNext(data, active) {
@@ -1159,6 +1625,23 @@ function openTaskModal(taskId) {
   if (overrideSel) overrideSel.value = item.user_priority || '';
   const bucketSel = document.getElementById('modal-bucket');
   if (bucketSel) bucketSel.value = item.category_bucket || 'Others';
+
+  const quadrantSel = document.getElementById('modal-eisenhower');
+  if (quadrantSel) quadrantSel.value = item.user_eisenhower || '';
+  const quadrantAiEl = document.getElementById('modal-eisenhower-ai');
+  if (quadrantAiEl) {
+    const aiLabel = { do: 'Do Now', plan: 'Plan', quick: 'Quick Wins', later: 'Later' }[item.ai_eisenhower] || '—';
+    quadrantAiEl.textContent = `AI: ${aiLabel}`;
+  }
+  const durInput = document.getElementById('modal-duration');
+  if (durInput) {
+    const eff = item.user_duration_minutes != null ? item.user_duration_minutes : item.duration_minutes;
+    durInput.value = eff != null ? eff : '';
+  }
+  const durAiEl = document.getElementById('modal-duration-ai');
+  if (durAiEl) {
+    durAiEl.textContent = item.ai_duration_minutes != null ? `AI: ${fmtDuration(item.ai_duration_minutes)}` : '';
+  }
 
   document.getElementById('modal-assignee').textContent = item.assigned_by || '—';
   document.getElementById('modal-status').textContent = statusLabel(item);
@@ -2066,6 +2549,30 @@ async function modalSetBucket() {
   const v = document.getElementById('modal-bucket').value;
   try {
     await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/bucket`, { bucket: v });
+    await refreshDashboard();
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+async function modalSetEisenhower() {
+  if (!modalTaskId) return;
+  const raw = document.getElementById('modal-eisenhower').value;
+  const quadrant = raw === '' ? null : raw;
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/eisenhower`, { quadrant });
+    await refreshDashboard();
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+async function modalSetDuration() {
+  if (!modalTaskId) return;
+  const raw = document.getElementById('modal-duration').value;
+  const minutes = raw === '' ? null : Number(raw);
+  if (minutes !== null && (!isFinite(minutes) || minutes < 5 || minutes > 1440)) {
+    alert('Duration must be between 5 and 1440 minutes.');
+    return;
+  }
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/duration`, { minutes });
     await refreshDashboard();
   } catch (e) { alert('Failed: ' + e.message); }
 }
