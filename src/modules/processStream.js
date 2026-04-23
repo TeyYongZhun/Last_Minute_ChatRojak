@@ -16,6 +16,9 @@ export async function processWithEvents(userId, text, now, emit, timeframe = 'al
   });
 
   if (!chain.tasks.length) {
+    if (chain.degraded) {
+      emit('log', { text: 'AI API unavailable — analysis could not complete. Check your API key and provider status.' });
+    }
     emit('done', {
       extracted: 0,
       plans: 0,

@@ -107,7 +107,7 @@ function buildTimeframeInstruction(timeframe, now) {
   return '';
 }
 
-export async function parseMessages(rawText, now, timeframe = 'all') {
+export async function parseMessages(rawText, now, timeframe = 'all', { onProgress } = {}) {
   const client = getClient();
   const timeframeNote = buildTimeframeInstruction(timeframe, now);
   const userContent = [
@@ -121,15 +121,16 @@ export async function parseMessages(rawText, now, timeframe = 'all') {
 
   let response;
   try {
-    response = await withRetry(() =>
-      client.chat.completions.create({
+    response = await withRetry(
+      () => client.chat.completions.create({
         model: MODEL,
         temperature: 0.3,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userContent },
         ],
-      })
+      }),
+      { onRetry: (msg) => onProgress?.({ kind: 'warn', text: msg }) }
     );
   } catch (err) {
     const wrapped = new Error(`Extract step failed: ${err.message}`);

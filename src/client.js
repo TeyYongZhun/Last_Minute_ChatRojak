@@ -4,43 +4,19 @@ import Anthropic from '@anthropic-ai/sdk';
 let _client = null;
 
 const PROVIDERS = {
-  anthropic: {
-    kind: 'anthropic',
-    apiKeyEnv: 'ANTHROPIC_API_KEY',
-    defaultBaseURL: 'https://api.anthropic.com',
-    baseURLEnv: 'ANTHROPIC_BASE_URL',
-    modelEnv: 'ANTHROPIC_MODEL',
-    defaultModel: 'claude-sonnet-4-6',
-  },
-  zai: {
-    kind: 'openai',
-    apiKeyEnv: 'Z_AI_API_KEY',
-    defaultBaseURL: 'https://api.z.ai/api/paas/v4/',
-    baseURLEnv: 'Z_AI_BASE_URL',
-    modelEnv: 'Z_AI_MODEL',
-    defaultModel: 'glm-4.6',
-  },
-  gemini: {
-    kind: 'openai',
-    apiKeyEnv: 'GEMINI_API_KEY',
-    defaultBaseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-    baseURLEnv: 'GEMINI_BASE_URL',
-    modelEnv: 'GEMINI_MODEL',
-    defaultModel: 'gemini-2.5-flash',
-  },
   ilmuglm: {
     kind: 'openai',
     apiKeyEnv: 'ILMU_API_KEY',
-    defaultBaseURL: 'https://api.ilmu.ai/openai/',
+    defaultBaseURL: 'https://api.ilmu.ai/v1',
     baseURLEnv: 'ILMU_BASE_URL',
     modelEnv: 'ILMU_MODEL',
-    defaultModel: 'glm-5.1',
+    defaultModel: 'ilmu-glm-5.1',
   },
 };
 
 function activeProviderName() {
-  const p = (process.env.AI_PROVIDER || 'anthropic').toLowerCase();
-  return PROVIDERS[p] ? p : 'anthropic';
+  const p = (process.env.AI_PROVIDER || 'ilmuglm').toLowerCase();
+  return PROVIDERS[p] ? p : 'ilmuglm';
 }
 
 export function getProviderName() {
@@ -122,7 +98,7 @@ export function getClient() {
   if (cfg.kind === 'anthropic') {
     _client = createAnthropicShim({ apiKey: key, baseURL });
   } else {
-    _client = new OpenAI({ apiKey: key, baseURL });
+    _client = new OpenAI({ apiKey: key, baseURL, timeout: 30_000 });
   }
   return _client;
 }
@@ -142,7 +118,8 @@ export function extractJson(text) {
   return {};
 }
 
-const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
+// 504 = upstream gateway timeout — immediate retry won't help, fail fast instead
+const RETRY_STATUS = new Set([429, 500, 502, 503]);
 
 function isRetryable(err) {
   if (!err) return false;
@@ -152,7 +129,7 @@ function isRetryable(err) {
   return false;
 }
 
-export async function withRetry(fn, { retries = 1, baseMs = 400, maxWaitMs = 4000 } = {}) {
+export async function withRetry(fn, { retries = 1, baseMs = 400, maxWaitMs = 4000, onRetry } = {}) {
   let attempt = 0;
   while (true) {
     try {
@@ -178,7 +155,9 @@ export async function withRetry(fn, { retries = 1, baseMs = 400, maxWaitMs = 400
         const jitter = Math.random() * 0.3 + 0.85;
         waitMs = Math.min(maxWaitMs, Math.round(baseMs * 2 ** attempt * jitter));
       }
-      console.warn(`[withRetry] attempt ${attempt + 1} failed (${err.status || err.code || err.message}), retrying in ${Math.round(waitMs / 1000)}s`);
+      const waitSec = Math.round(waitMs / 1000);
+      console.warn(`[withRetry] attempt ${attempt + 1} failed (${err.status || err.code || err.message}), retrying in ${waitSec}s`);
+      onRetry?.(`API error (${err.status || err.code || err.message}), retrying in ${waitSec}s…`);
       await new Promise((r) => setTimeout(r, waitMs));
       attempt += 1;
     }
