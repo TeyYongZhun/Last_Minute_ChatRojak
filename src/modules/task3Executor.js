@@ -25,6 +25,10 @@ import {
   setCategoryBucket,
   setComplexity,
   setPriorityScores,
+  setAiEisenhower,
+  setUserEisenhower as repoSetUserEisenhower,
+  setAiDurationMinutes,
+  setUserDurationMinutes as repoSetUserDurationMinutes,
   markCompleted,
 } from '../db/repos/tasks.js';
 import {
@@ -47,7 +51,13 @@ import {
   removeDependency as repoRemoveDep,
   blockedTaskIds,
 } from './dependencyGraph.js';
-import { recordEdit as recordAdaptiveEdit, shapeWeights, weightsSummary } from './adaptiveScoring.js';
+import {
+  recordEdit as recordAdaptiveEdit,
+  recordDurationAdjust,
+  recordQuadrantAdjust,
+  shapeWeights,
+  weightsSummary,
+} from './adaptiveScoring.js';
 import { openThread, listOpenThreads } from './clarificationLoop.js';
 
 function ts(d = new Date()) {
@@ -87,6 +97,9 @@ export function mergeNewTasks(userId, newTasks) {
 
     for (const task of newTasks) {
       const t = { ...task };
+      if (t.estimated_duration_minutes != null && t.ai_duration_minutes == null) {
+        t.ai_duration_minutes = t.estimated_duration_minutes;
+      }
       const originalId = t.id;
       const key = semanticKey(t);
       if (key.startsWith('|')) {
@@ -201,6 +214,8 @@ export async function replanAll(userId, now = new Date(), onProgress) {
         userScore: plan.user_adjusted_score,
       });
       if (plan.complexity) setComplexity(userId, plan.task_id, plan.complexity);
+      if (plan.eisenhower) setAiEisenhower(userId, plan.task_id, plan.eisenhower);
+      if (plan.ai_duration_minutes != null) setAiDurationMinutes(userId, plan.task_id, plan.ai_duration_minutes);
 
       if (task) generateActionsForPlan(userId, plan, task, now);
 
@@ -335,6 +350,42 @@ export function setBucket(userId, taskId, bucket) {
   return true;
 }
 
+export function setUserEisenhower(userId, taskId, quadrant) {
+  const task = getTask(userId, taskId);
+  if (!task) return false;
+  const normalized = quadrant === null || quadrant === '' ? null : quadrant;
+  repoSetUserEisenhower(userId, taskId, normalized);
+  addTaskEvent(userId, taskId, 'eisenhower_overridden', {
+    ai_eisenhower: task.ai_eisenhower,
+    user_eisenhower: normalized,
+  });
+  if (normalized && task.ai_eisenhower && normalized !== task.ai_eisenhower) {
+    recordQuadrantAdjust(userId, {
+      aiQuadrant: task.ai_eisenhower,
+      userQuadrant: normalized,
+    });
+  }
+  return true;
+}
+
+export function setUserDurationMinutes(userId, taskId, minutes) {
+  const task = getTask(userId, taskId);
+  if (!task) return false;
+  const m = minutes == null ? null : Math.max(5, Math.min(1440, Math.round(Number(minutes))));
+  repoSetUserDurationMinutes(userId, taskId, m);
+  addTaskEvent(userId, taskId, 'duration_overridden', {
+    ai_duration_minutes: task.ai_duration_minutes,
+    user_duration_minutes: m,
+  });
+  if (m != null && task.ai_duration_minutes) {
+    recordDurationAdjust(userId, {
+      aiMinutes: task.ai_duration_minutes,
+      userMinutes: m,
+    });
+  }
+  return true;
+}
+
 export function addTaskDependency(userId, taskId, dependsOn, reason = null) {
   const t1 = getTask(userId, taskId);
   const t2 = getTask(userId, dependsOn);
@@ -393,6 +444,8 @@ export function getDashboard(userId, filters = {}) {
   const depsByTask = {};
   for (const d of deps) (depsByTask[d.task_id] ||= []).push({ depends_on: d.depends_on, reason: d.reason });
   const doneIds = new Set(tasks.filter((t) => t.status === 'done').map((t) => t.id));
+  const weights = shapeWeights(userId);
+  const durationBias = weights.active ? (weights.duration || 0) : 0;
 
   const do_now = [];
   const in_progress = [];
@@ -426,6 +479,13 @@ export function getDashboard(userId, filters = {}) {
     const depsRemaining = taskDeps.filter((d) => !doneIds.has(d.depends_on));
     const isWaiting = depsRemaining.length > 0 && task.status !== 'done';
 
+    const aiDur = task.ai_duration_minutes ?? null;
+    const userDur = task.user_duration_minutes ?? null;
+    const biasedAiDur = aiDur != null
+      ? Math.max(5, Math.min(1440, Math.round(aiDur * (1 + durationBias))))
+      : null;
+    const effectiveQuadrant = task.user_eisenhower || task.ai_eisenhower || null;
+
     const item = {
       task_id: task.id,
       task: task.task,
@@ -438,6 +498,12 @@ export function getDashboard(userId, filters = {}) {
       ai_priority_score: task.ai_priority_score ?? effectivePlan.priority_score,
       user_adjusted_score: task.user_adjusted_score ?? effectivePlan.priority_score,
       priority_score: effectivePlan.priority_score,
+      eisenhower: effectiveQuadrant,
+      ai_eisenhower: task.ai_eisenhower,
+      user_eisenhower: task.user_eisenhower,
+      duration_minutes: userDur != null ? userDur : biasedAiDur,
+      ai_duration_minutes: aiDur,
+      user_duration_minutes: userDur,
       decision: isWaiting ? 'waiting' : effectivePlan.decision,
       steps: effectivePlan.steps,
       checklist: getChecklist(task.id),

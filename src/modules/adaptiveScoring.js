@@ -3,6 +3,7 @@ import { getWeights, upsertWeights, resetWeights } from '../db/repos/adaptation.
 const PRIORITY_LEVEL = { high: 3, medium: 2, low: 1 };
 const ALPHA = 0.2;
 const CLAMP = 0.25;
+const DURATION_CLAMP = 0.5;
 const COLD_START = 5;
 
 function clamp(x, lo = -CLAMP, hi = CLAMP) {
@@ -47,29 +48,86 @@ export function recordEdit(userId, { task, aiPriority, userPriority }) {
   return next;
 }
 
+// User resized a task block → log-ratio of user/AI estimate pushes the duration bias.
+// Positive bias ⇒ user consistently thinks tasks take longer than the AI predicts.
+export function recordDurationAdjust(userId, { aiMinutes, userMinutes }) {
+  if (!aiMinutes || !userMinutes || aiMinutes === userMinutes) return;
+  const ratio = Math.log(userMinutes / aiMinutes);
+  const delta = Math.max(-DURATION_CLAMP, Math.min(DURATION_CLAMP, ratio));
+  const current = getWeights(userId);
+  const next = { ...current };
+  next.duration_bias = Math.max(
+    -DURATION_CLAMP,
+    Math.min(DURATION_CLAMP, (next.duration_bias || 0) * (1 - ALPHA) + delta * ALPHA)
+  );
+  next.sample_count = (current.sample_count || 0) + 1;
+  upsertWeights(userId, next);
+  return next;
+}
+
+// User dragged a task to a different quadrant → each axis shift (urgent / important)
+// nudges its corresponding bias. Thresholds in scoreEisenhower pick this up on next extract.
+const QUADRANT_BOOLS = { do: [1, 1], plan: [0, 1], quick: [1, 0], later: [0, 0] };
+
+export function recordQuadrantAdjust(userId, { aiQuadrant, userQuadrant }) {
+  if (!aiQuadrant || !userQuadrant || aiQuadrant === userQuadrant) return;
+  const [au, ai] = QUADRANT_BOOLS[aiQuadrant] ?? [0, 0];
+  const [uu, ui] = QUADRANT_BOOLS[userQuadrant] ?? [0, 0];
+  const current = getWeights(userId);
+  const next = { ...current };
+  if (uu !== au) {
+    next.quadrant_urgent_bias = clamp(
+      (next.quadrant_urgent_bias || 0) * (1 - ALPHA) + (uu - au) * ALPHA * 0.15
+    );
+  }
+  if (ui !== ai) {
+    next.quadrant_important_bias = clamp(
+      (next.quadrant_important_bias || 0) * (1 - ALPHA) + (ui - ai) * ALPHA * 0.15
+    );
+  }
+  next.sample_count = (current.sample_count || 0) + 1;
+  upsertWeights(userId, next);
+  return next;
+}
+
 export function shapeWeights(userId) {
   const w = getWeights(userId);
   if (!w.sample_count || w.sample_count < COLD_START) {
-    return { urgency: 0, importance: 0, effort: 0, active: false, sample_count: w.sample_count };
+    return {
+      urgency: 0, importance: 0, effort: 0,
+      duration: 0, quadrant_urgent: 0, quadrant_important: 0,
+      active: false, sample_count: w.sample_count,
+    };
   }
   return {
     urgency: w.urgency_bias,
     importance: w.importance_bias,
     effort: w.effort_bias,
+    duration: w.duration_bias || 0,
+    quadrant_urgent: w.quadrant_urgent_bias || 0,
+    quadrant_important: w.quadrant_important_bias || 0,
     active: true,
     sample_count: w.sample_count,
   };
 }
 
+function fmtBias(label, value, fractionDigits = 2) {
+  const sign = value >= 0 ? '+' : '';
+  return `${label} ${sign}${value.toFixed(fractionDigits)}`;
+}
+
 export function weightsSummary(userId) {
   const s = shapeWeights(userId);
-  if (!s.active) return `User adaptation not active yet (${s.sample_count}/${COLD_START} samples).`;
+  if (!s.active) return `AI memory not active yet (${s.sample_count}/${COLD_START} samples).`;
   const parts = [];
-  if (Math.abs(s.urgency) >= 0.02) parts.push(`urgency ${s.urgency >= 0 ? '+' : ''}${s.urgency.toFixed(2)}`);
-  if (Math.abs(s.importance) >= 0.02) parts.push(`importance ${s.importance >= 0 ? '+' : ''}${s.importance.toFixed(2)}`);
-  if (Math.abs(s.effort) >= 0.02) parts.push(`effort ${s.effort >= 0 ? '+' : ''}${s.effort.toFixed(2)}`);
-  if (!parts.length) return 'User priorities align with defaults so far.';
-  return `User priority bias: ${parts.join(', ')}.`;
+  if (Math.abs(s.urgency) >= 0.02) parts.push(fmtBias('urgency', s.urgency));
+  if (Math.abs(s.importance) >= 0.02) parts.push(fmtBias('importance', s.importance));
+  if (Math.abs(s.effort) >= 0.02) parts.push(fmtBias('effort', s.effort));
+  if (Math.abs(s.duration) >= 0.02) parts.push(fmtBias('duration', s.duration));
+  if (Math.abs(s.quadrant_urgent) >= 0.02) parts.push(fmtBias('urgent-threshold', s.quadrant_urgent));
+  if (Math.abs(s.quadrant_important) >= 0.02) parts.push(fmtBias('important-threshold', s.quadrant_important));
+  if (!parts.length) return 'User memory aligns with defaults so far.';
+  return `User bias memory: ${parts.join(', ')}.`;
 }
 
 export function reset(userId) {
