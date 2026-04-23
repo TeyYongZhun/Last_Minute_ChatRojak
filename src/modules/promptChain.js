@@ -20,7 +20,7 @@ export async function runChain(userId, rawText, now, { timeframe = 'all', onProg
   log(onProgress, `Step 1/4 — Extracting tasks…`, 'chain_step');
   let tasks;
   try {
-    tasks = await parseMessages(rawText, now, timeframe);
+    tasks = await parseMessages(rawText, now, timeframe, { onProgress });
     record('extract', { count: tasks.length });
     log(onProgress, `Found ${tasks.length} candidate task(s).`, 'chain_step');
   } catch (err) {

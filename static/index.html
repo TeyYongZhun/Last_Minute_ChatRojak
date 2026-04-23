@@ -192,6 +192,10 @@
       border-bottom: 1px solid var(--border-soft);
       background: #FBFAF8;
     }
+    .quadrant[data-quadrant="do"]    .quadrant-header { background: #FFF0ED; border-bottom-color: #F5C4B8; }
+    .quadrant[data-quadrant="plan"]  .quadrant-header { background: #E8F4FD; border-bottom-color: #B3D9F5; }
+    .quadrant[data-quadrant="quick"] .quadrant-header { background: #EDFAF3; border-bottom-color: #B2E8CD; }
+    .quadrant[data-quadrant="later"] .quadrant-header { background: #F2F0F7; border-bottom-color: #D5CFE8; }
     .quadrant-title {
       font-family: var(--font-serif);
       font-size: 22px;
@@ -338,6 +342,59 @@
 
     /* Hide legacy Up Next mount (kept in DOM for back-compat with renderViews) */
     #dash-upnext { display: none !important; }
+
+    /* ---- Avatar frame ---- */
+    .avatar-frame {
+      width: 110px; height: 110px; border-radius: 50%;
+      background: #FBFAF8; border: 3px solid #fff;
+      box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: transform .15s ease, box-shadow .15s ease;
+      flex-shrink: 0; padding: 0;
+    }
+    .avatar-frame:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 0 1px var(--primary), var(--shadow-sm);
+    }
+    .avatar-badge {
+      position: absolute; bottom: 4px; right: 4px;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--primary); color: #fff; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 0 2px #fff;
+    }
+    .avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+
+    /* ---- Avatar picker modal ---- */
+    .avatar-picker-backdrop {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(55,50,47,0.45);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .avatar-picker-box {
+      background: #fff; border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 40px rgba(55,50,47,0.12);
+      width: 100%; max-width: 440px; padding: 24px;
+    }
+    .avatar-emoji-grid {
+      display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 18px;
+    }
+    .avatar-emoji-btn {
+      aspect-ratio: 1 / 1; border-radius: 10px;
+      background: #FBFAF8; border: 1px solid var(--border);
+      font-size: 20px; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; width: 100%; box-sizing: border-box;
+      transition: all .15s; padding: 0;
+    }
+    .avatar-emoji-btn span {
+      display: block; width: 1.4em; height: 1.4em; line-height: 1.4;
+      text-align: center; overflow: hidden;
+    }
+    .avatar-emoji-btn:hover { background: var(--accent); }
+    .avatar-emoji-btn.active { background: var(--primary); border-color: var(--primary); }
   </style>
 </head>
 <body>
@@ -375,16 +432,34 @@
     </div>
   </div>
 
-  <aside id="sidebar" class="w-72 border-r border-[var(--border)] bg-white flex flex-col pt-8 pb-4 px-5 flex-shrink-0 z-10 shadow-[var(--shadow-xs)]">
-    <div class="mb-10 px-2">
-      <h1 class="font-serif text-3xl font-normal tracking-tight text-[color:var(--foreground)] leading-tight">Last Minute ChatRojak</h1>
-      <div id="summary-line" class="text-sm font-medium text-[color:var(--muted-foreground)] mt-2 h-5">Loading...</div>
+  <aside id="sidebar" class="w-72 border-r border-[var(--border)] bg-white flex flex-col pb-4 px-5 flex-shrink-0 z-10 shadow-[var(--shadow-xs)]" style="padding-top:28px;">
+
+    <!-- Avatar + user info + Upload CTA -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:24px;">
+
+      <!-- Circular avatar frame -->
+      <button class="avatar-frame" onclick="openAvatarPicker()" title="Change avatar" id="avatar-frame-btn">
+        <span id="avatar-display" style="font-size:55px;line-height:1;">❓</span>
+      </button>
+
+      <!-- user: label + email + stats -->
+      <div style="text-align:center;width:100%;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted-foreground);margin-bottom:4px;">user:</div>
+        <div id="user-email" style="font-size:14px;color:var(--foreground);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px;" title=""></div>
+        <div id="summary-line" style="font-size:12px;font-weight:500;color:var(--muted-foreground);margin-top:8px;min-height:18px;"></div>
+      </div>
+
+      <!-- Upload Chat CTA -->
+      <button id="upload-cta-btn" onclick="setMode('upload')"
+        style="width:100%;padding:10px 14px;border-radius:999px;background:var(--primary);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-xs);font-family:var(--font-sans);transition:all .15s ease;display:flex;align-items:center;justify-content:center;gap:8px;"
+        onmouseover="this.style.boxShadow='var(--shadow-sm)'" onmouseout="this.style.boxShadow='var(--shadow-xs)'">
+        <span style="font-size:15px;line-height:1;">📁</span> Upload Chat
+      </button>
     </div>
 
-    <nav class="flex-1 space-y-2" id="sidebar-nav">
-      <button data-mode="upload" class="nav-btn active" onclick="setMode('upload')">
-        <span class="mr-3 text-xl">📁</span> Upload Chat
-      </button>
+    <!-- Workspace nav -->
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted-foreground);padding-left:12px;margin-bottom:8px;">Workspace</div>
+    <nav class="flex-1" id="sidebar-nav" style="display:flex;flex-direction:column;gap:4px;">
       <button data-mode="dashboard" class="nav-btn" onclick="setMode('dashboard')">
         <span class="mr-3 text-xl">🏠</span> Dashboard
       </button>
@@ -399,9 +474,8 @@
       </button>
     </nav>
 
-    <div class="border-t border-[var(--border)] pt-4 px-2 text-xs text-[color:var(--muted-foreground)]">
-      <div id="user-email" class="truncate mb-2"></div>
-      <button onclick="logout()" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] transition">Log out</button>
+    <div class="border-t border-[var(--border)] pt-3 px-2 text-xs text-[color:var(--muted-foreground)]">
+      <button onclick="logout()" style="width:100%;padding:10px 0;border-radius:8px;background:#DC2626;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);transition:background .15s;" onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">Log out</button>
     </div>
   </aside>
 
@@ -764,6 +838,20 @@
   </div>
 </div>
 
+<!-- Avatar Picker Modal -->
+<div id="avatar-picker" class="avatar-picker-backdrop hidden" onclick="if(event.target===this)closeAvatarPicker()">
+  <div class="avatar-picker-box" onclick="event.stopPropagation()">
+    <div class="font-serif" style="font-size:24px;color:var(--foreground);line-height:1.1;margin-bottom:4px;">Choose your avatar</div>
+    <div style="font-size:12px;color:var(--muted-foreground);margin-bottom:18px;">Pick an emoji or upload a picture.</div>
+    <div class="avatar-emoji-grid" id="avatar-emoji-grid"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid var(--border-soft);">
+      <input type="file" id="avatar-upload-input" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+      <button type="button" class="ghost-btn" onclick="document.getElementById('avatar-upload-input').click()">📷 Upload photo</button>
+      <button class="ghost-btn" onclick="closeAvatarPicker()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ---------------- Auth ----------------
 let authMode = 'login';
@@ -836,6 +924,7 @@ async function submitAuth() {
     currentUser = data;
     hideAuthGate();
     document.getElementById('user-email').textContent = data.email;
+    loadAvatarFromStorage();
     await refreshDashboard();
   } catch (e) {
     errEl.textContent = e.message;
@@ -849,6 +938,7 @@ async function logout() {
   try { await api('POST', '/api/auth/logout'); } catch {}
   currentUser = null;
   localStorage.removeItem('filters');
+  applyAvatar(null);
   showAuthGate();
 }
 
@@ -857,6 +947,7 @@ async function checkAuth() {
     currentUser = await api('GET', '/api/auth/me');
     hideAuthGate();
     document.getElementById('user-email').textContent = currentUser.email;
+    loadAvatarFromStorage();
     savedChats = loadSavedChats();
     renderChatFileList();
     return true;
@@ -1775,8 +1866,8 @@ function renderCalendar(data, activeTasksArray) {
   const today = new Date();
   for (let i = 1; i <= daysInMonth; i++) {
     const isCurrentDay = today.getDate() === i && today.getMonth() === month && today.getFullYear() === year;
-    const dayClass = isCurrentDay ? 'bg-white border-t-2 border-[var(--primary)]' : 'bg-white';
-    const textClass = isCurrentDay ? 'font-serif text-[color:var(--primary)] font-normal text-2xl' : 'text-[color:var(--heading-2)] font-semibold';
+    const dayClass = isCurrentDay ? 'bg-[#EDE0FF] border-t-2 border-[#7C3AED]' : 'bg-white';
+    const textClass = isCurrentDay ? 'font-serif text-[#7C3AED] font-bold text-2xl' : 'text-[color:var(--heading-2)] font-semibold';
 
     let tasksHtml = '';
     if (tasksByDate[i]) {
@@ -2604,6 +2695,86 @@ async function loadModalTimeline() {
       return `<div>· <span class="text-[color:var(--muted-foreground)]">${ts}</span> <span class="text-[color:var(--primary)] font-medium">${esc(e.kind)}</span> <span class="text-[color:var(--muted-foreground)]">${esc(JSON.stringify(e.payload))}</span></div>`;
     }).join('');
   } catch (e) { tl.textContent = 'Failed to load timeline.'; }
+}
+
+// ---------------- Avatar Picker ----------------
+const AVATAR_EMOJIS = [
+  '😀','😃','😄','😁','😆','😅','🤣','😂',
+  '😊','😇','🙂','🙃','😉','😌','😍','🥰',
+  '😎','🤓','🧐','🥳','🤩','😏','😒','😞',
+  '😤','😠','🤬','😈','💀','☠️','🤡','👻',
+  '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼',
+  '🐨','🐯','🦁','🐸','🐵','🙈','🙉','🙊',
+  '🌸','🌺','🌻','🌹','🍀','🌈','⭐','🔥',
+  '💎','🎯','🎮','🎨','🎵','🎸','🏆','🚀',
+];
+
+let currentAvatar = null;
+
+function avatarKey() {
+  return currentUser ? `user_avatar_${currentUser.id}` : null;
+}
+
+function loadAvatarFromStorage() {
+  const key = avatarKey();
+  if (!key) return;
+  const saved = localStorage.getItem(key);
+  if (!saved) { applyAvatar(null); return; }
+  try { applyAvatar(JSON.parse(saved)); } catch { applyAvatar(null); }
+}
+
+function applyAvatar(av) {
+  currentAvatar = av;
+  const display = document.getElementById('avatar-display');
+  if (!display) return;
+  if (av && av.type === 'img') {
+    display.innerHTML = `<img class="avatar-img" src="${av.src}" alt="avatar">`;
+    display.style.fontSize = '';
+  } else {
+    display.textContent = av || '❓';
+    display.style.fontSize = '55px';
+  }
+}
+
+function openAvatarPicker() {
+  const picker = document.getElementById('avatar-picker');
+  if (!picker) return;
+  picker.classList.remove('hidden');
+  const grid = document.getElementById('avatar-emoji-grid');
+  if (grid) {
+    grid.innerHTML = AVATAR_EMOJIS.map(e => {
+      const active = currentAvatar === e ? ' active' : '';
+      return `<button class="avatar-emoji-btn${active}" onclick="pickEmoji('${e}')" title="${e}"><span>${e}</span></button>`;
+    }).join('');
+  }
+}
+
+function closeAvatarPicker() {
+  const picker = document.getElementById('avatar-picker');
+  if (picker) picker.classList.add('hidden');
+}
+
+function pickEmoji(emoji) {
+  const key = avatarKey();
+  if (key) localStorage.setItem(key, JSON.stringify(emoji));
+  applyAvatar(emoji);
+  closeAvatarPicker();
+}
+
+function handleAvatarUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const av = { type: 'img', src: e.target.result };
+    const key = avatarKey();
+    if (key) localStorage.setItem(key, JSON.stringify(av));
+    applyAvatar(av);
+    closeAvatarPicker();
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
 }
 
 // ---------------- Init ----------------
