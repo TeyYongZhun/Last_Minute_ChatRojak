@@ -1,8 +1,9 @@
 import { getDb } from '../db/index.js';
-import { planTasks } from './task2Planner.js';
+import { planTasks, scorePlan } from './task2Planner.js';
 import {
   generateActionsForPlan,
   pruneActionsForTask,
+  removeCalendarEvent,
   sweepDueReminders,
 } from './actions.js';
 import { emit } from './notifier.js';
@@ -20,10 +21,14 @@ import {
   listTagCounts,
   deleteAllForUser,
   renameTaskCategory,
+  setUserPriority as repoSetUserPriority,
+  setCategoryBucket,
+  setComplexity,
+  setPriorityScores,
+  markCompleted,
 } from '../db/repos/tasks.js';
 import {
   listPlans,
-  getPlan,
   upsertPlan,
   updatePlanStatus,
 } from '../db/repos/plans.js';
@@ -33,6 +38,17 @@ import {
 } from '../db/repos/checklists.js';
 import { listRecent as listRecentNotifications } from '../db/repos/notifications.js';
 import { listRecent as listRecentReplanEvents, addReplanEvent, hasEventContaining } from '../db/repos/replanEvents.js';
+import { addTaskEvent, listTaskEvents } from '../db/repos/taskEvents.js';
+import {
+  listDependencies,
+  getDependenciesFor,
+  safelyAddDependency,
+  safelyAddMany,
+  removeDependency as repoRemoveDep,
+  blockedTaskIds,
+} from './dependencyGraph.js';
+import { recordEdit as recordAdaptiveEdit, shapeWeights, weightsSummary } from './adaptiveScoring.js';
+import { openThread, listOpenThreads } from './clarificationLoop.js';
 
 function ts(d = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -52,8 +68,7 @@ function semanticKey(task) {
 
 export function mergeNewTasks(userId, newTasks) {
   const db = getDb();
-  const prefix = userId.replace(/-/g, '').slice(0, 8);
-  const idRegex = new RegExp(`^${prefix}(\\d+)$`);
+  const idMap = {};
 
   const tx = db.transaction(() => {
     const allTasks = listTasks(userId);
@@ -62,53 +77,94 @@ export function mergeNewTasks(userId, newTasks) {
     for (const t of allTasks) {
       if (t.status !== 'done') openSemanticKeys.set(semanticKey(t), t.id);
     }
-    let nextIdNum = (() => {
-      let maxN = 0;
-      for (const id of existing) {
-        const m = idRegex.exec(id);
-        if (m) maxN = Math.max(maxN, Number(m[1]));
-      }
-      return maxN;
-    })();
+
+    const allocateId = () => {
+      let candidate = nextTaskId(userId);
+      while (existing.has(candidate)) candidate = nextTaskId(userId);
+      return candidate;
+    };
 
     for (const task of newTasks) {
       const t = { ...task };
+      const originalId = t.id;
       const key = semanticKey(t);
       if (key.startsWith('|')) {
-        // empty text — skip dedupe, let it through
+        // empty text — let it through
       } else if (openSemanticKeys.has(key)) {
+        idMap[originalId] = openSemanticKeys.get(key);
         continue;
       }
-      if (!t.id || !idRegex.test(t.id) || existing.has(t.id)) {
-        nextIdNum += 1;
-        t.id = `${prefix}${nextIdNum}`;
-      } else {
-        const m = idRegex.exec(t.id);
-        if (m) nextIdNum = Math.max(nextIdNum, Number(m[1]));
-      }
+      if (!t.id || existing.has(t.id)) t.id = allocateId();
       insertTask(userId, t);
       setTaskTags(t.id, t.tags || []);
+      addTaskEvent(userId, t.id, 'created', {
+        source: 'prompt_chain',
+        category_bucket: t.category_bucket || 'Others',
+        ai_priority: t.ai_priority || t.priority,
+        confidence: t.confidence,
+      });
       existing.add(t.id);
       openSemanticKeys.set(key, t.id);
+      idMap[originalId] = t.id;
     }
   });
   tx();
+
+  return idMap;
+}
+
+function remapDependencies(deps, idMap) {
+  return (deps || [])
+    .map((d) => ({
+      task_id: idMap[d.task_id] || d.task_id,
+      depends_on: idMap[d.depends_on] || d.depends_on,
+      reason: d.reason || null,
+    }))
+    .filter((d) => d.task_id && d.depends_on);
+}
+
+export function applyDependencies(userId, proposedDeps, idMap = {}) {
+  const tasks = listTasks(userId);
+  const knownIds = new Set(tasks.map((t) => t.id));
+  const remapped = remapDependencies(proposedDeps, idMap);
+  const { added, rejected } = safelyAddMany(userId, remapped, knownIds);
+  for (const a of added) {
+    addTaskEvent(userId, a.task_id, 'dependency_added', {
+      depends_on: a.depends_on,
+      reason: a.reason || null,
+      source: 'ai',
+    });
+  }
+  return { added, rejected };
 }
 
 export async function replanAll(userId, now = new Date(), onProgress) {
   const openTasks = listOpenTasks(userId);
   if (!openTasks.length) {
-    return { plans: [], conflicts: [] };
+    return { plans: [], conflicts: [], dependencies: [] };
   }
+
+  const allTasks = listTasks(userId);
+  const doneIds = new Set(allTasks.filter((t) => t.status === 'done').map((t) => t.id));
+  const blocked = blockedTaskIds(userId, doneIds);
+
+  const weights = shapeWeights(userId);
+  const weightsSummaryText = weightsSummary(userId);
 
   const prevPlans = listPlans(userId);
   const prevById = Object.fromEntries(prevPlans.map((p) => [p.task_id, p]));
 
-  const { plans, conflicts } = await planTasks(openTasks, now, onProgress);
+  const { plans, conflicts } = await planTasks(openTasks, now, onProgress, {
+    weights,
+    weightsSummary: weightsSummaryText,
+    blockedIds: blocked,
+  });
 
   const db = getDb();
   const tx = db.transaction(() => {
     for (const plan of plans) {
+      const task = openTasks.find((t) => t.id === plan.task_id);
+      if (!task) continue;
       const prev = prevById[plan.task_id];
       if (prev) {
         const delta = plan.priority_score - prev.priority_score;
@@ -117,18 +173,34 @@ export async function replanAll(userId, now = new Date(), onProgress) {
             userId,
             `[${ts(now)}] ${plan.task_id} priority ${prev.priority_score} → ${plan.priority_score}, decision ${prev.decision} → ${plan.decision}`
           );
+          addTaskEvent(userId, plan.task_id, 'priority_changed', {
+            from_score: prev.priority_score,
+            to_score: plan.priority_score,
+            from_decision: prev.decision,
+            to_decision: plan.decision,
+          });
         }
       } else {
         addReplanEvent(
           userId,
           `[${ts(now)}] ${plan.task_id} planned (priority ${plan.priority_score}, decision ${plan.decision})`
         );
+        addTaskEvent(userId, plan.task_id, 'planned', {
+          priority_score: plan.priority_score,
+          decision: plan.decision,
+          steps: plan.steps?.length || 0,
+        });
       }
 
-      const task = openTasks.find((t) => t.id === plan.task_id);
       if (task?.status === 'in_progress') plan.status = 'in_progress';
 
       upsertPlan(userId, plan);
+      setPriorityScores(userId, plan.task_id, {
+        aiScore: plan.ai_priority_score,
+        userScore: plan.user_adjusted_score,
+      });
+      if (plan.complexity) setComplexity(userId, plan.task_id, plan.complexity);
+
       if (task) generateActionsForPlan(userId, plan, task, now);
 
       if (
@@ -139,6 +211,12 @@ export async function replanAll(userId, now = new Date(), onProgress) {
         const prevQs = new Set(prev?.missing_info_questions || []);
         const newQs = plan.missing_info_questions.filter((q) => !prevQs.has(q));
         if (newQs.length) {
+          for (const field of task?.missing_fields || []) {
+            const match = newQs.find((q) => q.toLowerCase().includes(field));
+            if (match) {
+              openThread(userId, { taskId: plan.task_id, field, question: match });
+            }
+          }
           emit('clarification_needed', {
             user_id: userId,
             task_id: plan.task_id,
@@ -151,16 +229,16 @@ export async function replanAll(userId, now = new Date(), onProgress) {
     }
 
     for (const c of conflicts) {
-      const key = `conflict:${c.ids.slice().sort().join('|')}`;
+      const key = `conflict:${c.kind || 'deadline_clash'}:${c.ids.slice().sort().join('|')}`;
       if (!hasEventContaining(userId, key)) {
         addReplanEvent(userId, `[${ts(now)}] ${key} — ${c.message}`);
-        emit('conflict', { user_id: userId, key, ids: c.ids, message: c.message });
+        emit('conflict', { user_id: userId, key, ids: c.ids, kind: c.kind || 'deadline_clash', message: c.message });
       }
     }
   });
   tx();
 
-  return { plans, conflicts };
+  return { plans, conflicts, dependencies: listDependencies(userId) };
 }
 
 export function startTask(userId, taskId) {
@@ -171,11 +249,20 @@ export function startTask(userId, taskId) {
   if (task.status === 'blocked_waiting_info' || (task.missing_fields || []).length) {
     return { result: 'blocked', missing_fields: task.missing_fields || [] };
   }
+
+  const allTasks = listTasks(userId);
+  const doneIds = new Set(allTasks.filter((t) => t.status === 'done').map((t) => t.id));
+  const myDeps = getDependenciesFor(userId, taskId).filter((d) => !doneIds.has(d.depends_on));
+  if (myDeps.length) {
+    return { result: 'blocked_by_deps', depends_on: myDeps.map((d) => d.depends_on) };
+  }
+
   const db = getDb();
   const tx = db.transaction(() => {
     updateTaskStatus(userId, taskId, 'in_progress');
     updatePlanStatus(userId, taskId, 'in_progress');
     addReplanEvent(userId, `[${ts()}] Task ${taskId} started.`);
+    addTaskEvent(userId, taskId, 'status_changed', { to: 'in_progress' });
   });
   tx();
   return { result: 'ok' };
@@ -186,12 +273,14 @@ export function completeTask(userId, taskId) {
   if (!task) return false;
   const db = getDb();
   const tx = db.transaction(() => {
-    updateTaskStatus(userId, taskId, 'done');
+    markCompleted(userId, taskId);
     updatePlanStatus(userId, taskId, 'done');
     pruneActionsForTask(taskId);
     addReplanEvent(userId, `[${ts()}] Task ${taskId} marked done.`);
+    addTaskEvent(userId, taskId, 'completed', { at: Date.now() });
   });
   tx();
+  removeCalendarEvent(userId, taskId).catch(() => {});
   return true;
 }
 
@@ -213,18 +302,67 @@ export function respondToClarification(userId, taskId, field, value) {
       updateTaskStatus(userId, taskId, 'pending');
     }
     addReplanEvent(userId, `[${ts()}] Clarification for ${taskId} (${field}): '${value}'.`);
+    addTaskEvent(userId, taskId, 'clarified', { field, value });
   });
   tx();
   return true;
 }
 
+export function setUserPriority(userId, taskId, priority) {
+  const task = getTask(userId, taskId);
+  if (!task) return false;
+  repoSetUserPriority(userId, taskId, priority);
+  addTaskEvent(userId, taskId, 'priority_overridden', {
+    ai_priority: task.ai_priority,
+    user_priority: priority,
+  });
+  if (priority) {
+    recordAdaptiveEdit(userId, {
+      task,
+      aiPriority: task.ai_priority || task.priority,
+      userPriority: priority,
+    });
+  }
+  return true;
+}
+
+export function setBucket(userId, taskId, bucket) {
+  const task = getTask(userId, taskId);
+  if (!task) return false;
+  setCategoryBucket(userId, taskId, bucket);
+  addTaskEvent(userId, taskId, 'bucket_changed', { bucket });
+  return true;
+}
+
+export function addTaskDependency(userId, taskId, dependsOn, reason = null) {
+  const t1 = getTask(userId, taskId);
+  const t2 = getTask(userId, dependsOn);
+  if (!t1 || !t2) return { ok: false, error: 'Task not found' };
+  try {
+    safelyAddDependency(userId, taskId, dependsOn, reason);
+    addTaskEvent(userId, taskId, 'dependency_added', { depends_on: dependsOn, reason });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message, code: e.code };
+  }
+}
+
+export function removeTaskDependency(userId, taskId, dependsOn) {
+  const changed = repoRemoveDep(userId, taskId, dependsOn);
+  if (changed) addTaskEvent(userId, taskId, 'dependency_removed', { depends_on: dependsOn });
+  return changed > 0;
+}
+
 export function toggleStep(userId, taskId, stepIndex) {
   const task = getTask(userId, taskId);
   if (!task) return false;
-  return toggleChecklistItem(taskId, stepIndex);
+  const ok = toggleChecklistItem(taskId, stepIndex);
+  if (ok) addTaskEvent(userId, taskId, 'step_toggled', { index: stepIndex });
+  return ok;
 }
 
 function matchesFilters(task, plan, tags, filters) {
+  if (filters.bucket && task.category_bucket !== filters.bucket) return false;
   if (filters.category && (task.category || 'Other').toLowerCase() !== filters.category.toLowerCase()) return false;
   if (filters.priority && task.priority !== filters.priority) return false;
   if (filters.status) {
@@ -250,12 +388,17 @@ export function getDashboard(userId, filters = {}) {
   const plans = listPlans(userId);
   const planByTaskId = Object.fromEntries(plans.map((p) => [p.task_id, p]));
   const tagsByTask = getTagsForTasks(tasks.map((t) => t.id));
+  const deps = listDependencies(userId);
+  const depsByTask = {};
+  for (const d of deps) (depsByTask[d.task_id] ||= []).push({ depends_on: d.depends_on, reason: d.reason });
+  const doneIds = new Set(tasks.filter((t) => t.status === 'done').map((t) => t.id));
 
   const do_now = [];
   const in_progress = [];
   const schedule = [];
   const defer = [];
   const need_info = [];
+  const waiting = [];
   const done = [];
 
   const ordered = tasks
@@ -278,6 +421,10 @@ export function getDashboard(userId, filters = {}) {
       status: task.status,
     };
     if (!matchesFilters(task, effectivePlan, tags, filters)) continue;
+    const taskDeps = depsByTask[task.id] || [];
+    const depsRemaining = taskDeps.filter((d) => !doneIds.has(d.depends_on));
+    const isWaiting = depsRemaining.length > 0 && task.status !== 'done';
+
     const item = {
       task_id: task.id,
       task: task.task,
@@ -285,8 +432,12 @@ export function getDashboard(userId, filters = {}) {
       deadline_iso: task.deadline_iso,
       assigned_by: task.assigned_by,
       priority: task.priority,
+      ai_priority: task.ai_priority,
+      user_priority: task.user_priority,
+      ai_priority_score: task.ai_priority_score ?? effectivePlan.priority_score,
+      user_adjusted_score: task.user_adjusted_score ?? effectivePlan.priority_score,
       priority_score: effectivePlan.priority_score,
-      decision: effectivePlan.decision,
+      decision: isWaiting ? 'waiting' : effectivePlan.decision,
       steps: effectivePlan.steps,
       checklist: getChecklist(task.id),
       conflicts: effectivePlan.conflicts,
@@ -294,12 +445,19 @@ export function getDashboard(userId, filters = {}) {
       status: task.status,
       confidence: task.confidence,
       category: task.category || 'Other',
+      category_bucket: task.category_bucket || 'Others',
+      complexity: task.complexity,
       tags,
+      dependencies: taskDeps,
+      depends_remaining: depsRemaining.map((d) => d.depends_on),
       plan_missing: !plan,
+      updated_at: task.updated_at,
+      completed_at: task.completed_at,
     };
     if (task.status === 'done') done.push(item);
     else if (task.status === 'in_progress') in_progress.push(item);
     else if (effectivePlan.decision === 'ask_user') need_info.push(item);
+    else if (isWaiting) waiting.push(item);
     else if (effectivePlan.decision === 'do_now') do_now.push(item);
     else if (effectivePlan.decision === 'schedule') schedule.push(item);
     else defer.push(item);
@@ -311,9 +469,13 @@ export function getDashboard(userId, filters = {}) {
     schedule,
     defer,
     need_info,
+    waiting,
     done,
     notifications: listRecentNotifications(userId, 10),
     replan_events: listRecentReplanEvents(userId, 15),
+    clarifications: listOpenThreads(userId),
+    dependencies: deps,
+    adaptation: weightsSummary(userId),
     total_tasks: tasks.length,
     available_tags: listTagCounts(userId),
     filters_applied: filters,
@@ -337,6 +499,11 @@ export function renameCategory(userId, oldName, newName) {
   });
   tx();
   return changed;
+}
+
+export function getTimeline(userId, taskId, limit = 50) {
+  if (!getTask(userId, taskId)) return null;
+  return listTaskEvents(userId, taskId, limit);
 }
 
 export { sweepDueReminders };

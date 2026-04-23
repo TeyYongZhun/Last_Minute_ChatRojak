@@ -6,33 +6,63 @@
   <title>Last Minute ChatRojak</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&display=swap" rel="stylesheet" />
   <style>
-    :root { color-scheme: dark; }
-    html, body { font-family: 'Inter', system-ui, sans-serif; height: 100%; margin: 0; overflow: hidden; }
-    body { background: #020617; color: #e2e8f0; -webkit-font-smoothing: antialiased; display: flex; }
+    :root {
+      color-scheme: light;
+      --background:#F7F5F3; --card:#FFFFFF;
+      --foreground:#37322F; --heading-2:#49423D; --muted-foreground:#605A57;
+      --muted:#F2EFEC; --accent:#F2EFEC;
+      --primary:#37322F; --primary-foreground:#FFFFFF;
+      --border:#E0DEDB; --border-soft:rgba(55,50,47,0.12);
+      --input:#E3E2E1; --ring:rgba(55,50,47,0.25);
+      --destructive:#C7443A; --warn:#B4822A; --success:#5B7D4E;
+      --radius:0.625rem; --radius-md:calc(0.625rem - 2px); --radius-lg:0.625rem; --radius-xl:calc(0.625rem + 4px);
+      --shadow-xs:0 1px 2px rgba(55,50,47,0.06);
+      --shadow-sm:0 1px 2px rgba(55,50,47,0.08),0 2px 4px rgba(55,50,47,0.04);
+      --font-sans:'Inter',ui-sans-serif,system-ui,sans-serif;
+      --font-serif:'Instrument Serif',ui-serif,Georgia,serif;
+    }
+    html, body { font-family: var(--font-sans); height: 100%; margin: 0; overflow: hidden; }
+    body { background: var(--background); color: var(--foreground); -webkit-font-smoothing: antialiased; display: flex; }
+
+    .font-serif { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
 
     details > summary { list-style: none; cursor: pointer; }
     details > summary::-webkit-details-marker { display: none; }
 
-    .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; background: #475569; box-shadow: 0 0 8px rgba(71,85,105,0.5); }
-    .dot-active   { background: #38bdf8; box-shadow: 0 0 10px rgba(56,189,248,0.6); }
-    .dot-needinfo { background: #f59e0b; box-shadow: 0 0 10px rgba(245,158,11,0.6); }
+    .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; background: #C9C5C1; }
+    .dot-active   { background: var(--primary); box-shadow: 0 0 0 3px rgba(55,50,47,0.08); }
+    .dot-needinfo { background: var(--warn); box-shadow: 0 0 0 3px rgba(180,130,42,0.15); }
 
     .ghost-btn {
-      padding: 8px 16px; border: 1px solid #334155; border-radius: 8px;
-      font-size: 13px; font-weight: 500; color: #94a3b8; background: transparent;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
+      padding: 8px 14px; border: 1px solid var(--border); border-radius: var(--radius-md);
+      font-size: 13px; font-weight: 500; color: var(--foreground); background: #fff;
+      box-shadow: var(--shadow-xs);
+      transition: all 0.15s ease; cursor: pointer;
     }
-    .ghost-btn:hover { border-color: #64748b; color: #f8fafc; background: #1e293b; transform: translateY(-1px); }
+    .ghost-btn:hover { border-color: rgba(55,50,47,0.2); background: var(--accent); }
     .ghost-btn:active { transform: translateY(0); scale: 0.98; }
+    .ghost-btn.danger { color: var(--destructive); border-color: rgba(199,68,58,0.3); }
+    .ghost-btn.danger:hover { background: rgba(199,68,58,0.06); border-color: var(--destructive); }
 
-    .ghost-btn-accent { border-color: #6366f1; color: #818cf8; background: rgba(99, 102, 241, 0.05); }
-    .ghost-btn-accent:hover { border-color: #818cf8; color: #ffffff; background: #6366f1; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+    .ghost-btn-accent {
+      background: var(--primary); color: var(--primary-foreground);
+      border-color: var(--primary);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06), var(--shadow-xs);
+    }
+    .ghost-btn-accent:hover { background: var(--primary); filter: brightness(1.12); border-color: var(--primary); }
 
-    .task-row { transition: all 0.2s ease; }
+    .task-row {
+      background: #fff; border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px 16px;
+      box-shadow: var(--shadow-xs);
+      transition: all 0.15s ease;
+    }
+    .task-row:hover { box-shadow: var(--shadow-sm); border-color: rgba(55,50,47,0.18); }
 
-    .info-item { border-left: 4px solid #334155; padding: 12px 16px; margin-bottom: 16px; border-radius: 0 12px 12px 0; }
-    .info-item.accent-amber { border-left-color: #f59e0b; background: linear-gradient(to right, rgba(245,158,11,0.1), transparent); }
+    .info-item { border-left: 3px solid var(--border); padding: 12px 16px; margin-bottom: 16px; background: #fff; border-radius: 0 var(--radius-lg) var(--radius-lg) 0; box-shadow: var(--shadow-xs); }
+    .info-item.accent-amber { border-left-color: var(--warn); background: linear-gradient(to right, rgba(180,130,42,0.08), #fff); }
 
     .loading-dot::after { content: ''; animation: dots 1.2s steps(3, end) infinite; }
     @keyframes dots { 0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; } }
@@ -40,114 +70,141 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .spin { animation: spin 0.8s linear infinite; display: inline-block; }
 
-    input[type=checkbox] { accent-color: #6366f1; width: 18px; height: 18px; cursor: pointer; }
+    input[type=checkbox] { accent-color: var(--primary); width: 18px; height: 18px; cursor: pointer; }
 
     .section-label {
       font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-      color: #64748b; padding-bottom: 12px; border-bottom: 1px solid #1e293b; margin-bottom: 12px;
+      color: var(--muted-foreground); padding-bottom: 12px; border-bottom: 1px solid var(--border-soft); margin-bottom: 12px;
     }
 
     .nav-btn {
-      display: flex; align-items: center; width: 100%; text-align: left; padding: 12px 16px; border-radius: 12px;
-      font-size: 15px; font-weight: 500; color: #94a3b8; transition: all .2s; margin-bottom: 6px; border: 1px solid transparent;
+      display: flex; align-items: center; width: 100%; text-align: left; padding: 10px 12px; border-radius: var(--radius-md);
+      font-size: 15px; font-weight: 500; color: var(--muted-foreground); transition: all .15s; margin-bottom: 6px; border: 1px solid transparent;
     }
-    .nav-btn:hover { background: #0f172a; color: #f8fafc; border-color: #1e293b; transform: translateX(4px); }
+    .nav-btn:hover { background: var(--accent); color: var(--foreground); }
     .nav-btn.active {
-      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      background: var(--primary);
       color: #ffffff;
-      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+      box-shadow: 0 1px 2px rgba(55,50,47,0.15);
       font-weight: 600;
-      border-color: transparent;
+      border-color: var(--primary);
     }
-    .nav-btn.active:hover { transform: none; }
 
     .dropzone {
-      border: 2px dashed #475569; border-radius: 20px; padding: 60px 24px; text-align: center;
-      transition: all .2s ease-out; cursor: pointer; background: rgba(30, 41, 59, 0.3);
+      border: 1.5px dashed var(--border); border-radius: var(--radius-xl); padding: 56px 24px; text-align: center;
+      transition: all .15s ease-out; cursor: pointer; background: #FFFFFF;
+      color: var(--muted-foreground);
+      box-shadow: var(--shadow-xs);
     }
     .dropzone:hover, .dropzone.drag-over {
-      border-color: #6366f1;
-      background: rgba(99, 102, 241, 0.05);
-      transform: scale(1.02);
+      border-color: var(--primary);
+      background: #FBFAF8;
     }
 
     .console {
-      background: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 20px;
-      font-family: monospace; font-size: 13px; color: #34d399; max-height: 250px; overflow-y: auto;
-      box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+      background: #FBFAF8; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; color: #3E5A3C; max-height: 250px; overflow-y: auto;
+      box-shadow: inset 0 1px 2px rgba(55,50,47,0.04);
     }
     .console-line { animation: fadeIn .25s ease-out; opacity: 0.95; margin-bottom: 6px; }
-    .console-line.error { color: #f87171; }
-    .console-line.task { color: #818cf8; font-weight: bold; }
+    .console-line.error { color: var(--destructive); }
+    .console-line.task { color: var(--primary); font-weight: 600; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: .95; transform: none; } }
 
     .hidden { display: none !important; }
 
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(55,50,47,0.25); }
 
     .tag-chip {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 10px; border-radius: 999px;
       font-size: 11px; font-weight: 500; letter-spacing: .02em;
-      background: rgba(99, 102, 241, 0.1); color: #a5b4fc;
-      border: 1px solid rgba(99, 102, 241, 0.3);
+      background: #FFFFFF; color: var(--foreground);
+      border: 1px solid var(--border);
       cursor: pointer; transition: all .15s;
     }
-    .tag-chip:hover { background: rgba(99, 102, 241, 0.2); color: #e0e7ff; }
-    .tag-chip.active { background: #6366f1; color: #fff; border-color: #6366f1; box-shadow: 0 2px 8px rgba(99,102,241,0.4); }
+    .tag-chip:hover { background: var(--accent); }
+    .tag-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 2px rgba(55,50,47,0.2); }
 
     .cat-pill {
       display: inline-flex; align-items: center;
-      padding: 2px 8px; border-radius: 6px;
+      padding: 2px 10px; border-radius: 999px;
       font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
-      background: rgba(148, 163, 184, 0.1); color: #cbd5e1;
-      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: #FFFFFF; color: var(--heading-2);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .category-tag {
+      display: inline-flex; align-items: center;
+      padding: 2px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+      background: var(--accent); color: var(--heading-2);
+      border: 1px solid var(--border);
     }
 
     .filter-select {
-      background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
-      padding: 6px 28px 6px 12px; border-radius: 8px; font-size: 13px;
+      background: #fff; border: 1px solid var(--border); color: var(--foreground);
+      padding: 6px 28px 6px 12px; border-radius: var(--radius-md); font-size: 13px;
       appearance: none;
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%2394a3b8' stroke-width='1.5'><polyline points='3 5 6 8 9 5'/></svg>");
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%2337322F' stroke-width='1.5'><polyline points='3 5 6 8 9 5'/></svg>");
       background-repeat: no-repeat;
       background-position: right 8px center;
+    }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(55,50,47,0.45);
+      backdrop-filter: blur(8.25px); -webkit-backdrop-filter: blur(8.25px);
+      z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .modal-box {
+      background: #fff; border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 20px 40px rgba(55,50,47,0.12);
+      padding: 28px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+    }
+
+    .edge-hatch {
+      background-image: repeating-linear-gradient(-45deg, rgba(55,50,47,0.08) 0 0.5px, transparent 0.5px 14px);
     }
   </style>
 </head>
 <body>
 
-  <div id="auth-gate" class="hidden fixed inset-0 z-50 bg-slate-950 flex items-center justify-center">
-    <div class="w-full max-w-sm px-8">
-      <h1 class="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400 mb-2">Last Minute ChatRojak</h1>
-      <p class="text-sm text-slate-400 mb-8" id="auth-subtitle">Sign in to continue</p>
+  <div id="auth-gate" class="hidden fixed inset-0 z-50 bg-[var(--background)] flex items-center justify-center">
+    <div class="w-full max-w-sm px-6">
+      <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] p-8">
+        <h1 class="font-serif text-5xl font-normal tracking-tight text-[color:var(--foreground)] mb-2 leading-none">Last Minute ChatRojak</h1>
+        <p class="text-sm text-[color:var(--muted-foreground)] mb-8" id="auth-subtitle">Sign in to continue</p>
 
-      <div class="space-y-4">
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">Email</label>
-          <input id="auth-email" type="email" autocomplete="email" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-base text-slate-100 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
-        </div>
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">Password</label>
-          <input id="auth-password" type="password" autocomplete="current-password" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-base text-slate-100 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
-          <div class="text-xs text-slate-500 mt-1" id="auth-password-hint">At least 8 characters</div>
-        </div>
-        <div id="auth-error" class="text-sm text-rose-400 min-h-5"></div>
-        <button id="auth-submit" onclick="submitAuth()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all">Log in</button>
-        <div class="text-center text-sm text-slate-400">
-          <span id="auth-switch-label">Don't have an account?</span>
-          <button onclick="toggleAuthMode()" class="ml-2 text-indigo-400 hover:text-indigo-300 font-semibold" id="auth-switch-btn">Sign up</button>
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Email</label>
+            <input id="auth-email" type="email" autocomplete="email" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Password</label>
+            <input id="auth-password" type="password" autocomplete="current-password" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+            <div class="text-xs text-[color:var(--muted-foreground)] mt-1" id="auth-password-hint">At least 8 characters</div>
+          </div>
+          <div id="auth-error" class="text-sm text-[color:var(--destructive)] min-h-5"></div>
+          <button id="auth-submit" onclick="submitAuth()" class="w-full py-2.5 bg-[var(--primary)] hover:brightness-110 text-white rounded-full text-sm font-bold shadow-[var(--shadow-xs)] transition-all">Log in</button>
+          <div class="text-center text-sm text-[color:var(--muted-foreground)]">
+            <span id="auth-switch-label">Don't have an account?</span>
+            <button onclick="toggleAuthMode()" class="ml-2 text-[color:var(--primary)] hover:underline font-semibold" id="auth-switch-btn">Sign up</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <aside id="sidebar" class="w-72 border-r border-slate-800 bg-slate-950 flex flex-col pt-8 pb-4 px-5 flex-shrink-0 z-10 shadow-xl">
+  <aside id="sidebar" class="w-72 border-r border-[var(--border)] bg-white flex flex-col pt-8 pb-4 px-5 flex-shrink-0 z-10 shadow-[var(--shadow-xs)]">
     <div class="mb-10 px-2">
-      <h1 class="text-lg font-bold tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">Last Minute ChatRojak</h1>
-      <div id="summary-line" class="text-sm font-medium text-slate-400 mt-2 h-5">Loading...</div>
+      <h1 class="font-serif text-3xl font-normal tracking-tight text-[color:var(--foreground)] leading-tight">Last Minute ChatRojak</h1>
+      <div id="summary-line" class="text-sm font-medium text-[color:var(--muted-foreground)] mt-2 h-5">Loading...</div>
     </div>
 
     <nav class="flex-1 space-y-2" id="sidebar-nav">
@@ -168,26 +225,26 @@
       </button>
     </nav>
 
-    <div class="border-t border-slate-800 pt-4 px-2 text-xs text-slate-500">
+    <div class="border-t border-[var(--border)] pt-4 px-2 text-xs text-[color:var(--muted-foreground)]">
       <div id="user-email" class="truncate mb-2"></div>
-      <button onclick="logout()" class="text-slate-400 hover:text-rose-400 transition">Log out</button>
+      <button onclick="logout()" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] transition">Log out</button>
     </div>
   </aside>
 
-  <main class="flex-1 overflow-y-auto bg-[#020617] relative">
+  <main class="flex-1 overflow-y-auto bg-[var(--background)] relative">
     <div class="max-w-5xl mx-auto px-10 py-12">
 
       <!-- Upload View -->
       <div id="view-upload" class="view-section">
-        <h2 class="text-3xl font-bold mb-8 text-white">Import Your Tasks</h2>
+        <h2 class="font-serif text-5xl font-normal mb-8 text-[color:var(--foreground)] leading-none">Import Your Tasks</h2>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-8">
           <div>
             <div class="section-label">Paste Raw Text</div>
-            <textarea id="chat-input" class="w-full h-48 bg-slate-900/60 rounded-xl p-4 text-base text-slate-200 resize-none border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-slate-500 shadow-inner mt-2 transition-all" placeholder="Paste WhatsApp chat export here..."></textarea>
+            <textarea id="chat-input" class="w-full h-48 bg-white rounded-[var(--radius-lg)] p-4 text-base text-[color:var(--foreground)] resize-none border border-[var(--border)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none placeholder-[color:var(--muted-foreground)] shadow-[var(--shadow-xs)] mt-2 transition-all" placeholder="Paste WhatsApp chat export here..."></textarea>
 
             <div class="flex items-center gap-3 mt-4 mb-2">
-              <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex-shrink-0">Timeframe</label>
+              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] flex-shrink-0">Timeframe</label>
               <select id="timeframe-select" class="filter-select">
                 <option value="all">All Time</option>
                 <option value="last7" selected>Last 7 Days</option>
@@ -195,10 +252,10 @@
               </select>
             </div>
             <div class="flex gap-3">
-<button onclick="clearInput()" class="ghost-btn border-slate-600 text-slate-400 hover:border-rose-500 hover:text-rose-400">Clear</button>
-              <button onclick="processMessages()" id="process-btn" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">Process Text</button>
+              <button onclick="clearInput()" class="ghost-btn danger">Clear</button>
+              <button onclick="processMessages()" id="process-btn" class="flex-1 py-2.5 bg-[var(--primary)] hover:brightness-110 text-white rounded-full text-sm font-bold shadow-[var(--shadow-xs)] transition-all">Process Text</button>
             </div>
-            <div id="status-msg" class="mt-4 text-sm font-medium text-slate-400 min-h-5"></div>
+            <div id="status-msg" class="mt-4 text-sm font-medium text-[color:var(--muted-foreground)] min-h-5"></div>
             <div id="recent-imports-list" class="mt-5"></div>
           </div>
 
@@ -210,15 +267,15 @@
                 ondrop="handleDrop(event)"
                 onclick="document.getElementById('file-input').click()">
               <div class="text-5xl mb-4 opacity-80">📄</div>
-              <div class="text-lg text-slate-200 font-semibold">Drop .txt file here</div>
-              <div class="text-sm text-slate-400 mt-2">or click to browse your computer</div>
+              <div class="text-lg text-[color:var(--foreground)] font-semibold">Drop .txt file here</div>
+              <div class="text-sm text-[color:var(--muted-foreground)] mt-2">or click to browse your computer</div>
               <input id="file-input" type="file" accept=".txt,text/plain" class="hidden" onchange="handleFilePick(event)" />
             </div>
           </div>
         </div>
 
-        <div id="upload-processing" class="hidden mt-8 border-t border-slate-800 pt-8">
-          <div class="text-sm font-medium text-indigo-400 mb-4 flex items-center gap-3">
+        <div id="upload-processing" class="hidden mt-8 border-t border-[var(--border-soft)] pt-8">
+          <div class="text-sm font-medium text-[color:var(--primary)] mb-4 flex items-center gap-3">
             <span class="dot dot-active"></span>
             <span class="loading-dot">AI is analyzing conversation</span>
           </div>
@@ -229,7 +286,7 @@
 
       <!-- Dashboard View -->
       <div id="view-dashboard" class="view-section hidden">
-        <h2 class="text-3xl font-bold mb-6 text-white">Dashboard Overview</h2>
+        <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Dashboard Overview</h2>
         <div id="dash-stat-cards" class="grid grid-cols-3 gap-4 mb-6"></div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div>
@@ -241,20 +298,31 @@
             <div id="dash-upnext"></div>
           </div>
         </div>
+        <div class="mt-6">
+          <div class="section-label">Clarification Inbox (AI is waiting for your answer)</div>
+          <div id="dash-clarification-threads"></div>
+        </div>
+        <div class="mt-6">
+          <div class="section-label">Dependency Graph</div>
+          <div id="dash-dependencies" class="text-sm text-[color:var(--muted-foreground)]"></div>
+        </div>
       </div>
 
       <!-- Checklist View -->
       <div id="view-checklist" class="view-section hidden">
-        <div class="flex justify-between items-end mb-6 border-b border-slate-800 pb-5">
-          <h2 class="text-3xl font-bold text-white">Task Checklist</h2>
-          <button onclick="resetAll()" class="ghost-btn border-rose-900/50 text-rose-400 hover:border-rose-500 hover:bg-rose-950/30">Reset All Data</button>
+        <div class="flex justify-between items-end mb-6 border-b border-[var(--border-soft)] pb-5">
+          <h2 class="font-serif text-5xl font-normal text-[color:var(--foreground)] leading-none">Task Checklist</h2>
+          <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
         </div>
 
-        <div id="filter-toolbar" class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 mb-6 space-y-3">
+        <div id="filter-toolbar" class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-4 mb-6 space-y-3 shadow-[var(--shadow-xs)]">
           <div class="flex flex-wrap items-center gap-3">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Filters:</span>
-            <select id="filter-category" class="filter-select" onchange="applyFilters()">
+            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Filters:</span>
+            <select id="filter-bucket" class="filter-select" onchange="applyFilters()">
               <option value="">All categories</option>
+              <option value="Academic">Academic</option>
+              <option value="Co-curricular">Co-curricular</option>
+              <option value="Others">Others</option>
             </select>
             <select id="filter-priority" class="filter-select" onchange="applyFilters()">
               <option value="">All priorities</option>
@@ -267,57 +335,72 @@
               <option value="done">Done</option>
               <option value="">All</option>
             </select>
-            <input id="filter-q" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none" placeholder="Search…" oninput="applyFiltersDebounced()" />
+            <input id="filter-q" class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Search…" oninput="applyFiltersDebounced()" />
             <button onclick="clearFilters()" class="ghost-btn">Clear</button>
           </div>
           <div class="flex flex-wrap items-center gap-2" id="tag-chips">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-1">AI tags:</span>
-            <span class="text-xs text-slate-500">none yet</span>
+            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>
+            <span class="text-xs text-[color:var(--muted-foreground)]">none yet</span>
           </div>
         </div>
 
         <div id="checklist-content">
-           <div class="text-base text-slate-500 py-16 text-center bg-slate-900/20 rounded-2xl border border-slate-800/50">No actionable tasks found.</div>
+           <div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No actionable tasks found.</div>
         </div>
       </div>
 
       <!-- Calendar View -->
       <div id="view-calendar" class="view-section hidden">
-        <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-5">
-          <h2 class="text-3xl font-bold text-white">Monthly Calendar</h2>
-          <div class="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl p-1.5 shadow-inner">
-            <button onclick="changeMonth(-1)" class="ghost-btn border-none hover:bg-slate-800 px-4 py-2 text-lg">&lt;</button>
-            <span id="calendar-month-label" class="text-base font-bold w-40 text-center inline-block text-white tracking-wide"></span>
-            <button onclick="changeMonth(1)" class="ghost-btn border-none hover:bg-slate-800 px-4 py-2 text-lg">&gt;</button>
+        <div class="flex justify-between items-center mb-6 border-b border-[var(--border-soft)] pb-5">
+          <h2 class="font-serif text-5xl font-normal text-[color:var(--foreground)] leading-none">Monthly Calendar</h2>
+          <div class="flex items-center gap-2 bg-white border border-[var(--border)] rounded-full p-1.5 shadow-[var(--shadow-xs)]">
+            <button onclick="changeMonth(-1)" class="ghost-btn border-transparent shadow-none hover:bg-[var(--accent)] px-4 py-2 text-lg">&lt;</button>
+            <span id="calendar-month-label" class="font-serif text-xl w-40 text-center inline-block text-[color:var(--foreground)]"></span>
+            <button onclick="changeMonth(1)" class="ghost-btn border-transparent shadow-none hover:bg-[var(--accent)] px-4 py-2 text-lg">&gt;</button>
           </div>
         </div>
 
-        <div id="calendar-grid" class="grid grid-cols-7 gap-[1px] bg-slate-700 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
+        <div id="calendar-grid" class="grid grid-cols-7 gap-[1px] bg-[var(--border)] border border-[var(--border)] rounded-[var(--radius-xl)] overflow-hidden shadow-[var(--shadow-sm)]">
         </div>
       </div>
 
       <div id="view-account" class="view-section hidden">
-        <h2 class="text-3xl font-bold mb-8 text-white">Account</h2>
-        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-6 mb-6">
+        <h2 class="font-serif text-5xl font-normal mb-8 text-[color:var(--foreground)] leading-none">Account</h2>
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mb-6 shadow-[var(--shadow-xs)]">
           <div class="section-label">Signed in as</div>
-          <div class="text-lg text-white font-semibold" id="account-email">—</div>
+          <div class="font-serif text-2xl text-[color:var(--foreground)]" id="account-email">—</div>
         </div>
 
-        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 shadow-[var(--shadow-xs)]">
           <div class="section-label">Telegram</div>
-          <div id="telegram-status" class="text-sm text-slate-400 mb-4">Checking…</div>
+          <div id="telegram-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">Checking…</div>
           <button onclick="generateLinkCode()" id="link-code-btn" class="ghost-btn ghost-btn-accent">Generate link code</button>
           <div id="link-code-display" class="mt-4 hidden">
-            <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Send this to the bot:</div>
-            <code class="text-2xl font-bold text-indigo-300 tracking-widest" id="link-code-value"></code>
-            <div class="text-xs text-slate-500 mt-2">In Telegram, send <code class="text-slate-300">/link &lt;code&gt;</code> to the bot within 10 minutes.</div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Send this to the bot:</div>
+            <code class="font-serif text-3xl text-[color:var(--primary)] tracking-widest" id="link-code-value"></code>
+            <div class="text-xs text-[color:var(--muted-foreground)] mt-2">In Telegram, send <code class="text-[color:var(--heading-2)]">/link &lt;code&gt;</code> to the bot within 10 minutes.</div>
           </div>
         </div>
 
-        <div class="bg-slate-900/60 border border-rose-900/30 rounded-xl p-6 mt-6">
-          <div class="section-label text-rose-400">Danger Zone</div>
-          <p class="text-sm text-slate-400 mb-4">Permanently delete all your tasks, plans, and history. This cannot be undone.</p>
-          <button onclick="resetAll()" class="ghost-btn border-rose-900/50 text-rose-400 hover:border-rose-500 hover:bg-rose-950/30">Reset All Data</button>
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
+          <div class="section-label">Google Calendar</div>
+          <div id="google-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">Checking…</div>
+          <button onclick="linkGoogleCalendar()" id="google-link-btn" class="ghost-btn ghost-btn-accent">Link Google Calendar</button>
+          <button onclick="unlinkGoogleCalendar()" id="google-unlink-btn" class="ghost-btn hidden ml-2">Unlink</button>
+          <div class="text-xs text-[color:var(--muted-foreground)] mt-3">When linked, tasks with deadlines are synced as calendar events with smart reminders.</div>
+        </div>
+
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
+          <div class="section-label">Adaptive Priority Learning</div>
+          <div id="adaptation-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">—</div>
+          <button onclick="resetAdaptation()" class="ghost-btn">Reset adaptation</button>
+          <div class="text-xs text-[color:var(--muted-foreground)] mt-3">The system learns from your priority overrides to better rank future tasks.</div>
+        </div>
+
+        <div class="bg-white border border-[rgba(199,68,58,0.3)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
+          <div class="section-label" style="color:var(--destructive)">Danger Zone</div>
+          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">Permanently delete all your tasks, plans, and history. This cannot be undone.</p>
+          <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
         </div>
       </div>
 
@@ -330,38 +413,76 @@
     <div class="flex items-start justify-between mb-5">
       <div class="flex-1 min-w-0 pr-3">
         <div id="modal-category" class="mb-2"></div>
-        <h3 id="modal-title" class="text-xl font-bold text-white leading-snug"></h3>
+        <h3 id="modal-title" class="font-serif text-3xl font-normal text-[color:var(--foreground)] leading-tight"></h3>
       </div>
-      <button onclick="closeModal()" class="text-slate-500 hover:text-white text-2xl leading-none flex-shrink-0 mt-1">&times;</button>
+      <button onclick="closeModal()" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] text-2xl leading-none flex-shrink-0 mt-1">&times;</button>
     </div>
 
     <div class="space-y-3 mb-6">
       <div class="flex items-center gap-3 text-sm">
-        <span class="text-slate-500 w-20 flex-shrink-0">Deadline</span>
-        <span id="modal-deadline" class="text-indigo-300 font-medium"></span>
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Deadline</span>
+        <span id="modal-deadline" class="text-[color:var(--primary)] font-medium"></span>
       </div>
       <div class="flex items-center gap-3 text-sm">
-        <span class="text-slate-500 w-20 flex-shrink-0">Priority</span>
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">AI priority</span>
         <span id="modal-priority" class="category-tag"></span>
+        <span id="modal-score" class="text-xs text-[color:var(--muted-foreground)]"></span>
       </div>
       <div class="flex items-center gap-3 text-sm">
-        <span class="text-slate-500 w-20 flex-shrink-0">Assigned by</span>
-        <span id="modal-assignee" class="text-slate-300"></span>
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Override</span>
+        <select id="modal-priority-override" onchange="modalSetPriority()" class="filter-select">
+          <option value="">Use AI priority</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
       </div>
       <div class="flex items-center gap-3 text-sm">
-        <span class="text-slate-500 w-20 flex-shrink-0">Status</span>
-        <span id="modal-status" class="text-slate-300"></span>
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Bucket</span>
+        <select id="modal-bucket" onchange="modalSetBucket()" class="filter-select">
+          <option value="Academic">Academic</option>
+          <option value="Co-curricular">Co-curricular</option>
+          <option value="Others">Others</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Assigned by</span>
+        <span id="modal-assignee" class="text-[color:var(--heading-2)]"></span>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Status</span>
+        <span id="modal-status" class="text-[color:var(--heading-2)]"></span>
+      </div>
+      <div class="flex items-start gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Depends on</span>
+        <div id="modal-deps" class="flex flex-wrap gap-2 flex-1"></div>
       </div>
     </div>
 
     <div id="modal-steps-section" class="mb-6">
-      <div class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Action Steps</div>
+      <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-3">Action Steps</div>
       <ol id="modal-steps" class="space-y-2"></ol>
     </div>
 
-    <div class="flex gap-3 pt-4 border-t border-slate-800">
-      <button id="modal-start-btn" onclick="modalStartTask()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold transition-all">Start Task</button>
-      <button id="modal-done-btn" onclick="modalMarkDone()" class="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition-all">Mark Done</button>
+    <div id="modal-clarify-section" class="mb-6 hidden">
+      <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--warn)] mb-2">Clarification needed</div>
+      <div id="modal-clarify-q" class="text-sm text-[color:var(--heading-2)] mb-2"></div>
+      <div class="flex gap-2">
+        <input id="modal-clarify-input" class="flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Your answer…" />
+        <button onclick="modalSubmitClarification()" class="ghost-btn ghost-btn-accent">Submit</button>
+      </div>
+    </div>
+
+    <div id="modal-timeline-section" class="mb-6">
+      <details>
+        <summary class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-3 cursor-pointer">Timeline</summary>
+        <div id="modal-timeline" class="mt-3 text-xs space-y-1 text-[color:var(--muted-foreground)]"></div>
+      </details>
+    </div>
+
+    <div class="flex gap-3 pt-4 border-t border-[var(--border-soft)]">
+      <button id="modal-start-btn" onclick="modalStartTask()" class="flex-1 py-2.5 bg-[var(--primary)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Start Task</button>
+      <button id="modal-done-btn" onclick="modalMarkDone()" class="flex-1 py-2.5 bg-[var(--success)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Mark Done</button>
       <button onclick="closeModal()" class="px-4 py-2.5 ghost-btn">Close</button>
     </div>
   </div>
@@ -490,6 +611,7 @@ function saveFilters() { localStorage.setItem('filters', JSON.stringify(filters)
 
 function filtersToQuery() {
   const p = new URLSearchParams();
+  if (filters.bucket) p.set('bucket', filters.bucket);
   if (filters.category) p.set('category', filters.category);
   if (filters.priority) p.set('priority', filters.priority);
   if (filters.status) p.set('status', filters.status);
@@ -508,7 +630,7 @@ function clearInput() { document.getElementById('chat-input').value = ''; docume
 
 function setStatus(msg, type = 'info') {
   const el = document.getElementById('status-msg');
-  const colors = { info: 'text-slate-400', success: 'text-emerald-400', error: 'text-rose-400', loading: 'text-indigo-400' };
+  const colors = { info: 'text-[color:var(--muted-foreground)]', success: 'text-[color:var(--success)]', error: 'text-[color:var(--destructive)]', loading: 'text-[color:var(--primary)]' };
   el.className = `mt-4 text-sm font-medium ${colors[type] || colors.info} min-h-5`;
   el.innerHTML = msg;
 }
@@ -582,23 +704,12 @@ function activeTasks(data) {
 
 // ---------------- Filters UI ----------------
 function renderFilterToolbar(data) {
-  const catSel = document.getElementById('filter-category');
+  const bucketSel = document.getElementById('filter-bucket');
   const prioSel = document.getElementById('filter-priority');
   const statSel = document.getElementById('filter-status');
   const qInput = document.getElementById('filter-q');
 
-  const cats = new Set();
-  for (const bucket of ['do_now','in_progress','schedule','defer','need_info','done']) {
-    for (const t of (data[bucket] || [])) if (t.category) cats.add(t.category);
-  }
-  const currentCat = filters.category || '';
-  const sortedCats = [...cats].sort();
-  catSel.innerHTML = '<option value="">All categories</option>' +
-    sortedCats.map(c => `<option value="${esc(c)}" ${c === currentCat ? 'selected' : ''}>${esc(c)}</option>`).join('');
-  if (!sortedCats.includes(currentCat) && currentCat) {
-    catSel.innerHTML += `<option value="${esc(currentCat)}" selected>${esc(currentCat)}</option>`;
-  }
-
+  if (bucketSel) bucketSel.value = filters.bucket || '';
   prioSel.value = filters.priority || '';
   statSel.value = filters.status ?? 'active';
   qInput.value = filters.q || '';
@@ -606,7 +717,7 @@ function renderFilterToolbar(data) {
   const chipsEl = document.getElementById('tag-chips');
   const tagRows = (data.available_tags || []);
   if (!tagRows.length) {
-    chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-1">AI tags:</span><span class="text-xs text-slate-500">none yet — process a chat to see AI-generated tags</span>`;
+    chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span><span class="text-xs text-[color:var(--muted-foreground)]">none yet — process a chat to see AI-generated tags</span>`;
     return;
   }
   const active = new Set(filters.tags || []);
@@ -614,7 +725,7 @@ function renderFilterToolbar(data) {
     const cls = active.has(t.tag) ? 'tag-chip active' : 'tag-chip';
     return `<button class="${cls}" onclick="toggleTag('${esc(t.tag)}')">#${esc(t.tag)} <span class="opacity-60">${t.count}</span></button>`;
   }).join('');
-  chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-1">AI tags:</span>${chipsHtml}`;
+  chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>${chipsHtml}`;
 }
 
 function toggleTag(tag) {
@@ -626,7 +737,8 @@ function toggleTag(tag) {
 }
 
 function applyFilters() {
-  filters.category = document.getElementById('filter-category').value;
+  const bucketEl = document.getElementById('filter-bucket');
+  filters.bucket = bucketEl ? bucketEl.value : '';
   filters.priority = document.getElementById('filter-priority').value;
   filters.status = document.getElementById('filter-status').value;
   filters.q = document.getElementById('filter-q').value;
@@ -652,9 +764,9 @@ function renderViews(data) {
   if (!data.total_tasks) {
     summary.textContent = 'No active tasks';
     document.getElementById('dash-stat-cards').innerHTML = '';
-    document.getElementById('dash-clarifications').innerHTML = '<div class="text-sm text-slate-500 py-8 text-center bg-slate-900/30 rounded-xl border border-slate-800">No data yet. Head to Upload to process a chat.</div>';
-    document.getElementById('dash-upnext').innerHTML = '<div class="text-sm text-slate-500 py-8 text-center bg-slate-900/30 rounded-xl border border-slate-800">No upcoming tasks.</div>';
-    document.getElementById('checklist-content').innerHTML = '<div class="text-base text-slate-500 py-16 text-center bg-slate-900/20 rounded-2xl border border-slate-800/50">No tasks available.</div>';
+    document.getElementById('dash-clarifications').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No data yet. Head to Upload to process a chat.</div>';
+    document.getElementById('dash-upnext').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No upcoming tasks.</div>';
+    document.getElementById('checklist-content').innerHTML = '<div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No tasks available.</div>';
     renderCalendar(data, []);
     return;
   }
@@ -663,13 +775,15 @@ function renderViews(data) {
   const dueToday = (active || []).filter(t => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
 
   const parts = [`${active.length} Active Tasks`];
-  if (dueToday) parts.push(`<span class="text-rose-400 font-semibold">${dueToday} Due Today</span>`);
-  summary.innerHTML = parts.join(' <span class="mx-1 text-slate-600">•</span> ');
+  if (dueToday) parts.push(`<span class="text-[color:var(--destructive)] font-semibold">${dueToday} Due Today</span>`);
+  summary.innerHTML = parts.join(' <span class="mx-1 text-[color:var(--muted-foreground)]">•</span> ');
 
   safeRender('dash-stat-cards', () => renderStatCards(data, active));
   safeRender('dash-clarifications', () => renderImportantInfo(data, active));
   safeRender('dash-upnext', () => renderUpNext(data, active));
   safeRender('checklist-content', () => renderTasks(data, active));
+  try { renderClarificationThreads(data); } catch (e) { console.error('renderClarificationThreads failed:', e); }
+  try { renderDependencyGraph(data); } catch (e) { console.error('renderDependencyGraph failed:', e); }
   try { renderCalendar(data, active); } catch (e) { console.error('renderCalendar failed:', e); }
 }
 
@@ -680,7 +794,7 @@ function safeRender(containerId, fn) {
     el.innerHTML = fn();
   } catch (e) {
     console.error(`render for #${containerId} failed:`, e);
-    el.innerHTML = `<div class="text-sm text-rose-400 py-4 text-center bg-rose-950/20 rounded-xl border border-rose-900/30">Failed to render. Check console.</div>`;
+    el.innerHTML = `<div class="text-sm text-[color:var(--destructive)] py-4 text-center bg-[rgba(199,68,58,0.06)] rounded-[var(--radius-xl)] border border-[rgba(199,68,58,0.3)]">Failed to render. Check console.</div>`;
   }
 }
 
@@ -691,7 +805,7 @@ function statusDot(item) {
 }
 
 function renderTasks(data, active) {
-  const rows = active.length ? active.map(renderTaskRow).join('') : `<div class="text-base text-slate-500 py-8">No active tasks match your filters.</div>`;
+  const rows = active.length ? active.map(renderTaskRow).join('') : `<div class="text-base text-[color:var(--muted-foreground)] py-8">No active tasks match your filters.</div>`;
   return `<div class="space-y-4">${rows}</div>`;
 }
 
@@ -743,22 +857,22 @@ function formatCustomDate(rawString) {
   return `${dayName} ${day}/${month}/${year} ${hours}:${minutes}${ampm}`;
 }
 
-// Category tag color mapping
+// Category tag color mapping — light theme (subtle tinted pills)
 function getCategoryStyle(category) {
-  if (!category) return 'bg-slate-700/60 text-slate-300';
+  if (!category) return 'bg-[var(--accent)] text-[color:var(--heading-2)]';
   const cat = category.toLowerCase();
-  if (cat.includes('academic') || cat.includes('study') || cat.includes('assignment')) return 'bg-indigo-900/70 text-indigo-300';
-  if (cat.includes('finance') || cat.includes('payment') || cat.includes('money')) return 'bg-emerald-900/70 text-emerald-300';
-  if (cat.includes('event') || cat.includes('social') || cat.includes('cca')) return 'bg-purple-900/70 text-purple-300';
-  if (cat.includes('project') || cat.includes('work')) return 'bg-cyan-900/70 text-cyan-300';
-  return 'bg-slate-700/60 text-slate-300';
+  if (cat.includes('academic') || cat.includes('study') || cat.includes('assignment')) return 'bg-[rgba(55,50,47,0.08)] text-[color:var(--primary)]';
+  if (cat.includes('finance') || cat.includes('payment') || cat.includes('money')) return 'bg-[rgba(91,125,78,0.12)] text-[color:var(--success)]';
+  if (cat.includes('event') || cat.includes('social') || cat.includes('cca')) return 'bg-[rgba(180,130,42,0.12)] text-[color:var(--warn)]';
+  if (cat.includes('project') || cat.includes('work')) return 'bg-[rgba(73,66,61,0.1)] text-[color:var(--heading-2)]';
+  return 'bg-[var(--accent)] text-[color:var(--heading-2)]';
 }
 
 function priorityPill(priority) {
   const p = priority || 'medium';
-  const cls = p === 'high' ? 'bg-rose-900/60 text-rose-300 border-rose-800/60'
-    : p === 'medium' ? 'bg-amber-900/60 text-amber-300 border-amber-800/60'
-    : 'bg-slate-700/60 text-slate-300 border-slate-600/60';
+  const cls = p === 'high' ? 'bg-[rgba(199,68,58,0.1)] text-[color:var(--destructive)] border-[rgba(199,68,58,0.3)]'
+    : p === 'medium' ? 'bg-[rgba(180,130,42,0.1)] text-[color:var(--warn)] border-[rgba(180,130,42,0.3)]'
+    : 'bg-[var(--accent)] text-[color:var(--muted-foreground)] border-[var(--border)]';
   return `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border ${cls}">${esc(p)}</span>`;
 }
 
@@ -779,12 +893,15 @@ function renderTaskRow(item) {
 
   if (textToFormat) {
     const formatted = formatCustomDate(textToFormat);
-    displayDeadline = formatted ? `<span class="text-indigo-300 font-medium">${formatted}</span>` : esc(item.deadline);
+    displayDeadline = formatted ? `<span class="text-[color:var(--primary)] font-medium">${formatted}</span>` : esc(item.deadline);
   }
 
   const now = new Date();
   const isOverdue = item.deadline_iso && new Date(item.deadline_iso) < now && item.status !== 'done';
-  const overdueBadge = isOverdue ? `<span class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-rose-600 text-white">Overdue</span>` : '';
+  const overdueBadge = isOverdue ? `<span class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[var(--destructive)] text-white">Overdue</span>` : '';
+  const waitingBadge = (item.depends_remaining && item.depends_remaining.length)
+    ? `<span class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[rgba(180,130,42,0.12)] text-[color:var(--warn)] border border-[rgba(180,130,42,0.3)]" title="Waiting on ${esc(item.depends_remaining.join(', '))}">⛔ waiting on ${esc(item.depends_remaining.join(', '))}</span>`
+    : '';
 
   const actions = item.status === 'done'
     ? ''
@@ -796,20 +913,23 @@ function renderTaskRow(item) {
     `<button class="tag-chip" onclick="toggleTag('${esc(t)}')">#${esc(t)}</button>`
   ).join(' ');
 
-  const categoryPill = item.category ? `<span class="cat-pill">${esc(item.category)}</span>` : '';
-  const metaChips = [categoryPill, priorityPill(item.priority), tagChips].filter(Boolean).join(' ');
-  const assignedBy = item.assigned_by ? `<span class="mx-2 text-slate-600">·</span><span class="text-slate-400">by ${esc(item.assigned_by)}</span>` : '';
-  const statusText = `<span class="mx-2 text-slate-600">·</span><span class="text-slate-300 font-medium">${statusLabel(item)}</span>`;
+  const bucketPill = item.category_bucket ? `<span class="cat-pill">${esc(item.category_bucket)}</span>` : '';
+  const scoreChip = typeof item.user_adjusted_score === 'number'
+    ? `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-[var(--accent)] text-[color:var(--heading-2)] border border-[var(--border)]" title="AI ${item.ai_priority_score ?? '—'} / adjusted ${item.user_adjusted_score}">score ${item.user_adjusted_score}</span>`
+    : '';
+  const metaChips = [bucketPill, priorityPill(item.user_priority || item.priority), scoreChip, tagChips].filter(Boolean).join(' ');
+  const assignedBy = item.assigned_by ? `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--muted-foreground)]">by ${esc(item.assigned_by)}</span>` : '';
+  const statusText = `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--heading-2)] font-medium">${statusLabel(item)}</span>`;
 
   return `
-    <div class="task-row flex items-center gap-3 bg-slate-900/80 px-4 py-3 rounded-xl border border-slate-700/50 hover:border-indigo-500/50 cursor-pointer shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-0.5" data-tid="${tid}" onclick="if(event.target.closest('button')) return; openTaskModal('${tid}')">
+    <div class="task-row flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')) return; openTaskModal('${tid}')">
       <div class="flex-shrink-0">${statusDot(item)}</div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-0.5">
-          <div class="text-base font-semibold text-white truncate">${esc(item.task)}</div>
+          <div class="text-base font-semibold text-[color:var(--foreground)] truncate">${esc(item.task)}</div>
           ${overdueBadge}
         </div>
-        <div class="text-xs text-slate-400 flex items-center flex-wrap gap-1">
+        <div class="text-xs text-[color:var(--muted-foreground)] flex items-center flex-wrap gap-1">
           <span class="text-base">⏰</span> ${displayDeadline}${statusText}${assignedBy}
         </div>
         <div class="flex flex-wrap items-center gap-2 mt-3">${metaChips}</div>
@@ -823,38 +943,38 @@ function renderStatCards(data, active) {
   const dueToday = active.filter((t) => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
   const completed = (data.done || []).length;
   const card = (value, label, valueClass) => `
-    <div class="bg-slate-900/60 border border-slate-800 rounded-xl px-5 py-4">
-      <div class="text-3xl font-bold ${valueClass}">${value}</div>
-      <div class="text-xs uppercase tracking-wider text-slate-500 mt-1">${label}</div>
+    <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)]">
+      <div class="font-serif text-4xl font-normal leading-none ${valueClass}">${value}</div>
+      <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2">${label}</div>
     </div>`;
   return [
     card(total, 'Active', 'text-white'),
-    card(dueToday, 'Due Today', dueToday ? 'text-rose-400' : 'text-white'),
-    card(completed, 'Completed', 'text-emerald-400'),
+    card(dueToday, 'Due Today', dueToday ? 'text-[color:var(--destructive)]' : 'text-[color:var(--foreground)]'),
+    card(completed, 'Completed', 'text-[color:var(--success)]'),
   ].join('');
 }
 
 function renderUpNext(data, active) {
   const items = active.slice(0, 5);
   if (!items.length) {
-    return `<div class="text-sm text-slate-500 py-8 text-center bg-slate-900/30 rounded-xl border border-slate-800">No upcoming tasks.</div>`;
+    return `<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No upcoming tasks.</div>`;
   }
   const priorityPill = (p) => {
-    const cls = p === 'high' ? 'bg-rose-900/60 text-rose-300'
-      : p === 'medium' ? 'bg-amber-900/60 text-amber-300'
-      : 'bg-slate-700/60 text-slate-300';
+    const cls = p === 'high' ? 'bg-[rgba(199,68,58,0.1)] text-[color:var(--destructive)]'
+      : p === 'medium' ? 'bg-[rgba(180,130,42,0.1)] text-[color:var(--warn)]'
+      : 'bg-[var(--accent)] text-[color:var(--muted-foreground)]';
     return `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${cls}">${esc(p || 'medium')}</span>`;
   };
   const rows = items.map((item) => {
     const raw = item.deadline_iso || item.deadline;
     const formatted = raw ? formatCustomDate(raw) : null;
     const deadlinePill = formatted
-      ? `<span class="text-xs text-indigo-300 font-medium">⏰ ${formatted}</span>`
-      : `<span class="text-xs text-slate-500">No deadline</span>`;
+      ? `<span class="text-xs text-[color:var(--primary)] font-medium">⏰ ${formatted}</span>`
+      : `<span class="text-xs text-[color:var(--muted-foreground)]">No deadline</span>`;
     return `
-      <div class="flex items-center gap-3 bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3">
+      <div class="flex items-center gap-3 bg-white border border-[var(--border)] rounded-[var(--radius-lg)] px-4 py-3 shadow-[var(--shadow-xs)]">
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold text-white truncate">${esc(item.task)}</div>
+          <div class="text-sm font-semibold text-[color:var(--foreground)] truncate">${esc(item.task)}</div>
           <div class="mt-1 flex items-center gap-2">${deadlinePill}${priorityPill(item.priority)}</div>
         </div>
       </div>`;
@@ -870,22 +990,22 @@ function renderImportantInfo(data, active) {
       if (answeredQuestions.has(`${tid}-${i}`)) continue;
 
       items.push(`
-        <div id="clarify-${tid}-${i}" class="info-item accent-amber bg-slate-900/50 shadow-md">
+        <div id="clarify-${tid}-${i}" class="info-item accent-amber">
           <div class="flex items-start justify-between gap-2 mb-3">
-            <div class="text-sm font-semibold text-amber-400 flex items-center gap-2">
+            <div class="text-sm font-semibold text-[color:var(--warn)] flex items-center gap-2">
               <span>⚠️</span> ${esc(q)}
             </div>
-            <button data-tid="${tid}" data-idx="${i}" onclick="dismissQuestion(this)" title="Not important" class="text-slate-600 hover:text-slate-300 text-lg leading-none flex-shrink-0 transition-colors">&times;</button>
+            <button data-tid="${tid}" data-idx="${i}" onclick="dismissQuestion(this)" title="Not important" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] text-lg leading-none flex-shrink-0 transition-colors">&times;</button>
           </div>
           <div class="flex gap-3">
-            <input type="text" id="q-${tid}-${i}" class="flex-1 bg-slate-950/80 rounded-lg px-3 py-2 text-sm border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-slate-200 transition-colors" placeholder="Type your answer..." />
-            <button data-tid="${tid}" data-field="${esc(q.toLowerCase().includes('due') ? 'deadline' : 'assigned_by')}" data-idx="${i}" onclick="answerQuestion(this)" class="ghost-btn ghost-btn-accent border-amber-600/50 text-amber-400 hover:bg-amber-600 hover:text-white hover:border-amber-500 px-4 font-bold text-xs">Submit</button>
+            <input type="text" id="q-${tid}-${i}" class="flex-1 bg-white rounded-[var(--radius-md)] px-3 py-2 text-sm border border-[var(--input)] focus:border-[color:var(--warn)] focus:ring-1 focus:ring-[rgba(180,130,42,0.3)] focus:outline-none text-[color:var(--foreground)] transition-colors" placeholder="Type your answer..." />
+            <button data-tid="${tid}" data-field="${esc(q.toLowerCase().includes('due') ? 'deadline' : 'assigned_by')}" data-idx="${i}" onclick="answerQuestion(this)" class="ghost-btn ghost-btn-accent px-4 font-bold text-xs">Submit</button>
           </div>
         </div>`);
     }
   }
   if (!items.length) {
-    return `<div class="text-sm text-emerald-400 font-medium py-6 flex flex-col items-center gap-2 bg-slate-900/30 rounded-xl border border-emerald-900/30"><span class="text-2xl">✨</span> All clear!</div>`;
+    return `<div class="text-sm text-[color:var(--success)] font-medium py-6 flex flex-col items-center gap-2 bg-white rounded-[var(--radius-xl)] border border-[rgba(91,125,78,0.3)]"><span class="text-2xl">✨</span> All clear!</div>`;
   }
   return items.join('');
 }
@@ -902,9 +1022,9 @@ function changeMonth(direction) {
 }
 
 function getTaskPillStyle(t) {
-  if (t.priority === 'high') return 'bg-rose-900/40 text-rose-300 border-rose-800/60';
-  if (t.priority === 'medium') return 'bg-amber-900/40 text-amber-300 border-amber-800/60';
-  return 'bg-slate-800/70 text-slate-300 border-slate-700/60';
+  if (t.priority === 'high') return 'bg-[rgba(199,68,58,0.1)] text-[color:var(--destructive)] border-[rgba(199,68,58,0.3)]';
+  if (t.priority === 'medium') return 'bg-[rgba(180,130,42,0.1)] text-[color:var(--warn)] border-[rgba(180,130,42,0.3)]';
+  return 'bg-[var(--accent)] text-[color:var(--muted-foreground)] border-[var(--border)]';
 }
 
 let modalTaskId = null;
@@ -925,11 +1045,11 @@ function openTaskModal(taskId) {
   if (!item) return;
   modalTaskId = taskId;
 
-  const categoryPill = item.category
-    ? `<span class="cat-pill">${esc(item.category)}</span>`
-    : '';
+  const bucketPill = item.category_bucket
+    ? `<span class="cat-pill">${esc(item.category_bucket)}</span>`
+    : (item.category ? `<span class="cat-pill">${esc(item.category)}</span>` : '');
   const tagChips = (item.tags || []).map((t) => `<span class="tag-chip">#${esc(t)}</span>`).join(' ');
-  document.getElementById('modal-category').innerHTML = [categoryPill, tagChips].filter(Boolean).join(' ');
+  document.getElementById('modal-category').innerHTML = [bucketPill, tagChips].filter(Boolean).join(' ');
   document.getElementById('modal-title').textContent = item.task || '';
 
   const deadlineRaw = item.deadline_iso || item.deadline;
@@ -937,14 +1057,51 @@ function openTaskModal(taskId) {
   const now = new Date();
   const overdue = item.deadline_iso && new Date(item.deadline_iso) < now && item.status !== 'done';
   document.getElementById('modal-deadline').innerHTML = overdue
-    ? `${esc(deadlineTxt)} <span class="ml-2 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-rose-600 text-white">Overdue</span>`
+    ? `${esc(deadlineTxt)} <span class="ml-2 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[var(--destructive)] text-white">Overdue</span>`
     : esc(deadlineTxt);
 
   const prioEl = document.getElementById('modal-priority');
-  prioEl.outerHTML = priorityPill(item.priority).replace('<span', '<span id="modal-priority"');
+  prioEl.outerHTML = priorityPill(item.ai_priority || item.priority).replace('<span', '<span id="modal-priority"');
+  const scoreEl = document.getElementById('modal-score');
+  if (scoreEl) {
+    const ai = item.ai_priority_score;
+    const user = item.user_adjusted_score;
+    scoreEl.textContent = (ai != null || user != null) ? `AI score ${ai ?? '—'} · adjusted ${user ?? '—'}` : '';
+  }
+  const overrideSel = document.getElementById('modal-priority-override');
+  if (overrideSel) overrideSel.value = item.user_priority || '';
+  const bucketSel = document.getElementById('modal-bucket');
+  if (bucketSel) bucketSel.value = item.category_bucket || 'Others';
 
   document.getElementById('modal-assignee').textContent = item.assigned_by || '—';
   document.getElementById('modal-status').textContent = statusLabel(item);
+
+  // Dependencies
+  const depsEl = document.getElementById('modal-deps');
+  if (depsEl) {
+    const deps = item.dependencies || [];
+    if (!deps.length) {
+      depsEl.innerHTML = '<span class="text-[color:var(--muted-foreground)] text-xs">No dependencies.</span>';
+    } else {
+      depsEl.innerHTML = deps.map(d =>
+        `<span class="tag-chip" title="${esc(d.reason || '')}">${esc(d.depends_on)} <button onclick="removeDep('${esc(item.task_id)}','${esc(d.depends_on)}')" class="ml-1 text-[color:var(--destructive)]">×</button></span>`
+      ).join('');
+    }
+  }
+
+  // Clarification inline answer (if any thread is open for this task)
+  const clarifySection = document.getElementById('modal-clarify-section');
+  const threads = (globalDashboardData?.clarifications || []).filter(t => t.task_id === item.task_id);
+  if (threads.length && clarifySection) {
+    clarifySection.classList.remove('hidden');
+    document.getElementById('modal-clarify-q').textContent = `${threads[0].field}: ${threads[0].question}`;
+    document.getElementById('modal-clarify-input').value = '';
+  } else if (clarifySection) {
+    clarifySection.classList.add('hidden');
+  }
+
+  // Kick off timeline load
+  loadModalTimeline();
 
   const stepsList = document.getElementById('modal-steps');
   const checklist = Array.isArray(item.checklist) ? item.checklist : [];
@@ -952,13 +1109,13 @@ function openTaskModal(taskId) {
     stepsList.innerHTML = checklist.map((step, i) => `
       <li class="flex items-start gap-2 text-sm">
         <input type="checkbox" ${step.done ? 'checked' : ''} onchange="toggleModalStep(${i})" />
-        <span class="${step.done ? 'line-through text-slate-500' : 'text-slate-200'}">${esc(step.step || '')}</span>
+        <span class="${step.done ? 'line-through text-[color:var(--muted-foreground)]' : 'text-[color:var(--foreground)]'}">${esc(step.step || '')}</span>
       </li>`).join('');
     document.getElementById('modal-steps-section').classList.remove('hidden');
   } else if (Array.isArray(item.steps) && item.steps.length) {
     stepsList.innerHTML = item.steps.map((s) => `
-      <li class="text-sm text-slate-300 flex items-start gap-2">
-        <span class="text-slate-600 mt-0.5">•</span><span>${esc(s)}</span>
+      <li class="text-sm text-[color:var(--heading-2)] flex items-start gap-2">
+        <span class="text-[color:var(--muted-foreground)] mt-0.5">•</span><span>${esc(s)}</span>
       </li>`).join('');
     document.getElementById('modal-steps-section').classList.remove('hidden');
   } else {
@@ -1039,28 +1196,28 @@ function renderCalendar(data, activeTasksArray) {
   }
 
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  let html = daysOfWeek.map(d => `<div class="bg-slate-900 text-center text-sm font-bold text-slate-400 py-3 border-b border-slate-800 uppercase tracking-wider">${d}</div>`).join('');
+  let html = daysOfWeek.map(d => `<div class="bg-white text-center text-xs font-bold text-[color:var(--muted-foreground)] py-3 border-b border-[var(--border)] uppercase tracking-wider">${d}</div>`).join('');
 
   for (let i = 0; i < firstDayIndex; i++) {
-    html += `<div class="bg-slate-950/50 min-h-[120px] p-2"></div>`;
+    html += `<div class="bg-[var(--muted)] min-h-[120px] p-2"></div>`;
   }
 
   const today = new Date();
   for (let i = 1; i <= daysInMonth; i++) {
     const isCurrentDay = today.getDate() === i && today.getMonth() === month && today.getFullYear() === year;
-    const dayClass = isCurrentDay ? 'bg-indigo-900/30 border-t-2 border-indigo-400' : 'bg-slate-900/80';
-    const textClass = isCurrentDay ? 'text-indigo-400 font-extrabold text-lg' : 'text-slate-300 font-semibold';
+    const dayClass = isCurrentDay ? 'bg-white border-t-2 border-[var(--primary)]' : 'bg-white';
+    const textClass = isCurrentDay ? 'font-serif text-[color:var(--primary)] font-normal text-2xl' : 'text-[color:var(--heading-2)] font-semibold';
 
     let tasksHtml = '';
     if (tasksByDate[i]) {
       tasksHtml = tasksByDate[i].map(t => {
         const pillStyle = getTaskPillStyle(t);
-        return `<div onclick="openTaskModal('${esc(t.task_id)}')" class="text-xs font-medium ${pillStyle} rounded-md px-2 py-1.5 mb-1.5 truncate border cursor-pointer hover:text-white hover:scale-[1.02] transition-all shadow-sm select-none" title="${esc(t.task)}">${esc(t.task)}</div>`;
+        return `<div onclick="openTaskModal('${esc(t.task_id)}')" class="text-xs font-medium ${pillStyle} rounded-md px-2 py-1.5 mb-1.5 truncate border cursor-pointer hover:brightness-95 transition-all shadow-[var(--shadow-xs)] select-none" title="${esc(t.task)}">${esc(t.task)}</div>`;
       }).join('');
     }
 
     html += `
-      <div class="${dayClass} min-h-[120px] p-3 hover:bg-slate-800 transition-colors flex flex-col gap-2 relative group">
+      <div class="${dayClass} min-h-[120px] p-3 hover:bg-[var(--accent)] transition-colors flex flex-col gap-2 relative group">
         <div class="text-sm ${textClass} text-right w-full">${i}</div>
         <div class="flex-1 overflow-y-auto">${tasksHtml}</div>
       </div>
@@ -1070,7 +1227,7 @@ function renderCalendar(data, activeTasksArray) {
   const totalCells = firstDayIndex + daysInMonth;
   const trailingEmpty = (7 - (totalCells % 7)) % 7;
   for (let i = 0; i < trailingEmpty; i++) {
-    html += `<div class="bg-slate-950/50 min-h-[120px] p-2"></div>`;
+    html += `<div class="bg-[var(--muted)] min-h-[120px] p-2"></div>`;
   }
 
   grid.innerHTML = html;
@@ -1113,7 +1270,7 @@ async function answerQuestion(btn) {
       setTimeout(() => {
         infoBox.remove();
         if (parentContainer.children.length === 0) {
-          parentContainer.innerHTML = `<div class="text-sm text-emerald-400 font-medium py-6 flex flex-col items-center gap-2 bg-slate-900/30 rounded-xl border border-emerald-900/30"><span class="text-2xl">✨</span> All clear!</div>`;
+          parentContainer.innerHTML = `<div class="text-sm text-[color:var(--success)] font-medium py-6 flex flex-col items-center gap-2 bg-white rounded-[var(--radius-xl)] border border-[rgba(91,125,78,0.3)]"><span class="text-2xl">✨</span> All clear!</div>`;
         }
       }, 200);
     }
@@ -1125,6 +1282,14 @@ async function answerQuestion(btn) {
   }
 }
 async function resetAll() { if (!confirm('Are you sure you want to delete all your tasks? This cannot be undone.')) return; try { await api('POST', '/api/reset'); refreshDashboard(); } catch (e) { console.error(e); } }
+
+async function removeDep(taskId, dep) {
+  try {
+    await api('DELETE', `/api/tasks/${encodeURIComponent(taskId)}/dependencies/${encodeURIComponent(dep)}`);
+    await refreshDashboard();
+    openTaskModal(taskId);
+  } catch (e) { alert('Failed: ' + e.message); }
+}
 
 // ---------------- Upload streaming ----------------
 function consoleLine(text, kind = '') {
@@ -1184,12 +1349,41 @@ async function refreshAccount() {
       statusEl.textContent = 'Telegram bot is not configured on this server.';
       document.getElementById('link-code-btn').disabled = true;
     } else if (s.linked_chat_id) {
-      statusEl.innerHTML = `Linked to chat <code class="text-indigo-300">${esc(String(s.linked_chat_id))}</code>. Reminders and clarifications will be pushed there.`;
+      statusEl.innerHTML = `Linked to chat <code class="text-[color:var(--primary)] font-serif">${esc(String(s.linked_chat_id))}</code>. Reminders and clarifications will be pushed there.`;
     } else {
       statusEl.textContent = 'No telegram chat linked yet. Generate a code, then send /link <code> to the bot.';
     }
   } catch (e) {
     statusEl.textContent = 'Could not load telegram status.';
+  }
+
+  const gEl = document.getElementById('google-status');
+  const gLinkBtn = document.getElementById('google-link-btn');
+  const gUnlinkBtn = document.getElementById('google-unlink-btn');
+  try {
+    const g = await api('GET', '/api/google/status');
+    if (!g.configured) {
+      gEl.textContent = 'Google Calendar OAuth not configured on this server.';
+      gLinkBtn.disabled = true;
+    } else if (g.linked) {
+      gEl.innerHTML = `✅ Linked (calendar: <code class="text-[color:var(--primary)] font-serif">${esc(g.calendar_id || 'primary')}</code>). Tasks sync automatically.`;
+      gLinkBtn.classList.add('hidden');
+      gUnlinkBtn.classList.remove('hidden');
+    } else {
+      gEl.textContent = 'Not linked. Click below to connect your Google Calendar.';
+      gLinkBtn.classList.remove('hidden');
+      gUnlinkBtn.classList.add('hidden');
+    }
+  } catch (e) {
+    gEl.textContent = 'Could not load Google Calendar status.';
+  }
+
+  const aEl = document.getElementById('adaptation-status');
+  try {
+    const a = await api('GET', '/api/adaptation');
+    aEl.textContent = a.summary || '—';
+  } catch {
+    aEl.textContent = '—';
   }
 }
 
@@ -1201,6 +1395,120 @@ async function generateLinkCode() {
   } catch (e) {
     alert('Failed to generate link code: ' + e.message);
   }
+}
+
+function linkGoogleCalendar() {
+  window.open('/api/google/auth/start', '_blank', 'width=520,height=640');
+  setTimeout(refreshAccount, 2000);
+  setTimeout(refreshAccount, 8000);
+}
+
+async function unlinkGoogleCalendar() {
+  if (!confirm('Unlink Google Calendar? Existing calendar events will remain but new tasks will not sync.')) return;
+  try {
+    await api('POST', '/api/google/unlink');
+    refreshAccount();
+  } catch (e) { alert('Unlink failed: ' + e.message); }
+}
+
+async function resetAdaptation() {
+  if (!confirm('Reset adaptive priority learning? The system will go back to defaults.')) return;
+  try {
+    await api('POST', '/api/adaptation/reset');
+    refreshAccount();
+  } catch (e) { alert('Reset failed: ' + e.message); }
+}
+
+// ---------------- Clarifications & Dependencies ----------------
+function renderClarificationThreads(data) {
+  const el = document.getElementById('dash-clarification-threads');
+  if (!el) return;
+  const threads = data.clarifications || [];
+  if (!threads.length) {
+    el.innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-6 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No open clarifications.</div>';
+    return;
+  }
+  el.innerHTML = threads.map(t => `
+    <div class="bg-white border border-[rgba(180,130,42,0.35)] rounded-[var(--radius-xl)] px-4 py-3 mb-2 shadow-[var(--shadow-xs)]">
+      <div class="text-xs uppercase tracking-wider text-[color:var(--warn)] mb-1 font-semibold">${esc(t.field)} · ${esc(t.task_id)}</div>
+      <div class="text-sm text-[color:var(--heading-2)] mb-2">${esc(t.question)}</div>
+      <div class="flex gap-2">
+        <input id="clar-${esc(t.id)}" class="flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Your answer…" />
+        <button onclick="submitClarification('${esc(t.id)}')" class="ghost-btn ghost-btn-accent">Submit</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function submitClarification(threadId) {
+  const input = document.getElementById(`clar-${threadId}`);
+  const value = input?.value?.trim();
+  if (!value) { input?.focus(); return; }
+  try {
+    await api('POST', `/api/clarifications/${encodeURIComponent(threadId)}/answer`, { answer: value });
+    refreshDashboard();
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+function renderDependencyGraph(data) {
+  const el = document.getElementById('dash-dependencies');
+  if (!el) return;
+  const deps = data.dependencies || [];
+  if (!deps.length) {
+    el.innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)]">No dependencies between tasks yet.</div>';
+    return;
+  }
+  el.innerHTML = deps.map(d =>
+    `<div class="text-sm py-1"><code class="text-[color:var(--primary)] font-serif">${esc(d.task_id)}</code> <span class="text-[color:var(--muted-foreground)]">depends on</span> <code class="text-[color:var(--primary)] font-serif">${esc(d.depends_on)}</code>${d.reason ? ` <span class="text-[color:var(--muted-foreground)]">— ${esc(d.reason)}</span>` : ''}</div>`
+  ).join('');
+}
+
+// ---------------- Modal enhancements ----------------
+async function modalSetPriority() {
+  if (!modalTaskId) return;
+  const v = document.getElementById('modal-priority-override').value || null;
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/priority`, { priority: v });
+    await refreshDashboard();
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+async function modalSetBucket() {
+  if (!modalTaskId) return;
+  const v = document.getElementById('modal-bucket').value;
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/bucket`, { bucket: v });
+    await refreshDashboard();
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+async function modalSubmitClarification() {
+  if (!modalTaskId) return;
+  const item = findTaskInDashboard(modalTaskId);
+  const threads = (globalDashboardData?.clarifications || []).filter(t => t.task_id === modalTaskId);
+  if (!threads.length) return;
+  const v = document.getElementById('modal-clarify-input').value.trim();
+  if (!v) return;
+  try {
+    await api('POST', `/api/clarifications/${encodeURIComponent(threads[0].id)}/answer`, { answer: v });
+    await refreshDashboard();
+    openTaskModal(modalTaskId);
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+async function loadModalTimeline() {
+  if (!modalTaskId) return;
+  const tl = document.getElementById('modal-timeline');
+  try {
+    const data = await api('GET', `/api/tasks/${encodeURIComponent(modalTaskId)}/timeline`);
+    const events = data.events || [];
+    if (!events.length) { tl.textContent = 'No events yet.'; return; }
+    tl.innerHTML = events.map(e => {
+      const d = new Date(e.created_at);
+      const ts = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+      return `<div>· <span class="text-[color:var(--muted-foreground)]">${ts}</span> <span class="text-[color:var(--primary)] font-medium">${esc(e.kind)}</span> <span class="text-[color:var(--muted-foreground)]">${esc(JSON.stringify(e.payload))}</span></div>`;
+    }).join('');
+  } catch (e) { tl.textContent = 'Failed to load timeline.'; }
 }
 
 // ---------------- Init ----------------

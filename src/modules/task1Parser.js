@@ -11,7 +11,7 @@ For each actionable task found, produce:
 - priority: "high", "medium", or "low" based on urgency and source
 - confidence: 0.0-1.0 how confident you are this is a real actionable task
 - missing_fields: array of important missing fields, e.g. ["deadline"] or ["assigned_by"]
-- category: short label (1-2 words) for the kind of task — pick a natural label from the chat itself, e.g. "Academic", "Finance", "Hostel", "CCA event", "Admin", "Errand". Reuse the same label across related tasks in the same chat.
+- category: short label (1-2 words) for the kind of task — pick a natural label from the chat itself, e.g. "Academic", "CCA", "Admin", "Errand". Reuse the same label across related tasks in the same chat.
 - tags: array of 1-4 short lowercase kebab-case organizing labels. Pick from this suggested vocabulary when they fit, but you may add one more original tag if useful:
     "urgent"          — must be done within 24h or marked urgent by sender
     "blocking"        — other work/people depend on this task
@@ -68,17 +68,22 @@ function normaliseTags(raw) {
 }
 
 function normalize(t, index) {
+  const priority = ['high', 'medium', 'low'].includes(t.priority) ? t.priority : 'medium';
   return {
     id: String(t.id || `t${index + 1}`),
     task: String(t.task || '').trim(),
     deadline: t.deadline ?? null,
     deadline_iso: t.deadline_iso ?? null,
     assigned_by: t.assigned_by ?? null,
-    priority: ['high', 'medium', 'low'].includes(t.priority) ? t.priority : 'medium',
+    priority,
+    ai_priority: priority,
+    user_priority: null,
     confidence: typeof t.confidence === 'number' ? Math.max(0, Math.min(1, t.confidence)) : 0.8,
     missing_fields: Array.isArray(t.missing_fields) ? t.missing_fields : [],
     category: typeof t.category === 'string' && t.category.trim() ? t.category.trim() : 'Other',
+    category_bucket: null,
     tags: normaliseTags(t.tags),
+    complexity: null,
     status: 'pending',
   };
 }
@@ -108,16 +113,24 @@ export async function parseMessages(rawText, now, timeframe = 'all') {
     rawText,
   ].filter(Boolean).join('\n');
 
-  const response = await withRetry(() =>
-    client.chat.completions.create({
-      model: MODEL,
-      temperature: 0.3,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userContent },
-      ],
-    })
-  );
+  let response;
+  try {
+    response = await withRetry(() =>
+      client.chat.completions.create({
+        model: MODEL,
+        temperature: 0.3,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userContent },
+        ],
+      })
+    );
+  } catch (err) {
+    const wrapped = new Error(`Extract step failed: ${err.message}`);
+    wrapped.cause = err;
+    wrapped.step = 'extract';
+    throw wrapped;
+  }
 
   const content = response.choices?.[0]?.message?.content || '';
   const data = extractJson(content);

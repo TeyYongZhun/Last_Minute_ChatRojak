@@ -1,17 +1,28 @@
 import { sweepDueReminders } from './modules/actions.js';
 import { purgeExpiredSessions } from './db/repos/sessions.js';
 import { purgeExpiredLinkCodes } from './db/repos/telegram.js';
+import { sweepTimeouts as sweepClarificationTimeouts } from './modules/clarificationLoop.js';
+import { retryFailed as retryFailedCalendar } from './integrations/googleCalendar.js';
+import { purgeExpiredStates as purgeGoogleStates } from './db/repos/googleTokens.js';
 
 const TICK_MS = 30_000;
 let timer = null;
 
-export function tick(now = new Date()) {
+export async function tick(now = new Date()) {
   try {
     const fired = sweepDueReminders(now);
     purgeExpiredSessions();
     purgeExpiredLinkCodes();
-    if (fired > 0) {
-      console.log(`[scheduler] fired ${fired} reminder(s)`);
+    purgeGoogleStates();
+    const timedOut = sweepClarificationTimeouts();
+    if (timedOut > 0) console.log(`[scheduler] timed out ${timedOut} clarification thread(s)`);
+    if (fired > 0) console.log(`[scheduler] fired ${fired} reminder(s)`);
+
+    try {
+      const failed = await retryFailedCalendar();
+      if (failed?.length) console.log(`[scheduler] ${failed.length} calendar event(s) pending retry`);
+    } catch (e) {
+      // Calendar retry is best-effort; never let it crash the tick.
     }
   } catch (e) {
     console.error('[scheduler] tick error:', e);

@@ -5,18 +5,24 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
-import { parseMessages } from './modules/task1Parser.js';
 import {
   mergeNewTasks,
   replanAll,
   startTask,
   completeTask,
   respondToClarification,
+  setUserPriority,
+  setBucket,
+  addTaskDependency,
+  removeTaskDependency,
   toggleStep,
   getDashboard,
+  getTimeline,
   resetUser,
   renameCategory,
+  applyDependencies,
 } from './modules/task3Executor.js';
+import { runChain } from './modules/promptChain.js';
 import { startTelegramBot, isBotEnabled } from './modules/telegramBot.js';
 import { processWithEvents } from './modules/processStream.js';
 import { getProviderName, MODEL } from './client.js';
@@ -24,7 +30,10 @@ import { runMigrations } from './db/migrate.js';
 import { startScheduler } from './scheduler.js';
 import authRouter from './routes/auth.js';
 import telegramRouter from './routes/telegram.js';
+import googleOAuthRouter from './routes/googleOAuth.js';
 import { requireUser } from './auth/middleware.js';
+import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
+import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_DIR = path.join(__dirname, '..', 'static');
@@ -45,9 +54,11 @@ app.get('/', (_req, res) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api/telegram', telegramRouter);
+app.use('/api/google', googleOAuthRouter);
 
 function parseFilters(query) {
   const filters = {};
+  if (typeof query.bucket === 'string' && query.bucket.trim()) filters.bucket = query.bucket.trim();
   if (typeof query.category === 'string' && query.category.trim()) filters.category = query.category.trim();
   if (typeof query.priority === 'string' && ['high', 'medium', 'low'].includes(query.priority)) {
     filters.priority = query.priority;
@@ -67,21 +78,27 @@ app.post('/api/process', requireUser, async (req, res) => {
   }
   try {
     const now = new Date();
-    const tasks = await parseMessages(text, now, timeframe);
-    if (!tasks.length) {
+    const chain = await runChain(req.user.id, text, now, { timeframe });
+    if (!chain.tasks.length) {
       return res.json({
         tasks_extracted: 0,
         plans_created: 0,
         conflicts: 0,
+        validation: chain.validation,
         message: 'No actionable tasks found',
       });
     }
-    mergeNewTasks(req.user.id, tasks);
+    const idMap = mergeNewTasks(req.user.id, chain.tasks);
+    if (chain.dependencies?.length) {
+      applyDependencies(req.user.id, chain.dependencies, idMap);
+    }
     const replan = await replanAll(req.user.id, now);
     res.json({
-      tasks_extracted: tasks.length,
+      tasks_extracted: chain.tasks.length,
       plans_created: replan.plans.length,
       conflicts: replan.conflicts.length,
+      validation: chain.validation,
+      degraded: chain.degraded,
     });
   } catch (e) {
     console.error('[/api/process] error:', e);
@@ -117,9 +134,59 @@ app.get('/api/dashboard', requireUser, (req, res) => {
   res.json(getDashboard(req.user.id, parseFilters(req.query)));
 });
 
+app.post('/api/demo-seed', requireUser, (req, res) => {
+  const tasks = [
+    {
+      id: 't1',
+      task: 'Submit assignment',
+      deadline: null,
+      deadline_iso: null,
+      assigned_by: 'Professor',
+      priority: 'high',
+      confidence: 0.95,
+      category: 'Academic',
+      missing_fields: [],
+      status: 'pending',
+      tags: ['urgent', 'solo'],
+    },
+    {
+      id: 't2',
+      task: 'Help with lab report',
+      deadline: null,
+      deadline_iso: null,
+      assigned_by: 'Tutor',
+      priority: 'medium',
+      confidence: 0.9,
+      category: 'Academic',
+      missing_fields: [],
+      status: 'pending',
+      tags: ['group-work', 'short'],
+    },
+    {
+      id: 't3',
+      task: 'Buy groceries',
+      deadline: null,
+      deadline_iso: null,
+      assigned_by: null,
+      priority: 'low',
+      confidence: 0.8,
+      category: 'Errand',
+      missing_fields: [],
+      status: 'pending',
+      tags: ['short', 'solo'],
+    },
+  ];
+
+  const current = getDashboard(req.user.id).total_tasks;
+  if (!current) {
+    mergeNewTasks(req.user.id, tasks);
+  }
+  res.json({ seeded: true, total_tasks: getDashboard(req.user.id).total_tasks });
+});
+
 app.post('/api/tasks/:taskId/start', requireUser, (req, res) => {
-  const { result, missing_fields } = startTask(req.user.id, req.params.taskId);
-  switch (result) {
+  const out = startTask(req.user.id, req.params.taskId);
+  switch (out.result) {
     case 'ok':
       return res.json({ status: 'in_progress' });
     case 'already_started':
@@ -132,7 +199,13 @@ app.post('/api/tasks/:taskId/start', requireUser, (req, res) => {
       return res.status(409).json({
         detail: 'Task is blocked — clarification needed before it can be started',
         reason: 'blocked_waiting_info',
-        missing_fields: missing_fields || [],
+        missing_fields: out.missing_fields || [],
+      });
+    case 'blocked_by_deps':
+      return res.status(409).json({
+        detail: 'Task is waiting on unfinished prerequisites',
+        reason: 'blocked_by_deps',
+        depends_on: out.depends_on || [],
       });
     default:
       return res.status(500).json({ detail: 'Unknown start result' });
@@ -160,6 +233,88 @@ app.post('/api/tasks/:taskId/step', requireUser, (req, res) => {
     return res.status(404).json({ detail: 'Task or step not found' });
   }
   res.json({ status: 'toggled' });
+});
+
+app.post('/api/tasks/:taskId/priority', requireUser, async (req, res) => {
+  const { priority } = req.body || {};
+  const allowed = [null, 'high', 'medium', 'low'];
+  if (!allowed.includes(priority)) {
+    return res.status(400).json({ detail: 'priority must be high, medium, low, or null' });
+  }
+  if (!setUserPriority(req.user.id, req.params.taskId, priority)) {
+    return res.status(404).json({ detail: 'Task not found' });
+  }
+  try {
+    await replanAll(req.user.id, new Date());
+  } catch (e) {
+    console.error('[/api/tasks/:id/priority] replan error:', e);
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/tasks/:taskId/bucket', requireUser, async (req, res) => {
+  const { bucket } = req.body || {};
+  if (!['Academic', 'Co-curricular', 'Others'].includes(bucket)) {
+    return res.status(400).json({ detail: 'bucket must be Academic, Co-curricular, or Others' });
+  }
+  if (!setBucket(req.user.id, req.params.taskId, bucket)) {
+    return res.status(404).json({ detail: 'Task not found' });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/tasks/:taskId/dependencies', requireUser, async (req, res) => {
+  const { depends_on, reason } = req.body || {};
+  if (!depends_on) return res.status(400).json({ detail: 'depends_on required' });
+  const { ok, error, code } = addTaskDependency(req.user.id, req.params.taskId, depends_on, reason || null);
+  if (!ok) {
+    const status = code === 'CYCLE' ? 409 : 400;
+    return res.status(status).json({ detail: error });
+  }
+  try {
+    await replanAll(req.user.id, new Date());
+  } catch (e) {
+    console.error('[/api/tasks/:id/dependencies] replan error:', e);
+  }
+  res.json({ ok: true });
+});
+
+app.delete('/api/tasks/:taskId/dependencies/:dep', requireUser, async (req, res) => {
+  const changed = removeTaskDependency(req.user.id, req.params.taskId, req.params.dep);
+  if (!changed) return res.status(404).json({ detail: 'Dependency not found' });
+  try {
+    await replanAll(req.user.id, new Date());
+  } catch (e) {
+    console.error('[/api/tasks/:id/dependencies] replan error:', e);
+  }
+  res.json({ ok: true });
+});
+
+app.get('/api/tasks/:taskId/timeline', requireUser, (req, res) => {
+  const tl = getTimeline(req.user.id, req.params.taskId, 100);
+  if (!tl) return res.status(404).json({ detail: 'Task not found' });
+  res.json({ events: tl });
+});
+
+app.get('/api/clarifications', requireUser, (req, res) => {
+  res.json({ threads: listOpenThreads(req.user.id) });
+});
+
+app.post('/api/clarifications/:threadId/answer', requireUser, async (req, res) => {
+  const { answer } = req.body || {};
+  if (!answer) return res.status(400).json({ detail: 'answer required' });
+  const resolved = receiveClarification(req.params.threadId, String(answer), {
+    onResolve: (thread, value) => {
+      respondToClarification(thread.user_id, thread.task_id, thread.field, value);
+    },
+  });
+  if (!resolved) return res.status(404).json({ detail: 'Thread not found or already closed' });
+  try {
+    await replanAll(req.user.id, new Date());
+  } catch (e) {
+    console.error('[/api/clarifications/answer] replan error:', e);
+  }
+  res.json({ ok: true });
 });
 
 app.post('/api/clarify', requireUser, async (req, res) => {
@@ -201,6 +356,15 @@ app.post('/api/rename-category', requireUser, (req, res) => {
   res.json({ changed });
 });
 
+app.get('/api/adaptation', requireUser, (req, res) => {
+  res.json({ summary: weightsSummary(req.user.id) });
+});
+
+app.post('/api/adaptation/reset', requireUser, (req, res) => {
+  resetAdaptation(req.user.id);
+  res.json({ ok: true });
+});
+
 app.post('/api/reset', requireUser, (req, res) => {
   resetUser(req.user.id);
   res.json({ status: 'reset' });
@@ -222,6 +386,9 @@ if (process.env.NODE_ENV !== 'test' && !process.env.SKIP_SERVER_START) {
     const keyEnv = provider === 'gemini' ? 'GEMINI_API_KEY' : 'Z_AI_API_KEY';
     if (!process.env[keyEnv]) {
       console.warn(`WARNING: ${keyEnv} not set. Copy .env.example to .env and add your key.`);
+    }
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      console.warn('[server] Google Calendar OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable calendar sync.');
     }
     if (isBotEnabled()) startTelegramBot();
     startScheduler();

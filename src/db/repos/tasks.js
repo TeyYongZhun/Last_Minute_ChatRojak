@@ -1,5 +1,8 @@
 import { getDb } from '../index.js';
 
+const VALID_BUCKETS = new Set(['Academic', 'Co-curricular', 'Others']);
+const VALID_PRIORITIES = new Set(['high', 'medium', 'low']);
+
 function normaliseRow(row) {
   if (!row) return null;
   return {
@@ -10,11 +13,19 @@ function normaliseRow(row) {
     deadline_iso: row.deadline_iso,
     assigned_by: row.assigned_by,
     priority: row.priority,
+    ai_priority: row.ai_priority || row.priority,
+    user_priority: row.user_priority || null,
+    ai_priority_score: row.ai_priority_score ?? null,
+    user_adjusted_score: row.user_adjusted_score ?? null,
     confidence: row.confidence,
     category: row.category,
+    category_bucket: row.category_bucket || 'Others',
+    complexity: row.complexity || null,
     missing_fields: JSON.parse(row.missing_fields || '[]'),
     status: row.status,
     created_at: row.created_at,
+    updated_at: row.updated_at ?? row.created_at,
+    completed_at: row.completed_at ?? null,
   };
 }
 
@@ -61,10 +72,18 @@ export function countTasks(userId) {
 
 export function insertTask(userId, task) {
   const db = getDb();
+  const now = Date.now();
+  const bucket = VALID_BUCKETS.has(task.category_bucket) ? task.category_bucket : 'Others';
+  const priority = VALID_PRIORITIES.has(task.priority) ? task.priority : 'medium';
+  const aiPriority = VALID_PRIORITIES.has(task.ai_priority) ? task.ai_priority : priority;
+
   db.prepare(
-    `INSERT INTO tasks (id, user_id, task, deadline, deadline_iso, assigned_by,
-       priority, confidence, category, missing_fields, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO tasks (
+       id, user_id, task, deadline, deadline_iso, assigned_by,
+       priority, confidence, category, missing_fields, status, created_at,
+       ai_priority, user_priority, ai_priority_score, user_adjusted_score,
+       category_bucket, updated_at, completed_at, complexity
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     task.id,
     userId,
@@ -72,20 +91,48 @@ export function insertTask(userId, task) {
     task.deadline ?? null,
     task.deadline_iso ?? null,
     task.assigned_by ?? null,
-    task.priority || 'medium',
+    priority,
     typeof task.confidence === 'number' ? task.confidence : 0.8,
-    task.category || 'Other',
+    task.category || bucket,
     JSON.stringify(task.missing_fields || []),
     task.status || 'pending',
-    Date.now()
+    now,
+    aiPriority,
+    task.user_priority ?? null,
+    task.ai_priority_score ?? null,
+    task.user_adjusted_score ?? null,
+    bucket,
+    now,
+    null,
+    task.complexity ?? null
+  );
+}
+
+function stampUpdated(userId, taskId) {
+  const db = getDb();
+  db.prepare('UPDATE tasks SET updated_at = ? WHERE user_id = ? AND id = ?').run(
+    Date.now(),
+    userId,
+    taskId
   );
 }
 
 export function updateTaskStatus(userId, taskId, status) {
   const db = getDb();
+  const changes = db
+    .prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE user_id = ? AND id = ?')
+    .run(status, Date.now(), userId, taskId).changes;
+  return changes;
+}
+
+export function markCompleted(userId, taskId) {
+  const db = getDb();
+  const now = Date.now();
   return db
-    .prepare('UPDATE tasks SET status = ? WHERE user_id = ? AND id = ?')
-    .run(status, userId, taskId).changes;
+    .prepare(
+      "UPDATE tasks SET status = 'done', completed_at = ?, updated_at = ? WHERE user_id = ? AND id = ?"
+    )
+    .run(now, now, userId, taskId).changes;
 }
 
 export function updateTaskField(userId, taskId, field, value) {
@@ -93,18 +140,65 @@ export function updateTaskField(userId, taskId, field, value) {
     throw new Error(`updateTaskField: unsupported field '${field}'`);
   }
   const db = getDb();
-  return db
-    .prepare(`UPDATE tasks SET ${field} = ? WHERE user_id = ? AND id = ?`)
-    .run(value, userId, taskId).changes;
+  const changes = db
+    .prepare(`UPDATE tasks SET ${field} = ?, updated_at = ? WHERE user_id = ? AND id = ?`)
+    .run(value, Date.now(), userId, taskId).changes;
+  return changes;
 }
 
 export function updateTaskMissingFields(userId, taskId, missingFields) {
   const db = getDb();
+  const changes = db
+    .prepare(
+      'UPDATE tasks SET missing_fields = ?, updated_at = ? WHERE user_id = ? AND id = ?'
+    )
+    .run(JSON.stringify(missingFields || []), Date.now(), userId, taskId).changes;
+  return changes;
+}
+
+export function setUserPriority(userId, taskId, value) {
+  if (value !== null && !VALID_PRIORITIES.has(value)) {
+    throw new Error(`setUserPriority: invalid priority '${value}'`);
+  }
+  const db = getDb();
   return db
     .prepare(
-      'UPDATE tasks SET missing_fields = ? WHERE user_id = ? AND id = ?'
+      'UPDATE tasks SET user_priority = ?, updated_at = ? WHERE user_id = ? AND id = ?'
     )
-    .run(JSON.stringify(missingFields || []), userId, taskId).changes;
+    .run(value, Date.now(), userId, taskId).changes;
+}
+
+export function setCategoryBucket(userId, taskId, bucket) {
+  if (!VALID_BUCKETS.has(bucket)) {
+    throw new Error(`setCategoryBucket: invalid bucket '${bucket}'`);
+  }
+  const db = getDb();
+  return db
+    .prepare(
+      'UPDATE tasks SET category_bucket = ?, updated_at = ? WHERE user_id = ? AND id = ?'
+    )
+    .run(bucket, Date.now(), userId, taskId).changes;
+}
+
+export function setComplexity(userId, taskId, complexity) {
+  if (complexity && !['simple', 'moderate', 'complex'].includes(complexity)) {
+    throw new Error(`setComplexity: invalid complexity '${complexity}'`);
+  }
+  const db = getDb();
+  return db
+    .prepare(
+      'UPDATE tasks SET complexity = ?, updated_at = ? WHERE user_id = ? AND id = ?'
+    )
+    .run(complexity || null, Date.now(), userId, taskId).changes;
+}
+
+export function setPriorityScores(userId, taskId, { aiScore, userScore }) {
+  const db = getDb();
+  return db
+    .prepare(
+      'UPDATE tasks SET ai_priority_score = ?, user_adjusted_score = ?, updated_at = ? WHERE user_id = ? AND id = ?'
+    )
+    .run(aiScore ?? null, userScore ?? null, Date.now(), userId, taskId).changes;
 }
 
 export function setTaskTags(taskId, tags) {
@@ -155,6 +249,6 @@ export function deleteAllForUser(userId) {
 export function renameTaskCategory(userId, oldName, newName) {
   const db = getDb();
   return db
-    .prepare('UPDATE tasks SET category = ? WHERE user_id = ? AND category = ?')
-    .run(newName, userId, oldName).changes;
+    .prepare('UPDATE tasks SET category = ?, updated_at = ? WHERE user_id = ? AND category = ?')
+    .run(newName, Date.now(), userId, oldName).changes;
 }

@@ -4,6 +4,17 @@ import request from 'supertest';
 vi.mock('../../src/modules/task1Parser.js', () => ({
   parseMessages: vi.fn(),
 }));
+vi.mock('../../src/modules/categorizer.js', () => ({
+  categorizeTasks: vi.fn(async (tasks) => ({
+    categories: Object.fromEntries(tasks.map((t) => [t.id, 'Academic'])),
+    degraded: false,
+  })),
+  BUCKETS: ['Academic', 'Co-curricular', 'Others'],
+}));
+vi.mock('../../src/modules/validator.js', () => ({
+  validateRun: vi.fn(async () => ({ issues: [], verdict: 'ok', source: 'test' })),
+  MAX_RETRIES_PER_VERDICT: 2,
+}));
 vi.mock('../../src/modules/task2Planner.js', async (importOriginal) => {
   const real = await importOriginal();
   return {
@@ -12,6 +23,8 @@ vi.mock('../../src/modules/task2Planner.js', async (importOriginal) => {
       plans: tasks.map((t, i) => ({
         task_id: t.id,
         priority_score: 80 - i * 10,
+        ai_priority_score: 80 - i * 10,
+        user_adjusted_score: 80 - i * 10,
         decision: 'do_now',
         steps: ['Step 1', 'Step 2'],
         conflicts: [],
@@ -19,6 +32,7 @@ vi.mock('../../src/modules/task2Planner.js', async (importOriginal) => {
         status: 'pending',
       })),
       conflicts: [],
+      dependencies: [],
     })),
   };
 });

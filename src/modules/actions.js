@@ -9,6 +9,9 @@ import {
 import { addNotification } from '../db/repos/notifications.js';
 import { addReplanEvent } from '../db/repos/replanEvents.js';
 import { getUserById } from '../db/repos/users.js';
+import { computeSchedule } from './smartReminders.js';
+import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from '../integrations/googleCalendar.js';
+import { getTokens as getGoogleTokens } from '../db/repos/googleTokens.js';
 
 function ts(d = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -21,27 +24,39 @@ function reminderId(taskId, fireAtIso) {
 export function generateActionsForPlan(userId, plan, task, now) {
   replaceChecklist(task.id, plan.steps || []);
 
-  if (plan.decision !== 'do_now' || !task.deadline_iso) return;
-  const deadline = new Date(task.deadline_iso);
-  if (isNaN(deadline.getTime())) return;
+  if (plan.decision === 'waiting') return;
+  if (!task.deadline_iso) return;
 
-  const offsetsMs = [24 * 3_600_000, 1 * 3_600_000];
-  for (const offset of offsetsMs) {
-    const fireAt = new Date(deadline.getTime() - offset);
-    if (fireAt.getTime() <= now.getTime()) continue;
-    const id = reminderId(task.id, fireAt.toISOString());
-    const hoursBefore = Math.round(offset / 3_600_000);
+  const schedule = computeSchedule(task, plan, now);
+  if (!schedule.length) return;
+
+  for (const item of schedule) {
+    const id = reminderId(task.id, item.fire_at_iso);
     upsertReminder(userId, {
       id,
       task_id: task.id,
-      fire_at_iso: fireAt.toISOString(),
-      message: `Reminder: '${task.task}' due in ${hoursBefore}h`,
+      fire_at_iso: item.fire_at_iso,
+      message: item.message,
     });
+  }
+
+  if (getGoogleTokens(userId)) {
+    upsertCalendarEvent(userId, task, plan, now)
+      .catch((err) => console.error('[actions] calendar sync error:', err.message));
   }
 }
 
 export function pruneActionsForTask(taskId) {
   deleteRemindersForTask(taskId);
+}
+
+export async function removeCalendarEvent(userId, taskId) {
+  if (!getGoogleTokens(userId)) return;
+  try {
+    await deleteCalendarEvent(userId, taskId);
+  } catch (e) {
+    console.error('[actions] removeCalendarEvent error:', e.message);
+  }
 }
 
 export function sweepDueReminders(now = new Date()) {

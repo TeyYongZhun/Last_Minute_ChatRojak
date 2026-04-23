@@ -5,8 +5,10 @@ import {
   startTask,
   completeTask,
   respondToClarification,
+  setUserPriority,
   getDashboard,
   resetUser,
+  addTaskDependency,
 } from './task3Executor.js';
 import { subscribe } from './notifier.js';
 import { withRetry } from '../client.js';
@@ -23,6 +25,11 @@ import {
   hasSentKey,
   markSentKey,
 } from '../db/repos/telegram.js';
+import { receiveByTelegramMsg, recordSent, getThread } from './clarificationLoop.js';
+import { findOpenThread } from '../db/repos/clarificationThreads.js';
+import { buildAuthUrl, isConfigured as googleConfigured } from '../integrations/googleCalendar.js';
+import { createState } from '../db/repos/googleTokens.js';
+import crypto from 'crypto';
 
 const API_BASE = 'https://api.telegram.org';
 const POLL_TIMEOUT_SEC = 25;
@@ -52,16 +59,19 @@ async function telegramApi(method, body) {
   });
 }
 
-async function sendMessage(chatId, text) {
-  if (!chatId) return;
+async function sendMessage(chatId, text, extra = {}) {
+  if (!chatId) return null;
   try {
-    await telegramApi('sendMessage', {
+    const result = await telegramApi('sendMessage', {
       chat_id: chatId,
       text,
       disable_web_page_preview: true,
+      ...extra,
     });
+    return result;
   } catch (e) {
     console.error('[telegram] sendMessage failed:', e.message);
+    return null;
   }
 }
 
@@ -121,11 +131,15 @@ const HELP_TEXT_LINKED = [
   '/dashboard — show current tasks',
   '/start_task <id> — mark task in progress',
   '/done <id> — mark task done',
+  '/priority <id> <high|medium|low> — override AI priority',
+  '/depends <id> on <id> — add a dependency',
   '/answer <id> <field>: <value> — answer a clarification question',
+  '/link_calendar — link Google Calendar (OAuth)',
   '/reset — clear your tasks',
   '/unlink — detach this chat from your account',
   '/help — show this list',
   '',
+  'Tip: to answer a clarification, just REPLY to the bot\'s ❓ message.',
   'Any other message is buffered until you run /process.',
 ].join('\n');
 
@@ -237,6 +251,35 @@ async function handleCommandLinked(chatId, userId, cmd, args) {
       await sendMessage(chatId, 'Your tasks have been cleared.');
       return;
     }
+    case 'priority': {
+      const m = args.match(/^(\S+)\s+(high|medium|low)$/i);
+      if (!m) return void (await sendMessage(chatId, 'Usage: /priority <task_id> <high|medium|low>'));
+      if (!setUserPriority(userId, m[1], m[2].toLowerCase())) {
+        return void (await sendMessage(chatId, `Task ${m[1]} not found.`));
+      }
+      try { await replanAll(userId, new Date()); } catch (e) { console.error('[telegram] replan after /priority:', e); }
+      await sendMessage(chatId, `Set ${m[1]} priority to ${m[2].toLowerCase()}.`);
+      return;
+    }
+    case 'depends': {
+      const m = args.match(/^(\S+)\s+on\s+(\S+)$/i);
+      if (!m) return void (await sendMessage(chatId, 'Usage: /depends <task_id> on <task_id>'));
+      const { ok, error } = addTaskDependency(userId, m[1], m[2]);
+      if (!ok) return void (await sendMessage(chatId, `Failed: ${error}`));
+      try { await replanAll(userId, new Date()); } catch (e) { console.error('[telegram] replan after /depends:', e); }
+      await sendMessage(chatId, `${m[1]} now depends on ${m[2]}.`);
+      return;
+    }
+    case 'link_calendar': {
+      if (!googleConfigured()) {
+        return void (await sendMessage(chatId, 'Google Calendar OAuth is not configured on this server.'));
+      }
+      const state = crypto.randomBytes(16).toString('hex');
+      createState(state, userId);
+      const url = buildAuthUrl(state);
+      await sendMessage(chatId, `Open this URL to link your Google Calendar:\n\n${url}`);
+      return;
+    }
     default:
       await sendMessage(chatId, `Unknown command: /${cmd}. Send /help for the list.`);
   }
@@ -275,6 +318,21 @@ async function handleUpdate(update) {
     return;
   }
 
+  // Clarification reply-to handling: if this message is a reply to a ❓ bot message, resolve the thread
+  const replyMsgId = msg.reply_to_message?.message_id;
+  if (replyMsgId) {
+    const resolved = receiveByTelegramMsg(replyMsgId, text.trim(), {
+      onResolve: (thread, answer) => {
+        respondToClarification(thread.user_id, thread.task_id, thread.field, answer);
+      },
+    });
+    if (resolved) {
+      try { await replanAll(userId, new Date()); } catch (e) { console.error('[telegram] replan after clarify:', e); }
+      await sendMessage(chatId, `Recorded ${resolved.field}='${text.trim()}' for ${resolved.task_id}.`);
+      return;
+    }
+  }
+
   appendBufferMessage(chatId, `${senderLabel(msg)}: ${text.trim()}`);
 }
 
@@ -295,13 +353,21 @@ function wireNotifier() {
       const key = `clarify:${payload.task_id}:${payload.questions.join('|')}`;
       if (hasSentKey(userId, key)) return;
       markSentKey(userId, key);
-      const lines = [
-        `❓ Need info on ${payload.task_id} (${payload.task}):`,
-        ...payload.questions.map((q) => `  • ${q}`),
-        '',
-        `Reply with: /answer ${payload.task_id} <field>: <value>`,
-      ];
-      await sendMessage(chatId, lines.join('\n'));
+      for (const field of payload.missing_fields || []) {
+        const thread = findOpenThread(userId, payload.task_id, field);
+        if (!thread || thread.state !== 'open') continue;
+        const q = payload.questions.find((qq) => qq.toLowerCase().includes(field)) || thread.question;
+        const text = `❓ ${payload.task_id}: ${q}\nReply to this message with your answer.`;
+        const sent = await sendMessage(chatId, text);
+        if (sent?.message_id) recordSent(thread.id, sent.message_id, String(chatId));
+      }
+    } else if (kind === 'clarification_opened') {
+      // If the notifier fires directly for a specific thread, deliver it.
+      const thread = getThread(payload.thread_id);
+      if (!thread || thread.state !== 'open') return;
+      const text = `❓ ${thread.task_id}: ${thread.question}\nReply to this message with your answer.`;
+      const sent = await sendMessage(chatId, text);
+      if (sent?.message_id) recordSent(thread.id, sent.message_id, String(chatId));
     } else if (kind === 'conflict') {
       const key = `conflict:${payload.key}`;
       if (hasSentKey(userId, key)) return;
