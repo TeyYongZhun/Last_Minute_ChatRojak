@@ -236,48 +236,82 @@
 
       <!-- Upload View -->
       <div id="view-upload" class="view-section">
-        <h2 class="font-serif text-5xl font-normal mb-8 text-[color:var(--foreground)] leading-none">Import Your Tasks</h2>
+        <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Import Your Tasks</h2>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-8">
-          <div>
-            <div class="section-label">Paste Raw Text</div>
-            <textarea id="chat-input" class="w-full h-48 bg-white rounded-[var(--radius-lg)] p-4 text-base text-[color:var(--foreground)] resize-none border border-[var(--border)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none placeholder-[color:var(--muted-foreground)] shadow-[var(--shadow-xs)] mt-2 transition-all" placeholder="Paste WhatsApp chat export here..."></textarea>
+        <div class="grid gap-5 mb-6" style="grid-template-columns: 260px 1fr; align-items: start;">
 
-            <div class="flex items-center gap-3 mt-4 mb-2">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] flex-shrink-0">Timeframe</label>
-              <select id="timeframe-select" class="filter-select">
-                <option value="all">All Time</option>
-                <option value="last7" selected>Last 7 Days</option>
-                <option value="thisMonth">This Month</option>
-              </select>
-            </div>
-            <div class="flex gap-3">
-              <button onclick="clearInput()" class="ghost-btn danger">Clear</button>
-              <button onclick="processMessages()" id="process-btn" class="flex-1 py-2.5 bg-[var(--primary)] hover:brightness-110 text-white rounded-full text-sm font-bold shadow-[var(--shadow-xs)] transition-all">Process Text</button>
-            </div>
-            <div id="status-msg" class="mt-4 text-sm font-medium text-[color:var(--muted-foreground)] min-h-5"></div>
-            <div id="recent-imports-list" class="mt-5"></div>
+          <!-- Left: saved chat list -->
+          <div class="flex flex-col gap-2">
+            <div class="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-0.5">Uploaded Chats</div>
+            <div id="chat-file-list" class="flex flex-col gap-1.5"></div>
+            <label for="file-input" class="block text-center cursor-pointer transition-all mt-1"
+                   style="border:1.5px dashed var(--border); border-radius:var(--radius-xl); padding:14px; background:#fff;"
+                   onmouseover="this.style.borderColor='var(--primary)'; this.style.background='#FBFAF8'"
+                   onmouseout="this.style.borderColor='var(--border)'; this.style.background='#fff'">
+              <div class="text-2xl opacity-50 leading-none mb-0.5">+</div>
+              <div class="text-xs font-semibold text-[color:var(--foreground)]">Add chat</div>
+              <div class="text-[11px] text-[color:var(--muted-foreground)] mt-0.5">Drop .txt or click</div>
+            </label>
+            <input id="file-input" type="file" accept=".txt,text/plain" multiple class="hidden" onchange="handleChatFiles(event)" />
           </div>
 
-          <div>
-            <div class="section-label">Or Upload File</div>
-            <div class="dropzone mt-2" id="dropzone"
-                ondragover="event.preventDefault(); this.classList.add('drag-over')"
-                ondragleave="this.classList.remove('drag-over')"
-                ondrop="handleDrop(event)"
-                onclick="document.getElementById('file-input').click()">
-              <div class="text-5xl mb-4 opacity-80">📄</div>
-              <div class="text-lg text-[color:var(--foreground)] font-semibold">Drop .txt file here</div>
-              <div class="text-sm text-[color:var(--muted-foreground)] mt-2">or click to browse your computer</div>
-              <input id="file-input" type="file" accept=".txt,text/plain" class="hidden" onchange="handleFilePick(event)" />
+          <!-- Right: preview + identity picker -->
+          <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] overflow-hidden flex flex-col" style="min-height:420px;">
+
+            <div id="chat-placeholder" class="flex-1 flex flex-col items-center justify-center text-center" style="padding:40px 24px; background:#F7F5F3;">
+              <div class="text-4xl mb-3 opacity-30">💬</div>
+              <div class="text-sm font-semibold text-[color:var(--muted-foreground)]">Select a chat to preview</div>
+              <div class="text-xs text-[color:var(--muted-foreground)] mt-1">Choose from the list on the left, or add a new chat</div>
             </div>
+
+            <div id="chat-active" class="hidden flex-col flex-1">
+              <div class="flex items-center gap-2.5 flex-shrink-0" style="background:var(--primary); padding:12px 16px;">
+                <div id="chat-avatar" class="rounded-full flex items-center justify-center text-[13px] text-white font-bold flex-shrink-0" style="width:34px; height:34px; background:rgba(255,255,255,0.15);"></div>
+                <div class="flex-1 min-w-0">
+                  <div id="chat-title" class="text-[13px] font-semibold text-white overflow-hidden text-ellipsis whitespace-nowrap"></div>
+                  <div id="chat-subtitle" class="text-[11px]" style="color:rgba(255,255,255,0.65);"></div>
+                </div>
+              </div>
+
+              <div id="chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-2" style="padding:12px 14px; max-height:260px; background:#F7F5F3;"></div>
+
+              <div class="flex-shrink-0 border-t border-[var(--border)] bg-white" style="padding:14px 16px;">
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-2">Who are you in this chat?</div>
+                <div class="relative mb-3">
+                  <input id="who-search" type="text" placeholder="Type name or number to search…" autocomplete="off"
+                         class="w-full bg-white border border-[var(--input)] text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-[13px] transition-colors"
+                         style="border-radius:var(--radius-md); padding:7px 36px 7px 12px;"
+                         onfocus="showWhoDropdown()" onclick="this.select(); showWhoDropdown()"
+                        onblur="onWhoBlur()" oninput="onWhoInput(this.value)" />
+                  <button id="who-clear" onclick="clearWhoSelection()" class="hidden absolute text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)]"
+                          style="right:8px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:16px; line-height:1; padding:2px 4px;">&times;</button>
+                  <div id="who-dropdown" class="hidden absolute bg-white border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-y-auto z-20"
+                      onmouseenter="setWhoDropdownHover(true)" onmouseleave="setWhoDropdownHover(false)"
+                      style="top:calc(100% + 4px); left:0; right:0; border-radius:var(--radius-md); max-height:180px; overscroll-behavior:contain;"></div>
+                </div>
+                <div class="flex items-center gap-2.5">
+                  <label class="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] whitespace-nowrap flex-shrink-0">Timeframe</label>
+                  <select id="timeframe-select" class="filter-select" style="font-size:12px;">
+                    <option value="all">All Time</option>
+                    <option value="last7" selected>Last 7 Days</option>
+                    <option value="thisMonth">This Month</option>
+                  </select>
+                  <button id="extract-btn" onclick="extractSelectedChat()" disabled
+                          class="flex-1 text-white font-bold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                          style="padding:9px; background:var(--success); border-radius:999px; font-size:13px; border:none; cursor:pointer;">Extract Tasks →</button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        <div id="upload-processing" class="hidden mt-8 border-t border-[var(--border-soft)] pt-8">
+        <div id="status-msg" class="mt-3 text-sm font-medium text-[color:var(--muted-foreground)] min-h-5"></div>
+
+        <div id="upload-processing" class="hidden mt-6 border-t border-[var(--border-soft)] pt-6">
           <div class="text-sm font-medium text-[color:var(--primary)] mb-4 flex items-center gap-3">
             <span class="dot dot-active"></span>
-            <span class="loading-dot">AI is analyzing conversation</span>
+            <span class="loading-dot" id="processing-label">AI is analyzing conversation</span>
           </div>
           <div id="console" class="console"></div>
           <button onclick="resetUpload()" class="mt-5 ghost-btn">Clear Console</button>
@@ -362,6 +396,25 @@
 
         <div id="calendar-grid" class="grid grid-cols-7 gap-[1px] bg-[var(--border)] border border-[var(--border)] rounded-[var(--radius-xl)] overflow-hidden shadow-[var(--shadow-sm)]">
         </div>
+
+        <!-- Google Calendar link card -->
+        <div class="mt-5 flex justify-center">
+          <div class="flex items-center gap-3 bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)]" style="padding:12px 20px;">
+            <svg width="22" height="22" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="6" y="6" width="36" height="36" rx="4" fill="#fff" stroke="#E0DEDB" stroke-width="2"/>
+              <path d="M6 20h36v18a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V20z" fill="#fff"/>
+              <rect x="6" y="14" width="36" height="6" fill="#4285F4"/>
+              <text x="24" y="38" text-anchor="middle" font-size="14" font-weight="700" fill="#4285F4" font-family="Inter,sans-serif">G</text>
+              <line x1="16" y1="6" x2="16" y2="14" stroke="#5F6368" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="32" y1="6" x2="32" y2="14" stroke="#5F6368" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+            <span class="text-[13px] text-[color:var(--muted-foreground)]">Sync deadlines to</span>
+            <span class="text-[13px] font-semibold text-[color:var(--foreground)]">Google Calendar</span>
+            <span id="google-status-inline" class="text-[11px] text-[color:var(--muted-foreground)]"></span>
+            <button onclick="linkGoogleCalendar()" id="google-link-btn" class="ghost-btn ghost-btn-accent" style="padding:6px 14px; font-size:12px;">Link</button>
+            <button onclick="unlinkGoogleCalendar()" id="google-unlink-btn" class="ghost-btn hidden" style="padding:6px 14px; font-size:12px;">Unlink</button>
+          </div>
+        </div>
       </div>
 
       <div id="view-account" class="view-section hidden">
@@ -380,14 +433,6 @@
             <code class="font-serif text-3xl text-[color:var(--primary)] tracking-widest" id="link-code-value"></code>
             <div class="text-xs text-[color:var(--muted-foreground)] mt-2">In Telegram, send <code class="text-[color:var(--heading-2)]">/link &lt;code&gt;</code> to the bot within 10 minutes.</div>
           </div>
-        </div>
-
-        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
-          <div class="section-label">Google Calendar</div>
-          <div id="google-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">Checking…</div>
-          <button onclick="linkGoogleCalendar()" id="google-link-btn" class="ghost-btn ghost-btn-accent">Link Google Calendar</button>
-          <button onclick="unlinkGoogleCalendar()" id="google-unlink-btn" class="ghost-btn hidden ml-2">Unlink</button>
-          <div class="text-xs text-[color:var(--muted-foreground)] mt-3">When linked, tasks with deadlines are synced as calendar events with smart reminders.</div>
         </div>
 
         <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
@@ -568,6 +613,8 @@ async function checkAuth() {
     currentUser = await api('GET', '/api/auth/me');
     hideAuthGate();
     document.getElementById('user-email').textContent = currentUser.email;
+    savedChats = loadSavedChats();
+    renderChatFileList();
     return true;
   } catch {
     showAuthGate();
@@ -581,7 +628,8 @@ function setMode(mode) {
   document.querySelectorAll('.view-section').forEach(view => view.classList.add('hidden'));
   document.getElementById(`view-${mode}`).classList.remove('hidden');
   if (mode === 'account') refreshAccount();
-  else if (mode !== 'upload') refreshDashboard();
+  else if (mode === 'upload') renderChatFileList();
+  else refreshDashboard();
 }
 
 // ---------------- State ----------------
@@ -626,38 +674,16 @@ function esc(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function clearInput() { document.getElementById('chat-input').value = ''; document.getElementById('file-input').value = ''; setStatus(''); }
-
 function setStatus(msg, type = 'info') {
   const el = document.getElementById('status-msg');
+  if (!el) return;
   const colors = { info: 'text-[color:var(--muted-foreground)]', success: 'text-[color:var(--success)]', error: 'text-[color:var(--destructive)]', loading: 'text-[color:var(--primary)]' };
-  el.className = `mt-4 text-sm font-medium ${colors[type] || colors.info} min-h-5`;
+  el.className = `mt-3 text-sm font-medium ${colors[type] || colors.info} min-h-5`;
   el.innerHTML = msg;
 }
 
 // ---------------- API actions ----------------
 const SPINNER_SVG = `<svg class="spin" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"/></svg>`;
-
-async function processMessages() {
-  const text = document.getElementById('chat-input').value.trim();
-  if (!text) { setStatus('Paste some chat messages first.', 'error'); return; }
-  const timeframe = document.getElementById('timeframe-select')?.value || 'all';
-
-  const btn = document.getElementById('process-btn');
-  btn.disabled = true;
-  btn.innerHTML = `${SPINNER_SVG}Parsing ChatRojak...`;
-  setStatus('<span class="loading-dot">AI is extracting &amp; planning</span>', 'loading');
-
-  try {
-    const data = await api('POST', '/api/process', { text, timeframe });
-    setStatus(`Found ${data.tasks_extracted} task(s).`, 'success');
-    setMode('dashboard');
-  } catch (e) {
-    setStatus('Error: ' + esc(e.message), 'error');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Process Text';
-  }
-}
 
 async function refreshDashboard() {
   if (!currentUser) return;
@@ -805,8 +831,50 @@ function statusDot(item) {
 }
 
 function renderTasks(data, active) {
-  const rows = active.length ? active.map(renderTaskRow).join('') : `<div class="text-base text-[color:var(--muted-foreground)] py-8">No active tasks match your filters.</div>`;
-  return `<div class="space-y-4">${rows}</div>`;
+  if (!active.length) {
+    return `<div class="text-base text-[color:var(--muted-foreground)] py-8">No active tasks match your filters.</div>`;
+  }
+  // Group tasks by source chat (client-side mapping from savedChats)
+  const groups = new Map(); // chatId -> { chat, items }
+  const ungrouped = [];
+  for (const item of active) {
+    const chat = chatForTaskId(item.task_id);
+    if (chat) {
+      if (!groups.has(chat.id)) groups.set(chat.id, { chat, items: [] });
+      groups.get(chat.id).items.push(item);
+    } else {
+      ungrouped.push(item);
+    }
+  }
+  // If nothing is grouped (user hasn't imported via the new flow), render flat
+  if (!groups.size) {
+    return `<div class="space-y-4">${active.map(renderTaskRow).join('')}</div>`;
+  }
+  const renderGroup = (chat, items) => `
+    <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] overflow-hidden">
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-soft)]" style="background:#FBFAF8;">
+        <div class="rounded-full flex items-center justify-center text-[11px] font-bold text-[color:var(--muted-foreground)] flex-shrink-0" style="width:28px;height:28px;background:var(--accent);">${esc(avatarInitials(chat.name))}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-[color:var(--foreground)] truncate">${esc(chat.name)}</div>
+          <div class="text-[11px] text-[color:var(--muted-foreground)]">${items.length} task${items.length === 1 ? '' : 's'} from this chat</div>
+        </div>
+        <button onclick="setMode('upload'); setTimeout(() => selectChat('${esc(chat.id)}'), 50)" class="ghost-btn" style="padding:4px 10px;font-size:11px;">Open chat</button>
+      </div>
+      <div class="p-3 space-y-3">${items.map(renderTaskRow).join('')}</div>
+    </div>`;
+  const groupsHtml = Array.from(groups.values()).map(g => renderGroup(g.chat, g.items)).join('');
+  const ungroupedHtml = ungrouped.length ? `
+    <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] overflow-hidden">
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-soft)]" style="background:#FBFAF8;">
+        <div class="rounded-full flex items-center justify-center text-[11px] font-bold text-[color:var(--muted-foreground)] flex-shrink-0" style="width:28px;height:28px;background:var(--accent);">—</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-[color:var(--foreground)]">Other tasks</div>
+          <div class="text-[11px] text-[color:var(--muted-foreground)]">${ungrouped.length} task${ungrouped.length === 1 ? '' : 's'} not linked to an uploaded chat</div>
+        </div>
+      </div>
+      <div class="p-3 space-y-3">${ungrouped.map(renderTaskRow).join('')}</div>
+    </div>` : '';
+  return `<div class="space-y-5">${groupsHtml}${ungroupedHtml}</div>`;
 }
 
 function parseAnyDate(str) {
@@ -948,7 +1016,7 @@ function renderStatCards(data, active) {
       <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2">${label}</div>
     </div>`;
   return [
-    card(total, 'Active', 'text-white'),
+    card(total, 'Active', 'text-[color:var(--foreground)]'),
     card(dueToday, 'Due Today', dueToday ? 'text-[color:var(--destructive)]' : 'text-[color:var(--foreground)]'),
     card(completed, 'Completed', 'text-[color:var(--success)]'),
   ].join('');
@@ -1211,8 +1279,13 @@ function renderCalendar(data, activeTasksArray) {
     let tasksHtml = '';
     if (tasksByDate[i]) {
       tasksHtml = tasksByDate[i].map(t => {
-        const pillStyle = getTaskPillStyle(t);
-        return `<div onclick="openTaskModal('${esc(t.task_id)}')" class="text-xs font-medium ${pillStyle} rounded-md px-2 py-1.5 mb-1.5 truncate border cursor-pointer hover:brightness-95 transition-all shadow-[var(--shadow-xs)] select-none" title="${esc(t.task)}">${esc(t.task)}</div>`;
+        const dotColor = t.priority === 'high' ? 'var(--destructive)'
+          : t.priority === 'medium' ? 'var(--warn)'
+          : 'var(--muted-foreground)';
+        return `<div onclick="openTaskModal('${esc(t.task_id)}')" class="text-xs cursor-pointer hover:bg-[var(--accent)] rounded-md px-1.5 py-1 truncate select-none flex items-center gap-1.5" title="${esc(t.task)}" style="color:var(--heading-2);">
+          <span style="width:6px;height:6px;border-radius:999px;background:${dotColor};flex-shrink:0;"></span>
+          <span class="truncate">${esc(t.task)}</span>
+        </div>`;
       }).join('');
     }
 
@@ -1300,43 +1373,537 @@ function consoleLine(text, kind = '') {
   el.appendChild(div); el.scrollTop = el.scrollHeight;
 }
 
-function handleDrop(e) { e.preventDefault(); document.getElementById('dropzone').classList.remove('drag-over'); const file = e.dataTransfer?.files?.[0]; if (file) readFileAndProcess(file); }
-function handleFilePick(e) { const file = e.target.files?.[0]; if (file) readFileAndProcess(file); e.target.value = ''; }
-function readFileAndProcess(file) { const reader = new FileReader(); reader.onload = () => startStreaming(String(reader.result || '')); reader.readAsText(file); }
-
-async function startStreaming(text) {
-  const btn = document.getElementById('process-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = `${SPINNER_SVG}Parsing ChatRojak...`; }
-  document.getElementById('upload-processing').classList.remove('hidden');
-  document.getElementById('console').innerHTML = '';
-  consoleLine(`Initializing processing engine...`);
-  const timeframe = document.getElementById('timeframe-select')?.value || 'all';
-
-  let finalText = text;
+// ---------------- Saved chats (localStorage) ----------------
+function savedChatsKey() { return `cr_chats_${currentUser?.id || 'anon'}`; }
+function loadSavedChats() {
   try {
-    const res = await fetch('/api/process-stream', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, timeframe }) });
-    if (res.status === 401) { showAuthGate(); return; }
-    const reader = res.body.getReader(); const decoder = new TextDecoder(); let buf = '';
-    while (true) {
-      const { value, done } = await reader.read(); if (done) break; buf += decoder.decode(value, { stream: true }); let idx;
-      while ((idx = buf.indexOf('\n\n')) !== -1) {
-        const block = buf.slice(0, idx); buf = buf.slice(idx + 2);
-        const ev = block.match(/^event:\s*(\S+)/m)?.[1]; const dataStr = block.match(/^data:\s*(.+)$/m)?.[1];
-        if (ev && dataStr != null) {
-          const data = JSON.parse(dataStr);
-          if (ev === 'log') consoleLine(data.text);
-          else if (ev === 'task') consoleLine(`Extracted: ${data.task}${data.tags?.length ? ' · #' + data.tags.join(' #') : ''}`, 'task');
-          else if (ev === 'done') setTimeout(() => setMode('dashboard'), 800);
+    const raw = JSON.parse(localStorage.getItem(savedChatsKey()) || '[]');
+    return (Array.isArray(raw) ? raw : []).map((c) => {
+      const reparsed = c?.raw_text ? parseChatText(c.raw_text) : null;
+      const messages = reparsed?.messages || c?.messages || [];
+      const participants = reparsed?.participants?.length
+        ? reparsed.participants
+        : (deriveParticipantsFromMessages(messages).length
+          ? deriveParticipantsFromMessages(messages)
+          : normalizeParticipants(c?.participants || []));
+      const self = isSystemSender(c?.self) ? '' : String(c?.self || '').trim();
+      return {
+        ...c,
+        messages,
+        participants,
+        self: participants.includes(self) ? self : '',
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+function persistSavedChats(list) {
+  localStorage.setItem(savedChatsKey(), JSON.stringify(list));
+}
+let savedChats = [];
+let activeChatId = null;
+let chatSelf = '';
+let isWhoDropdownHovered = false;
+
+function isDateLikeParticipantName(name) {
+  const s = String(name || '').trim();
+  if (!s) return true;
+  // Exclude timestamps/date fragments that can be misread as participant names.
+  if (/^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}(?:,\s*\d{1,2})?$/.test(s)) return true;
+  if (/^\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?$/i.test(s)) return true;
+  if (/^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4},?\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?$/i.test(s)) return true;
+  return false;
+}
+
+function normalizeParticipantName(name) {
+  let s = String(name || '').replace(/[\u200E\u200F]/g, '').trim();
+  // Handle exports like "65 - Alex" or "+65 9123 4567 - Alex",
+  // but keep pure phone-number senders unchanged.
+  const m = s.match(/^(\+?\d[\d\s-]{2,24})\s*[-–]\s*(.+)$/);
+  if (m && /[A-Za-z]/.test(m[2])) s = m[2].trim();
+  return s.trim();
+}
+
+function normalizeParticipants(participants) {
+  const seen = new Set();
+  const out = [];
+  for (const p of (participants || [])) {
+    const cleaned = normalizeParticipantName(p);
+    if (!cleaned || isDateLikeParticipantName(cleaned) || isSystemSender(cleaned)) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(cleaned);
+    if (out.length >= 50) break;
+  }
+  return out;
+}
+
+function isSystemSender(sender) {
+  return String(sender || '').trim() === '__system__';
+}
+
+function isLikelyParticipantName(name) {
+  const cleaned = normalizeParticipantName(name);
+  if (!cleaned || isDateLikeParticipantName(cleaned) || isSystemSender(cleaned)) return false;
+  // Ignore poll/meta labels and numeric-only fragments.
+  if (/^(option|options|poll|vote|votes)$/i.test(cleaned)) return false;
+  if (/^[\d\s()+-]{3,}$/.test(cleaned)) {
+    const digits = (cleaned.match(/\d/g) || []).length;
+    return digits >= 7;
+  }
+  return true;
+}
+
+function isPollStartPayload(payload) {
+  const s = String(payload || '').trim();
+  return /\bcreated\s+poll\b/i.test(s) || /^poll\s*[:\-]/i.test(s);
+}
+
+function deriveParticipantsFromMessages(messages) {
+  return normalizeParticipants((messages || [])
+    .filter((m) => m && !m.system && !isSystemSender(m.sender))
+    .map((m) => m.sender));
+}
+
+// Best-effort WhatsApp-ish parser: handles "[dd/mm/yy, hh:mm:ss] Name: msg",
+// "dd/mm/yyyy, hh:mm - Name: msg", or simple "Name: msg".
+function parseChatText(raw) {
+  const lines = String(raw || '').split(/\r?\n/);
+  const patterns = [
+    /^\[?(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?)\]?\s*[-–]?\s*([^:]+?):\s*(.*)$/i,
+    /^\[?(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?)\]?\s*[-–]\s*(.+)$/i,
+    /^([^:\n]{1,40}):\s*(.+)$/
+  ];
+  const messages = [];
+  let current = null;
+  let inPollBlock = false;
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    if (inPollBlock && !patterns[0].test(line) && !patterns[1].test(line)) {
+      continue;
+    }
+    let m = line.match(patterns[0]);
+    if (m) {
+      if (current) messages.push(current);
+      const sender = normalizeParticipantName(m[3]);
+      if (isLikelyParticipantName(sender)) {
+        current = { sender, text: m[4].trim(), time: `${m[1]} ${m[2]}` };
+      } else {
+        current = { sender: '__system__', text: `${String(m[3] || '').trim()}: ${m[4].trim()}`, time: `${m[1]} ${m[2]}`, system: true };
+      }
+      inPollBlock = false;
+      continue;
+    }
+    m = line.match(patterns[1]);
+    if (m) {
+      const payload = m[3].trim();
+      const maybeChat = payload.match(/^([^:\n]{1,60}):\s*(.*)$/);
+      if (maybeChat) {
+        const senderGuess = normalizeParticipantName(maybeChat[1]);
+        if (senderGuess && !/^https?/i.test(senderGuess) && isLikelyParticipantName(senderGuess)) {
+          if (current) messages.push(current);
+          current = { sender: senderGuess, text: String(maybeChat[2] || '').trim(), time: `${m[1]} ${m[2]}` };
+          inPollBlock = false;
+          continue;
         }
       }
+      if (current) messages.push(current);
+      current = { sender: '__system__', text: payload, time: `${m[1]} ${m[2]}`, system: true };
+      inPollBlock = isPollStartPayload(payload);
+      continue;
     }
-  } catch (e) { consoleLine(`Failed: ${e.message}`, 'error'); }
-  finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Process Text'; }
+    m = line.match(patterns[2]);
+    const senderGuess = m ? normalizeParticipantName(m[1]) : '';
+    if (m && !/^https?/i.test(m[1]) && isLikelyParticipantName(senderGuess)) {
+      if (current) messages.push(current);
+      current = { sender: senderGuess, text: m[2].trim(), time: '' };
+      continue;
+    }
+    if (current) current.text += '\n' + line.trim();
+  }
+  if (current) messages.push(current);
+  const participants = normalizeParticipants(messages.map(m => m.sender));
+  return { messages, participants };
+}
+
+function avatarInitials(name) {
+  return String(name || '?').replace(/[^A-Za-z0-9+]/g, '').slice(0, 2).toUpperCase() || '?';
+}
+
+function renderChatFileList() {
+  const list = document.getElementById('chat-file-list');
+  if (!list) return;
+  if (!savedChats.length) {
+    list.innerHTML = `<div class="text-[11px] text-[color:var(--muted-foreground)] italic" style="padding:8px 4px;">No chats yet. Add one below.</div>`;
+    return;
+  }
+  list.innerHTML = savedChats.map(c => {
+    const isActive = c.id === activeChatId;
+    const bg = isActive ? 'var(--primary)' : '#fff';
+    const fg = isActive ? '#fff' : 'var(--foreground)';
+    const sub = isActive ? 'rgba(255,255,255,0.65)' : 'var(--muted-foreground)';
+    const avBg = isActive ? 'rgba(255,255,255,0.2)' : 'var(--accent)';
+    const participants = deriveParticipantsFromMessages(c.messages || []).length
+      ? deriveParticipantsFromMessages(c.messages || [])
+      : normalizeParticipants(c.participants || []);
+    if (participants.length !== (c.participants || []).length) c.participants = participants;
+    const taskCount = (c.task_ids || []).length;
+    return `<div style="display:flex;align-items:center;gap:2px;">
+      <div onclick="selectChat('${esc(c.id)}')" style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-lg);cursor:pointer;transition:all .15s;background:${bg};border:1px solid ${isActive ? 'var(--primary)' : 'var(--border)'};box-shadow:var(--shadow-xs);min-width:0;">
+        <div style="width:32px;height:32px;border-radius:50%;background:${avBg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${isActive ? '#fff' : 'var(--muted-foreground)'};flex-shrink:0;">${esc(avatarInitials(c.name))}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${fg}">${esc(c.name)}</div>
+          <div style="font-size:11px;color:${sub}">${participants.length} participants${taskCount ? ` · ${taskCount} task${taskCount === 1 ? '' : 's'}` : ''}</div>
+        </div>
+      </div>
+      <button onclick="deleteSavedChat('${esc(c.id)}')" title="Delete chat" style="flex-shrink:0;background:none;border:none;color:${isActive ? 'var(--primary)' : 'var(--muted-foreground)'};cursor:pointer;font-size:16px;padding:6px 8px;line-height:1;">&times;</button>
+    </div>`;
+  }).join('');
+}
+
+function activeChat() { return savedChats.find(c => c.id === activeChatId); }
+
+function selectChat(id) {
+  activeChatId = id;
+  chatSelf = '';
+  const chat = activeChat();
+  if (!chat) return;
+  chat.participants = deriveParticipantsFromMessages(chat.messages || []).length
+    ? deriveParticipantsFromMessages(chat.messages || [])
+    : normalizeParticipants(chat.participants || []);
+  document.getElementById('chat-placeholder').classList.add('hidden');
+  const active = document.getElementById('chat-active');
+  active.classList.remove('hidden');
+  active.style.display = 'flex';
+  document.getElementById('chat-avatar').textContent = avatarInitials(chat.name);
+  document.getElementById('chat-title').textContent = chat.name;
+  document.getElementById('chat-subtitle').textContent = `${chat.participants.length} participants${chat.task_ids?.length ? ` · ${chat.task_ids.length} extracted` : ''}`;
+  const input = document.getElementById('who-search');
+  input.value = '';
+  document.getElementById('who-clear').classList.add('hidden');
+  document.getElementById('extract-btn').disabled = true;
+  const tf = document.getElementById('timeframe-select');
+  if (tf && chat.timeframe) tf.value = chat.timeframe;
+  buildChatMessages(chat, '');
+  renderChatFileList();
+}
+
+function buildChatMessages(chat, self) {
+  const container = document.getElementById('chat-messages');
+  if (!container || !chat) return;
+  const SENDER_COLORS = ['#4A6FA5', '#7A5C8A', '#5A8A6A', '#8A6A3A', '#5A6A8A', '#7A5A4A', '#4A5A7A', '#7A4A6A'];
+  const colorFor = (name) => {
+    let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return SENDER_COLORS[h % SENDER_COLORS.length];
+  };
+  const frag = document.createDocumentFragment();
+  (chat.messages || []).slice(0, 60).forEach(msg => {
+    if (msg.system || isSystemSender(msg.sender)) {
+      const row = document.createElement('div');
+      row.style.cssText = 'font-size:11px;color:var(--muted-foreground);text-align:center;padding:2px 8px;line-height:1.35;';
+      row.textContent = msg.text;
+      frag.appendChild(row);
+      return;
+    }
+    const isSelf = msg.sender === self;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:' + (isSelf ? 'flex-end' : 'flex-start') + ';';
+    if (!isSelf) {
+      const name = document.createElement('div');
+      name.style.cssText = `font-size:10px;font-weight:700;color:${colorFor(msg.sender)};margin:0 2px 2px;`;
+      name.textContent = msg.sender;
+      wrap.appendChild(name);
+    }
+    const bubble = document.createElement('div');
+    bubble.style.cssText = isSelf
+      ? 'background:var(--primary);color:#fff;border-radius:14px 14px 4px 14px;padding:7px 12px;font-size:13px;max-width:80%;line-height:1.4;word-wrap:break-word;'
+      : 'background:#fff;color:var(--foreground);border:1px solid var(--border);border-radius:14px 14px 14px 4px;padding:7px 12px;font-size:13px;max-width:80%;line-height:1.4;box-shadow:var(--shadow-xs);word-wrap:break-word;';
+    bubble.textContent = msg.text;
+    wrap.appendChild(bubble);
+    if (msg.time) {
+      const t = document.createElement('div');
+      t.style.cssText = 'font-size:10px;color:var(--muted-foreground);margin:2px 2px 0;';
+      t.textContent = msg.time;
+      wrap.appendChild(t);
+    }
+    frag.appendChild(wrap);
+  });
+  container.innerHTML = '';
+  container.appendChild(frag);
+  container.scrollTop = container.scrollHeight;
+}
+
+function getWhoDropdownClipBounds(el) {
+  let node = el?.parentElement;
+  while (node && node !== document.body) {
+    const style = window.getComputedStyle(node);
+    const clipsY = /(auto|scroll|hidden|clip)/.test(style.overflowY);
+    const clipsX = /(auto|scroll|hidden|clip)/.test(style.overflowX);
+    if (clipsY || clipsX) {
+      const rect = node.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom };
+    }
+    node = node.parentElement;
+  }
+  return { top: 0, bottom: window.innerHeight };
+}
+
+function positionWhoDropdown() {
+  const input = document.getElementById('who-search');
+  const dd = document.getElementById('who-dropdown');
+  if (!input || !dd) return;
+
+  const gap = 4;
+  const preferredMax = 180;
+  const minUsable = 96;
+  const inputRect = input.getBoundingClientRect();
+  const clip = getWhoDropdownClipBounds(input);
+  const topLimit = Math.max(0, clip.top);
+  const bottomLimit = Math.min(window.innerHeight, clip.bottom);
+  const spaceBelow = Math.max(0, bottomLimit - inputRect.bottom - gap);
+  const spaceAbove = Math.max(0, inputRect.top - topLimit - gap);
+  const openDown = spaceBelow >= spaceAbove;
+  const available = openDown ? spaceBelow : spaceAbove;
+  const dynamicMax = Math.max(minUsable, Math.min(preferredMax, Math.floor(available)));
+
+  dd.style.maxHeight = `${dynamicMax}px`;
+  if (openDown) {
+    dd.style.top = `calc(100% + ${gap}px)`;
+    dd.style.bottom = 'auto';
+  } else {
+    dd.style.bottom = `calc(100% + ${gap}px)`;
+    dd.style.top = 'auto';
   }
 }
 
+function showWhoDropdown() {
+  const chat = activeChat(); if (!chat) return;
+  const val = document.getElementById('who-search').value;
+  const showAll = !val || val === chatSelf;
+  const dd = document.getElementById('who-dropdown');
+  const participants = deriveParticipantsFromMessages(chat.messages || []).length
+    ? deriveParticipantsFromMessages(chat.messages || [])
+    : normalizeParticipants(chat.participants || []);
+  if (participants.length !== (chat.participants || []).length) {
+    chat.participants = participants;
+    persistSavedChats(savedChats);
+  }
+  const list = showAll ? participants : participants.filter(p => p.toLowerCase().includes(val.toLowerCase()));
+  if (!list.length) {
+    dd.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:var(--muted-foreground);">No match — type a custom name, then press ↵</div>`;
+  } else {
+    dd.innerHTML = list.map(p => {
+      const isSel = p === chatSelf;
+      return `<div onclick="selectWho('${esc(p).replace(/'/g, '&#39;')}')" style="padding:9px 14px;font-size:13px;color:var(--foreground);cursor:pointer;transition:background .1s;${isSel ? 'background:var(--accent);font-weight:600;' : ''}" onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background='${isSel ? 'var(--accent)' : ''}'">${esc(p)}${isSel ? ' ✓' : ''}</div>`;
+    }).join('');
+  }
+  positionWhoDropdown();
+  dd.classList.remove('hidden');
+}
+function hideWhoDropdown() { document.getElementById('who-dropdown').classList.add('hidden'); }
+function onWhoBlur() {
+  setTimeout(() => {
+    const input = document.getElementById('who-search');
+    if (isWhoDropdownHovered || document.activeElement === input) return;
+    hideWhoDropdown();
+  }, 150);
+}
+function setWhoDropdownHover(isHovered) {
+  isWhoDropdownHovered = !!isHovered;
+  if (!isWhoDropdownHovered) {
+    const input = document.getElementById('who-search');
+    if (document.activeElement !== input) hideWhoDropdown();
+  }
+}
+function onWhoInput(val) {
+  showWhoDropdown();
+  const clearBtn = document.getElementById('who-clear');
+  if (!val) {
+    chatSelf = '';
+    clearBtn.classList.add('hidden');
+    document.getElementById('extract-btn').disabled = true;
+    const chat = activeChat(); if (chat) buildChatMessages(chat, '');
+  } else {
+    clearBtn.classList.remove('hidden');
+  }
+}
+function selectWho(name) {
+  chatSelf = name;
+  document.getElementById('who-search').value = name;
+  document.getElementById('who-clear').classList.remove('hidden');
+  hideWhoDropdown();
+  document.getElementById('extract-btn').disabled = false;
+  const chat = activeChat();
+  if (chat) {
+    chat.self = name;
+    persistSavedChats(savedChats);
+    buildChatMessages(chat, name);
+  }
+}
+function clearWhoSelection() {
+  chatSelf = '';
+  const input = document.getElementById('who-search');
+  input.value = '';
+  input.focus();
+  document.getElementById('who-clear').classList.add('hidden');
+  document.getElementById('extract-btn').disabled = true;
+  const chat = activeChat();
+  if (chat) buildChatMessages(chat, '');
+}
+
+window.addEventListener('resize', () => {
+  const dd = document.getElementById('who-dropdown');
+  if (dd && !dd.classList.contains('hidden')) positionWhoDropdown();
+});
+window.addEventListener('scroll', () => {
+  const dd = document.getElementById('who-dropdown');
+  if (dd && !dd.classList.contains('hidden')) positionWhoDropdown();
+}, true);
+
+function handleChatFiles(e) {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  const readers = files.map(f => new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = () => resolve({ name: f.name.replace(/\.txt$/i, ''), raw: String(r.result || '') });
+    r.onerror = () => resolve(null);
+    r.readAsText(f);
+  }));
+  Promise.all(readers).then(results => {
+    let firstId = null;
+    for (const item of results) {
+      if (!item || !item.raw.trim()) continue;
+      const parsed = parseChatText(item.raw);
+      const id = 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      const record = {
+        id, name: item.name || 'Chat', raw_text: item.raw,
+        participants: parsed.participants,
+        messages: parsed.messages,
+        timeframe: document.getElementById('timeframe-select')?.value || 'last7',
+        self: '', task_ids: [], processedAt: null,
+        createdAt: new Date().toISOString(),
+      };
+      savedChats.unshift(record);
+      if (!firstId) firstId = id;
+    }
+    persistSavedChats(savedChats);
+    renderChatFileList();
+    if (firstId) selectChat(firstId);
+    e.target.value = '';
+  });
+}
+
+function deleteSavedChat(id) {
+  if (!confirm('Delete this saved chat? Tasks already extracted will remain.')) return;
+  savedChats = savedChats.filter(c => c.id !== id);
+  persistSavedChats(savedChats);
+  if (activeChatId === id) {
+    activeChatId = null; chatSelf = '';
+    document.getElementById('chat-placeholder').classList.remove('hidden');
+    const active = document.getElementById('chat-active');
+    active.classList.add('hidden'); active.style.display = '';
+  }
+  renderChatFileList();
+}
+
+function consoleLine(text, kind = '') {
+  const el = document.getElementById('console');
+  const div = document.createElement('div');
+  div.className = kind ? `console-line ${kind}` : 'console-line';
+  div.textContent = `> ${text}`;
+  el.appendChild(div); el.scrollTop = el.scrollHeight;
+}
+
 function resetUpload() { document.getElementById('console').innerHTML = ''; document.getElementById('upload-processing').classList.add('hidden'); }
+
+async function extractSelectedChat() {
+  const chat = activeChat();
+  if (!chat) { setStatus('Select a chat first.', 'error'); return; }
+  if (!chatSelf) { setStatus('Pick who you are in this chat.', 'error'); return; }
+
+  const btn = document.getElementById('extract-btn');
+  btn.disabled = true;
+  btn.innerHTML = `${SPINNER_SVG}Extracting...`;
+  document.getElementById('upload-processing').classList.remove('hidden');
+  document.getElementById('console').innerHTML = '';
+  consoleLine(`Initializing for chat: ${chat.name}`);
+  consoleLine(`Speaker identity: ${chatSelf}`);
+
+  const timeframe = document.getElementById('timeframe-select')?.value || chat.timeframe || 'all';
+  chat.timeframe = timeframe; chat.self = chatSelf;
+
+  // Snapshot existing task ids before processing so we can tag the new ones to this chat
+  let before = new Set();
+  try {
+    const pre = await api('GET', '/api/dashboard');
+    for (const bucket of ['do_now', 'schedule', 'defer', 'need_info', 'in_progress', 'done']) {
+      for (const t of (pre[bucket] || [])) before.add(t.task_id);
+    }
+  } catch {}
+
+  // Prepend an identity hint so the LLM knows which voice is the user's
+  const prefix = `You are assisting "${chatSelf}". Tasks assigned to or accepted by "${chatSelf}" are the user's own tasks.\n\n`;
+  const textToSend = prefix + chat.raw_text;
+
+  try {
+    const res = await fetch('/api/process-stream', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: textToSend, timeframe }),
+    });
+    if (res.status === 401) { showAuthGate(); return; }
+    const reader = res.body.getReader(); const decoder = new TextDecoder(); let buf = '';
+    let finished = false;
+    while (!finished) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const block = buf.slice(0, idx); buf = buf.slice(idx + 2);
+        const ev = block.match(/^event:\s*(\S+)/m)?.[1];
+        const dataStr = block.match(/^data:\s*(.+)$/m)?.[1];
+        if (!ev || dataStr == null) continue;
+        try {
+          const data = JSON.parse(dataStr);
+          if (ev === 'log') consoleLine(data.text);
+          else if (ev === 'task') consoleLine(`Extracted: ${data.task}${data.tags?.length ? ' · #' + data.tags.join(' #') : ''}`, 'task');
+          else if (ev === 'done') { finished = true; }
+        } catch {}
+      }
+    }
+
+    // Diff task ids and save against this chat
+    try {
+      const post = await api('GET', '/api/dashboard');
+      const newIds = [];
+      for (const bucket of ['do_now', 'schedule', 'defer', 'need_info', 'in_progress', 'done']) {
+        for (const t of (post[bucket] || [])) {
+          if (!before.has(t.task_id)) newIds.push(t.task_id);
+        }
+      }
+      chat.task_ids = Array.from(new Set([...(chat.task_ids || []), ...newIds]));
+      chat.processedAt = new Date().toISOString();
+      persistSavedChats(savedChats);
+      consoleLine(`Linked ${newIds.length} new task(s) to this chat.`, 'task');
+    } catch {}
+
+    setTimeout(() => setMode('dashboard'), 800);
+  } catch (e) {
+    consoleLine(`Failed: ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Extract Tasks →';
+  }
+}
+
+// Client-side helpers for grouping tasks by source chat
+function chatForTaskId(taskId) {
+  for (const c of savedChats) {
+    if ((c.task_ids || []).includes(taskId)) return c;
+  }
+  return null;
+}
 
 // ---------------- Account ----------------
 async function refreshAccount() {
@@ -1357,25 +1924,27 @@ async function refreshAccount() {
     statusEl.textContent = 'Could not load telegram status.';
   }
 
-  const gEl = document.getElementById('google-status');
+  const gEl = document.getElementById('google-status-inline');
   const gLinkBtn = document.getElementById('google-link-btn');
   const gUnlinkBtn = document.getElementById('google-unlink-btn');
-  try {
-    const g = await api('GET', '/api/google/status');
-    if (!g.configured) {
-      gEl.textContent = 'Google Calendar OAuth not configured on this server.';
-      gLinkBtn.disabled = true;
-    } else if (g.linked) {
-      gEl.innerHTML = `✅ Linked (calendar: <code class="text-[color:var(--primary)] font-serif">${esc(g.calendar_id || 'primary')}</code>). Tasks sync automatically.`;
-      gLinkBtn.classList.add('hidden');
-      gUnlinkBtn.classList.remove('hidden');
-    } else {
-      gEl.textContent = 'Not linked. Click below to connect your Google Calendar.';
-      gLinkBtn.classList.remove('hidden');
-      gUnlinkBtn.classList.add('hidden');
+  if (gEl && gLinkBtn && gUnlinkBtn) {
+    try {
+      const g = await api('GET', '/api/google/status');
+      if (!g.configured) {
+        gEl.textContent = '(OAuth not configured)';
+        gLinkBtn.disabled = true;
+      } else if (g.linked) {
+        gEl.innerHTML = `✓ linked to <code class="text-[color:var(--primary)] font-serif">${esc(g.calendar_id || 'primary')}</code>`;
+        gLinkBtn.classList.add('hidden');
+        gUnlinkBtn.classList.remove('hidden');
+      } else {
+        gEl.textContent = '';
+        gLinkBtn.classList.remove('hidden');
+        gUnlinkBtn.classList.add('hidden');
+      }
+    } catch (e) {
+      gEl.textContent = '(status unavailable)';
     }
-  } catch (e) {
-    gEl.textContent = 'Could not load Google Calendar status.';
   }
 
   const aEl = document.getElementById('adaptation-status');

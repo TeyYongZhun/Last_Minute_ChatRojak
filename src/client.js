@@ -1,9 +1,19 @@
 import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
 let _client = null;
 
 const PROVIDERS = {
+  anthropic: {
+    kind: 'anthropic',
+    apiKeyEnv: 'ANTHROPIC_API_KEY',
+    defaultBaseURL: 'https://api.anthropic.com',
+    baseURLEnv: 'ANTHROPIC_BASE_URL',
+    modelEnv: 'ANTHROPIC_MODEL',
+    defaultModel: 'claude-sonnet-4-6',
+  },
   zai: {
+    kind: 'openai',
     apiKeyEnv: 'Z_AI_API_KEY',
     defaultBaseURL: 'https://api.z.ai/api/paas/v4/',
     baseURLEnv: 'Z_AI_BASE_URL',
@@ -11,21 +21,77 @@ const PROVIDERS = {
     defaultModel: 'glm-4.6',
   },
   gemini: {
+    kind: 'openai',
     apiKeyEnv: 'GEMINI_API_KEY',
     defaultBaseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     baseURLEnv: 'GEMINI_BASE_URL',
     modelEnv: 'GEMINI_MODEL',
     defaultModel: 'gemini-2.5-flash',
-  }
+  },
 };
 
 function activeProviderName() {
-  const p = (process.env.AI_PROVIDER || 'zai').toLowerCase();
-  return PROVIDERS[p] ? p : 'zai';
+  const p = (process.env.AI_PROVIDER || 'anthropic').toLowerCase();
+  return PROVIDERS[p] ? p : 'anthropic';
 }
 
 export function getProviderName() {
   return activeProviderName();
+}
+
+// Translates OpenAI chat/completions calls to Anthropic Messages calls and
+// shapes the response back into the OpenAI format the call-sites already read.
+// Only the subset actually used by this app is supported: system+user messages,
+// temperature, and a text response on `choices[0].message.content`.
+function createAnthropicShim({ apiKey, baseURL }) {
+  const sdk = new Anthropic({ apiKey, baseURL });
+  const DEFAULT_MAX_TOKENS = 8192;
+
+  async function create({ model, messages = [], temperature, max_tokens }) {
+    let system;
+    const anthMessages = [];
+    for (const m of messages) {
+      const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+      if (m.role === 'system') {
+        system = system ? `${system}\n\n${content}` : content;
+      } else {
+        anthMessages.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content });
+      }
+    }
+    const req = {
+      model,
+      max_tokens: max_tokens ?? DEFAULT_MAX_TOKENS,
+      messages: anthMessages,
+    };
+    if (system) req.system = system;
+    if (temperature != null) req.temperature = temperature;
+
+    const res = await sdk.messages.create(req);
+    const text = (res.content || [])
+      .filter((p) => p.type === 'text')
+      .map((p) => p.text)
+      .join('');
+    return {
+      id: res.id,
+      model: res.model,
+      choices: [
+        {
+          index: 0,
+          message: { role: 'assistant', content: text },
+          finish_reason: res.stop_reason === 'end_turn' ? 'stop' : res.stop_reason || 'stop',
+        },
+      ],
+      usage: res.usage
+        ? {
+            prompt_tokens: res.usage.input_tokens,
+            completion_tokens: res.usage.output_tokens,
+            total_tokens: (res.usage.input_tokens || 0) + (res.usage.output_tokens || 0),
+          }
+        : undefined,
+    };
+  }
+
+  return { chat: { completions: { create } } };
 }
 
 export function getClient() {
@@ -36,10 +102,12 @@ export function getClient() {
   if (!key) {
     throw new Error(`${cfg.apiKeyEnv} is not set. Copy .env.example to .env and add your ${name} key.`);
   }
-  _client = new OpenAI({
-    apiKey: key,
-    baseURL: process.env[cfg.baseURLEnv] || cfg.defaultBaseURL,
-  });
+  const baseURL = process.env[cfg.baseURLEnv] || cfg.defaultBaseURL;
+  if (cfg.kind === 'anthropic') {
+    _client = createAnthropicShim({ apiKey: key, baseURL });
+  } else {
+    _client = new OpenAI({ apiKey: key, baseURL });
+  }
   return _client;
 }
 
