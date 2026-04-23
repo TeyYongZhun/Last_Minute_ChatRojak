@@ -187,7 +187,13 @@
           </div>
           <div>
             <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Password</label>
-            <input id="auth-password" type="password" autocomplete="current-password" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+            <div class="relative">
+              <input id="auth-password" type="password" autocomplete="current-password" class="mt-1 w-full pr-10 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+              <button id="auth-password-toggle" type="button" aria-label="Show password" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]" onclick="togglePasswordVisibility()">
+                <svg id="auth-password-eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="auth-password-eye-closed" xmlns="http://www.w3.org/2000/svg" style="display:none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8 1.73-3.32 4.44-5.73 7.61-6.8"/><path d="M1 1l22 22"/></svg>
+              </button>
+            </div>
             <div class="text-xs text-[color:var(--muted-foreground)] mt-1" id="auth-password-hint">At least 8 characters</div>
           </div>
           <div id="auth-error" class="text-sm text-[color:var(--destructive)] min-h-5"></div>
@@ -567,6 +573,19 @@ function hideAuthGate() {
   document.getElementById('auth-gate').classList.add('hidden');
   document.getElementById('sidebar').classList.remove('hidden');
   document.querySelector('main').classList.remove('hidden');
+}
+
+function togglePasswordVisibility() {
+  const pwd = document.getElementById('auth-password');
+  const open = document.getElementById('auth-password-eye-open');
+  const closed = document.getElementById('auth-password-eye-closed');
+  if (!pwd) return;
+  const isHidden = pwd.type === 'password';
+  pwd.type = isHidden ? 'text' : 'password';
+  if (open && closed) {
+    open.style.display = isHidden ? 'block' : 'none';
+    closed.style.display = isHidden ? 'none' : 'block';
+  }
 }
 
 function toggleAuthMode() {

@@ -54,9 +54,9 @@ export function getTask(userId, taskId) {
   );
 }
 
-export function nextTaskId(userId) {
+export function nextTaskId() {
   const db = getDb();
-  const rows = db.prepare('SELECT id FROM tasks WHERE user_id = ?').all(userId);
+  const rows = db.prepare('SELECT id FROM tasks').all();
   let maxN = 0;
   for (const r of rows) {
     const m = /^t(\d+)$/.exec(r.id);

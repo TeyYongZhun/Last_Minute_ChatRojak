@@ -72,15 +72,16 @@ export function mergeNewTasks(userId, newTasks) {
 
   const tx = db.transaction(() => {
     const allTasks = listTasks(userId);
-    const existing = new Set(allTasks.map((t) => t.id));
+    // existing must cover all users' IDs since tasks.id is a global primary key
+    const existing = new Set(db.prepare('SELECT id FROM tasks').all().map((r) => r.id));
     const openSemanticKeys = new Map();
     for (const t of allTasks) {
       if (t.status !== 'done') openSemanticKeys.set(semanticKey(t), t.id);
     }
 
     const allocateId = () => {
-      let candidate = nextTaskId(userId);
-      while (existing.has(candidate)) candidate = nextTaskId(userId);
+      let candidate = nextTaskId();
+      while (existing.has(candidate)) candidate = nextTaskId();
       return candidate;
     };
 
