@@ -300,6 +300,22 @@ export function completeTask(userId, taskId) {
   return true;
 }
 
+export function pauseTask(userId, taskId) {
+  const task = getTask(userId, taskId);
+  if (!task) return { result: 'not_found' };
+  if (task.status === 'done') return { result: 'already_done' };
+  if (task.status !== 'in_progress') return { result: 'not_in_progress' };
+  const db = getDb();
+  const tx = db.transaction(() => {
+    updateTaskStatus(userId, taskId, 'pending');
+    updatePlanStatus(userId, taskId, 'pending');
+    addReplanEvent(userId, `[${ts()}] Task ${taskId} paused.`);
+    addTaskEvent(userId, taskId, 'status_changed', { to: 'pending', from: 'in_progress' });
+  });
+  tx();
+  return { result: 'ok' };
+}
+
 export function respondToClarification(userId, taskId, field, value) {
   const task = getTask(userId, taskId);
   if (!task) return false;
