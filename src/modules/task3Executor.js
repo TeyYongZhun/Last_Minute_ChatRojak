@@ -384,14 +384,14 @@ function deadlineTextToIso(text, now = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00+08:00`;
 }
 
-export function respondToClarification(userId, taskId, field, value) {
+export function respondToClarification(userId, taskId, field, value, prefParsedIso = null) {
   const task = getTask(userId, taskId);
   if (!task) return false;
   const db = getDb();
   const tx = db.transaction(() => {
     if (field === 'deadline') {
       updateTaskField(userId, taskId, 'deadline', value);
-      const iso = deadlineTextToIso(value, new Date());
+      const iso = prefParsedIso || deadlineTextToIso(value, new Date());
       if (iso) updateTaskField(userId, taskId, 'deadline_iso', iso);
     } else if (field === 'assigned_by') {
       updateTaskField(userId, taskId, 'assigned_by', value);

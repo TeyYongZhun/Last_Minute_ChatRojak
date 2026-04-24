@@ -7,8 +7,7 @@ const SYSTEM_PROMPT = `You are a QA reviewer for a task-extraction pipeline. You
 Check each task:
 a) deadline_iso is present OR "deadline" is listed in missing_fields.
 b) confidence >= 0.5 OR missing_fields is non-empty.
-c) If decision is "do_now", steps must be non-empty.
-d) dependencies must not form a cycle, and must reference known task ids.
+c) dependencies must not form a cycle, and must reference known task ids.
 
 Output ONLY JSON, no commentary:
 {
@@ -18,13 +17,12 @@ Output ONLY JSON, no commentary:
 
 Guidelines:
 - Prefer "ok" when issues are minor or already handled via missing_fields.
-- Use "retry_plan" when steps are empty or dependencies are bad.
+- Use "retry_plan" when dependencies are bad.
 - Use "retry_extract" when deadline/confidence are clearly wrong across many tasks.
 - Use "ask_user" when data is fundamentally incomplete and re-running will not help.`;
 
 function localChecks(tasks, plans, dependencies) {
   const issues = [];
-  const planByTask = Object.fromEntries(plans.map((p) => [p.task_id, p]));
   const taskIds = new Set(tasks.map((t) => t.id));
 
   for (const t of tasks) {
@@ -33,10 +31,6 @@ function localChecks(tasks, plans, dependencies) {
     }
     if ((t.confidence ?? 1) < 0.5 && !(t.missing_fields || []).length) {
       issues.push({ task_id: t.id, code: 'low_confidence', fix: 'Mark this task for clarification.' });
-    }
-    const plan = planByTask[t.id];
-    if (plan?.decision === 'do_now' && !(plan.steps || []).length) {
-      issues.push({ task_id: t.id, code: 'empty_do_now_steps', fix: 'Generate steps for this do_now task.' });
     }
   }
   for (const d of dependencies || []) {
@@ -67,7 +61,6 @@ export async function validateRun({ tasks, plans, dependencies }) {
       task_id: p.task_id,
       decision: p.decision,
       priority_score: p.priority_score,
-      step_count: (p.steps || []).length,
     })),
     dependencies: (dependencies || []).map((d) => ({ task_id: d.task_id, depends_on: d.depends_on })),
   };

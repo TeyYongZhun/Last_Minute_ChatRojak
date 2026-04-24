@@ -41,6 +41,8 @@ import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
 import { addTaskEvent } from './db/repos/taskEvents.js';
 import { addChecklistItem, updateChecklistItemText, deleteChecklistItem, toggleChecklistItem, getChecklist, replaceChecklist } from './db/repos/checklists.js';
+import { generateStepsForTask } from './modules/stepGenerator.js';
+import { parseClarificationDeadline } from './modules/deadlineParser.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
 import { getPreferences, upsertPreferences } from './db/repos/userPreferences.js';
@@ -178,9 +180,9 @@ app.post('/api/demo-seed', requireUser, (req, res) => {
     },
     {
       id: 'demo3', task: 'Reply to HR email about internship offer',
-      deadline: dl(0, 17, 0), deadline_iso: iso(0, 17, 0),
-      assigned_by: null, priority: 'medium', confidence: 0.88,
-      category: 'Admin', estimated_duration_minutes: 15, missing_fields: [], status: 'pending',
+      deadline: null, deadline_iso: null,
+      assigned_by: 'HR', priority: 'medium', confidence: 0.88,
+      category: 'Admin', estimated_duration_minutes: 15, missing_fields: ['deadline'], status: 'pending',
     },
     {
       id: 'demo4', task: 'Buy groceries and cook dinner',
@@ -199,6 +201,18 @@ app.post('/api/demo-seed', requireUser, (req, res) => {
       deadline: dl(6), deadline_iso: iso(6),
       assigned_by: null, priority: 'medium', confidence: 0.92,
       category: 'Academic', estimated_duration_minutes: 60, missing_fields: [], status: 'pending',
+    },
+    {
+      id: 'demo7', task: 'Register for career fair next week',
+      deadline: null, deadline_iso: null,
+      assigned_by: 'Career Office', priority: 'medium', confidence: 0.85,
+      category: 'Admin', estimated_duration_minutes: 15, missing_fields: ['deadline'], status: 'pending',
+    },
+    {
+      id: 'demo8', task: 'Draft thank-you note to internship mentor',
+      deadline: dl(5, 18, 0), deadline_iso: iso(5, 18, 0),
+      assigned_by: null, priority: 'low', confidence: 0.8,
+      category: 'Personal', estimated_duration_minutes: 10, missing_fields: ['assigned_by'], status: 'pending',
     },
   ];
 
@@ -310,6 +324,22 @@ app.post('/api/tasks/:taskId/steps', requireUser, (req, res) => {
   if (!task) return res.status(404).json({ detail: 'Task not found' });
   addChecklistItem(req.params.taskId, trimmed);
   res.json({ status: 'added' });
+});
+
+app.post('/api/tasks/:taskId/steps/generate', requireUser, async (req, res) => {
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  try {
+    const existing = getChecklist(req.params.taskId);
+    const newSteps = await generateStepsForTask(task, existing);
+    for (const step of newSteps) {
+      addChecklistItem(req.params.taskId, step);
+    }
+    res.json({ status: 'generated', added: newSteps.length });
+  } catch (err) {
+    console.error('[steps/generate]', err);
+    res.status(502).json({ detail: err.message || 'AI step generation failed' });
+  }
 });
 
 app.post('/api/tasks/:taskId/step', requireUser, (req, res) => {
@@ -522,7 +552,15 @@ app.post('/api/clarify', requireUser, async (req, res) => {
   if (!task_id || !field || value == null) {
     return res.status(400).json({ detail: 'task_id, field, value are required' });
   }
-  if (!respondToClarification(req.user.id, task_id, field, value)) {
+  let prefParsedIso = null;
+  if (field === 'deadline') {
+    const parsed = await parseClarificationDeadline(String(value), new Date());
+    if (parsed.error) {
+      return res.status(400).json({ detail: parsed.error, code: 'bad_date' });
+    }
+    prefParsedIso = parsed.iso;
+  }
+  if (!respondToClarification(req.user.id, task_id, field, value, prefParsedIso)) {
     return res.status(404).json({ detail: 'Task not found' });
   }
   try {
