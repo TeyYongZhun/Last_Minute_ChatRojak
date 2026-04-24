@@ -548,6 +548,12 @@
         onmouseover="this.style.boxShadow='var(--shadow-sm)'" onmouseout="this.style.boxShadow='var(--shadow-xs)'">
         <span style="font-size:15px;line-height:1;">📁</span> Upload Chat
       </button>
+      <!-- Try Demo CTA -->
+      <button id="demo-cta-btn" onclick="loadDemo()"
+        style="width:100%;padding:8px 14px;border-radius:999px;background:transparent;color:var(--muted-foreground);border:1.5px dashed var(--border);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-sans);transition:all .15s ease;display:flex;align-items:center;justify-content:center;gap:7px;"
+        onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted-foreground)'">
+        <span style="font-size:13px;line-height:1;">🧪</span> Try Demo
+      </button>
     </div>
 
     <!-- Workspace nav -->
@@ -668,6 +674,17 @@
 
         <!-- Overload warning banner -->
         <div id="overload-banner" class="hidden mb-5"></div>
+
+        <!-- Empty state -->
+        <div id="dashboard-empty-state" class="hidden mb-6" style="border:1.5px dashed var(--border);border-radius:var(--radius-xl);padding:32px 24px;text-align:center;background:rgba(255,255,255,0.5);">
+          <div style="font-size:36px;margin-bottom:12px;">📋</div>
+          <div style="font-size:16px;font-weight:700;color:var(--foreground);margin-bottom:6px;">No tasks yet</div>
+          <div style="font-size:13px;color:var(--muted-foreground);margin-bottom:18px;">Upload a WhatsApp chat to extract tasks, or try the demo to explore the app.</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="setMode('upload')" style="padding:9px 22px;border-radius:999px;background:var(--primary);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);">Upload Chat</button>
+            <button onclick="loadDemo()" style="padding:9px 22px;border-radius:999px;background:transparent;color:var(--primary);border:1.5px solid var(--primary);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);">Try Demo</button>
+          </div>
+        </div>
 
         <!-- 2x2 Eisenhower Grid -->
         <div class="power-grid mb-8">
@@ -1166,6 +1183,26 @@ async function logout() {
   showAuthGate();
 }
 
+async function loadDemo() {
+  const btn = document.getElementById('demo-cta-btn');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span style="font-size:13px">⏳</span> Loading…'; }
+  try {
+    const res = await api('POST', '/api/demo-seed', { force: false });
+    if (res.seeded === false) {
+      const ok = confirm('You already have tasks. Reset and load demo data instead?');
+      if (!ok) { if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; } return; }
+      await api('POST', '/api/demo-seed', { force: true });
+    }
+    await refreshDashboard();
+    setMode('dashboard');
+  } catch (e) {
+    alert('Failed to load demo: ' + (e.message || 'unknown error'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+  }
+}
+
 async function checkAuth() {
   try {
     currentUser = await api('GET', '/api/auth/me');
@@ -1362,8 +1399,10 @@ function clearFilters() {
 // ---------------- Rendering ----------------
 function renderViews(data) {
   const summary = document.getElementById('summary-line');
+  const emptyState = document.getElementById('dashboard-empty-state');
   renderFilterToolbar(data);
   if (!data.total_tasks) {
+    if (emptyState) emptyState.classList.remove('hidden');
     summary.textContent = 'No active tasks';
     document.getElementById('dash-stat-cards').innerHTML = '';
     document.getElementById('dash-clarifications').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No data yet. Head to Upload to process a chat.</div>';
@@ -1373,6 +1412,7 @@ function renderViews(data) {
     renderCalendar(data, []);
     return;
   }
+  if (emptyState) emptyState.classList.add('hidden');
 
   const active = activeTasks(data);
   const dueToday = (active || []).filter(t => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;

@@ -40,7 +40,7 @@ import { getPlan } from './db/repos/plans.js';
 import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
 import { addTaskEvent } from './db/repos/taskEvents.js';
-import { addChecklistItem, updateChecklistItemText, deleteChecklistItem } from './db/repos/checklists.js';
+import { addChecklistItem, updateChecklistItemText, deleteChecklistItem, toggleChecklistItem } from './db/repos/checklists.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
 import { getPreferences, upsertPreferences } from './db/repos/userPreferences.js';
@@ -141,49 +141,106 @@ app.get('/api/dashboard', requireUser, (req, res) => {
 });
 
 app.post('/api/demo-seed', requireUser, (req, res) => {
+  const { force } = req.body || {};
+  const current = getDashboard(req.user.id).total_tasks;
+  if (current && !force) {
+    return res.json({ seeded: false, total_tasks: current, message: 'Already has tasks — pass force:true to reset' });
+  }
+  if (force) resetUser(req.user.id);
+
+  const now = new Date();
+  const iso = (days, h = 23, m = 59) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + days);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  };
+  const dl = (days, h = 23, m = 59) => {
+    if (days === 0) return `Today ${h}:${String(m).padStart(2, '0')}${h < 12 ? 'am' : 'pm'}`;
+    if (days === 1) return 'Tomorrow 11:59pm';
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const d = new Date(now); d.setDate(d.getDate() + days);
+    return `${names[d.getDay()]} 11:59pm`;
+  };
+
   const tasks = [
     {
-      id: 't1',
-      task: 'Submit assignment',
-      deadline: null,
-      deadline_iso: null,
-      assigned_by: 'Professor',
-      priority: 'high',
-      confidence: 0.95,
-      category: 'Academic',
-      missing_fields: [],
-      status: 'pending',
+      id: 'demo1', task: 'Submit CS2103T Individual Project',
+      deadline: dl(1), deadline_iso: iso(1),
+      assigned_by: 'Prof Leong', priority: 'high', confidence: 0.97,
+      category: 'Academic', estimated_duration_minutes: 120, missing_fields: [], status: 'pending',
     },
     {
-      id: 't2',
-      task: 'Help with lab report',
-      deadline: null,
-      deadline_iso: null,
-      assigned_by: 'Tutor',
-      priority: 'medium',
-      confidence: 0.9,
-      category: 'Academic',
-      missing_fields: [],
-      status: 'pending',
+      id: 'demo2', task: 'Prepare slides for group presentation on Thursday',
+      deadline: dl(3), deadline_iso: iso(3),
+      assigned_by: 'Group Leader', priority: 'high', confidence: 0.9,
+      category: 'Academic', estimated_duration_minutes: 90, missing_fields: [], status: 'pending',
     },
     {
-      id: 't3',
-      task: 'Buy groceries',
-      deadline: null,
-      deadline_iso: null,
-      assigned_by: null,
-      priority: 'low',
-      confidence: 0.8,
-      category: 'Errand',
-      missing_fields: [],
-      status: 'pending',
+      id: 'demo3', task: 'Reply to HR email about internship offer',
+      deadline: dl(0, 17, 0), deadline_iso: iso(0, 17, 0),
+      assigned_by: null, priority: 'medium', confidence: 0.88,
+      category: 'Admin', estimated_duration_minutes: 15, missing_fields: [], status: 'pending',
+    },
+    {
+      id: 'demo4', task: 'Buy groceries and cook dinner',
+      deadline: dl(0, 19, 0), deadline_iso: iso(0, 19, 0),
+      assigned_by: null, priority: 'low', confidence: 0.8,
+      category: 'Errand', estimated_duration_minutes: 45, missing_fields: [], status: 'pending',
+    },
+    {
+      id: 'demo5', task: 'Plan CCA orientation activities for next semester',
+      deadline: dl(10), deadline_iso: iso(10),
+      assigned_by: 'CCA President', priority: 'medium', confidence: 0.85,
+      category: 'CCA', estimated_duration_minutes: 60, missing_fields: [], status: 'pending',
+    },
+    {
+      id: 'demo6', task: 'Read ST2334 lecture notes for midterm revision',
+      deadline: dl(6), deadline_iso: iso(6),
+      assigned_by: null, priority: 'medium', confidence: 0.92,
+      category: 'Academic', estimated_duration_minutes: 60, missing_fields: [], status: 'pending',
     },
   ];
 
-  const current = getDashboard(req.user.id).total_tasks;
-  if (!current) {
-    mergeNewTasks(req.user.id, tasks);
+  const { idMap } = mergeNewTasks(req.user.id, tasks);
+  const rid = (key) => idMap[key] || key;
+
+  setUserEisenhower(req.user.id, rid('demo1'), 'do');
+  setUserEisenhower(req.user.id, rid('demo2'), 'plan');
+  setUserEisenhower(req.user.id, rid('demo3'), 'quick');
+  setUserEisenhower(req.user.id, rid('demo4'), 'later');
+  setUserEisenhower(req.user.id, rid('demo5'), 'plan');
+  setUserEisenhower(req.user.id, rid('demo6'), 'plan');
+
+  const checklists = {
+    demo1: [
+      { text: 'Read the assignment brief carefully', done: true },
+      { text: 'Complete Part 1: Class diagram', done: true },
+      { text: 'Complete Part 2: Sequence diagram', done: false },
+      { text: 'Write JUnit tests', done: false },
+      { text: 'Submit on LumiNUS before deadline', done: false },
+    ],
+    demo2: [
+      { text: 'Outline slide structure with team', done: true },
+      { text: 'Create introduction and background slides', done: false },
+      { text: 'Add methodology and results slides', done: false },
+      { text: 'Practice run with group', done: false },
+    ],
+    demo5: [
+      { text: 'Brainstorm activity ideas', done: false },
+      { text: 'Draft event schedule', done: false },
+      { text: 'Get advisor approval', done: false },
+    ],
+  };
+
+  for (const [key, steps] of Object.entries(checklists)) {
+    const taskId = rid(key);
+    for (const s of steps) addChecklistItem(taskId, s.text);
+    steps.forEach((s, pos) => { if (s.done) toggleChecklistItem(taskId, pos); });
   }
+
+  startTask(req.user.id, rid('demo1'));
+
   res.json({ seeded: true, total_tasks: getDashboard(req.user.id).total_tasks });
 });
 
