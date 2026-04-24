@@ -58,6 +58,7 @@ import {
   recordQuadrantAdjust,
   shapeWeights,
   weightsSummary,
+  reset as resetAdaptiveWeights,
 } from './adaptiveScoring.js';
 import { openThread, listOpenThreads } from './clarificationLoop.js';
 import { assignSlots, detectSlotOverlaps } from './slotter.js';
@@ -623,7 +624,16 @@ export function getDashboard(userId, filters = {}) {
 }
 
 export function resetUser(userId) {
-  deleteAllForUser(userId);
+  const db = getDb();
+  db.transaction(() => {
+    // Tasks cascade-deletes: plans, task_tags, checklist_items, reminders,
+    // calendar_events, task_events, task_dependencies, clarification_threads
+    deleteAllForUser(userId);
+    db.prepare('DELETE FROM replan_events WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM notifications WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM user_preferences WHERE user_id = ?').run(userId);
+  })();
+  resetAdaptiveWeights(userId);
 }
 
 export function renameCategory(userId, oldName, newName) {

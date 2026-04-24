@@ -35,7 +35,7 @@ import authRouter from './routes/auth.js';
 import telegramRouter from './routes/telegram.js';
 import googleOAuthRouter from './routes/googleOAuth.js';
 import { requireUser } from './auth/middleware.js';
-import { getTask, setCalendarSyncEnabled } from './db/repos/tasks.js';
+import { getTask, setCalendarSyncEnabled, deleteTask } from './db/repos/tasks.js';
 import { getPlan } from './db/repos/plans.js';
 import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
@@ -359,6 +359,12 @@ app.get('/api/tasks/:taskId/timeline', requireUser, (req, res) => {
   const tl = getTimeline(req.user.id, req.params.taskId, 100);
   if (!tl) return res.status(404).json({ detail: 'Task not found' });
   res.json({ events: tl });
+});
+
+app.delete('/api/tasks/:taskId', requireUser, (req, res) => {
+  const deleted = deleteTask(req.user.id, req.params.taskId);
+  if (!deleted) return res.status(404).json({ detail: 'Task not found' });
+  res.json({ ok: true });
 });
 
 app.get('/api/clarifications', requireUser, (req, res) => {

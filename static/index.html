@@ -307,6 +307,26 @@
       color: var(--warn);
       border-color: rgba(180,130,42,0.35);
     }
+    .task-block-cancel {
+      position: absolute;
+      top: 5px; right: 5px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: rgba(180,60,60,0.08);
+      border: 1px solid rgba(180,60,60,0.2);
+      color: var(--destructive);
+      font-size: 12px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      opacity: 0; transition: opacity 0.15s, background 0.15s;
+      flex-shrink: 0;
+    }
+    .task-block:hover .task-block-cancel {
+      opacity: 1;
+    }
+    .task-block-cancel:hover {
+      background: rgba(180,60,60,0.18) !important;
+    }
     .task-block-resize {
       position: absolute;
       bottom: 0; left: 0; right: 0;
@@ -1299,6 +1319,7 @@ function renderViews(data) {
     document.getElementById('dash-clarifications').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No data yet. Head to Upload to process a chat.</div>';
     document.getElementById('dash-upnext').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No upcoming tasks.</div>';
     document.getElementById('checklist-content').innerHTML = '<div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No tasks available.</div>';
+    renderPowerGrid([]);
     renderCalendar(data, []);
     return;
   }
@@ -1633,7 +1654,8 @@ function renderTaskBlock(item) {
                style="height:${h}px;"
                ondragstart="onBlockDragStart(event)"
                ondragend="onBlockDragEnd(event)"
-               onclick="if(event.target.closest('.task-block-resize')) return; openTaskModal('${esc(item.task_id)}')">
+               onclick="if(event.target.closest('.task-block-resize,.task-block-cancel')) return; openTaskModal('${esc(item.task_id)}')">
+    <button class="task-block-cancel" title="Cancel task" onclick="event.stopPropagation(); cancelTask('${esc(item.task_id)}')">&#x2715;</button>
     <div class="task-block-title">${esc(item.task || '')}</div>
     <div class="task-block-meta">
       ${dur != null ? `<span>${fmtDuration(dur)}</span>` : ''}
@@ -2146,6 +2168,15 @@ function renderCalendar(data, activeTasksArray) {
 
 // ---------------- Actions ----------------
 async function markDone(taskId) { try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/complete`); refreshDashboard(); } catch (e) { console.error(e); } }
+async function cancelTask(taskId) {
+  if (!confirm('Cancel and remove this task? This cannot be undone.')) return;
+  try {
+    await api('DELETE', `/api/tasks/${encodeURIComponent(taskId)}`);
+    refreshDashboard();
+  } catch (e) {
+    console.error(e);
+  }
+}
 async function startTaskAction(taskId) {
   try {
     await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/start`);

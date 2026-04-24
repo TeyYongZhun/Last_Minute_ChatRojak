@@ -310,6 +310,12 @@ export function listTagCounts(userId) {
     .all(userId);
 }
 
+export function deleteTask(userId, taskId) {
+  const db = getDb();
+  const info = db.prepare('DELETE FROM tasks WHERE user_id = ? AND id = ?').run(userId, taskId);
+  return info.changes > 0;
+}
+
 export function deleteAllForUser(userId) {
   const db = getDb();
   db.prepare('DELETE FROM tasks WHERE user_id = ?').run(userId);
