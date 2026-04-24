@@ -139,12 +139,15 @@ export function computeEndDateTime(startIso, durationMinutes) {
 }
 
 function buildEventBody(task, plan, now) {
-  if (!isValidDeadlineIso(task.deadline_iso)) {
-    throw new Error('buildEventBody: task.deadline_iso must be a valid RFC-3339 datetime with explicit offset');
+  const hasSlot =
+    isValidDeadlineIso(plan?.planned_start_iso) && isValidDeadlineIso(plan?.planned_end_iso);
+  if (!hasSlot && !isValidDeadlineIso(task.deadline_iso)) {
+    throw new Error('buildEventBody: needs either plan.planned_start_iso/end_iso or task.deadline_iso as a valid RFC-3339 datetime with explicit offset');
   }
-  const startIso = task.deadline_iso;
-  const durationMinutes = resolveDurationMinutes(task);
-  const endIso = computeEndDateTime(startIso, durationMinutes);
+  const startIso = hasSlot ? plan.planned_start_iso : task.deadline_iso;
+  const endIso = hasSlot
+    ? plan.planned_end_iso
+    : computeEndDateTime(startIso, resolveDurationMinutes(task));
 
   const schedule = computeSchedule(task, plan, now);
   const overrides = schedule.map((s) => ({
@@ -155,6 +158,8 @@ function buildEventBody(task, plan, now) {
     task.assigned_by ? `Assigned by: ${task.assigned_by}` : null,
     plan?.decision ? `Decision: ${plan.decision}` : null,
     plan?.priority_score != null ? `Priority score: ${plan.priority_score}` : null,
+    hasSlot ? `Scheduled: ${startIso} → ${endIso} (${plan.slot_origin || 'auto'})` : null,
+    task.deadline_iso ? `Due: ${task.deadline_iso}` : null,
     (plan?.steps || []).length ? `Steps:\n- ${plan.steps.join('\n- ')}` : null,
     task.category_bucket ? `Bucket: ${task.category_bucket}` : null,
   ]
@@ -202,7 +207,11 @@ export async function upsertEvent(userId, task, plan, now = new Date()) {
   if (!tokens) return { skipped: true, reason: 'not_linked' };
   const calendarId = tokens.calendar_id || 'primary';
 
-  if (task.deadline_iso == null) {
+  const hasValidSlot =
+    isValidDeadlineIso(plan?.planned_start_iso) && isValidDeadlineIso(plan?.planned_end_iso);
+  const hasValidDeadline = isValidDeadlineIso(task.deadline_iso);
+
+  if (!hasValidSlot && task.deadline_iso == null) {
     const existing = getEventForTask(task.id);
     if (existing?.event_id) {
       try {
@@ -223,7 +232,7 @@ export async function upsertEvent(userId, task, plan, now = new Date()) {
     return { skipped: true, reason: 'no_deadline' };
   }
 
-  if (!isValidDeadlineIso(task.deadline_iso)) {
+  if (!hasValidSlot && !hasValidDeadline) {
     addTaskEvent(userId, task.id, 'calendar_sync_skipped', {
       reason: 'invalid_deadline',
       value_len: String(task.deadline_iso).length,

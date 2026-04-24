@@ -98,7 +98,8 @@ export function getClient() {
   if (cfg.kind === 'anthropic') {
     _client = createAnthropicShim({ apiKey: key, baseURL });
   } else {
-    _client = new OpenAI({ apiKey: key, baseURL, timeout: 30_000 });
+    const timeoutMs = Number(process.env.AI_REQUEST_TIMEOUT_MS) || 120_000;
+    _client = new OpenAI({ apiKey: key, baseURL, timeout: timeoutMs });
   }
   return _client;
 }
@@ -118,18 +119,21 @@ export function extractJson(text) {
   return {};
 }
 
-// 504 = upstream gateway timeout — immediate retry won't help, fail fast instead
-const RETRY_STATUS = new Set([429, 500, 502, 503]);
+// 504 included: slow model backends (e.g. ILMU GLM) often 504 on cold start, retry usually succeeds.
+const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
 
 function isRetryable(err) {
   if (!err) return false;
   if (err.status && RETRY_STATUS.has(err.status)) return true;
   const code = err.code || err.cause?.code;
   if (code && ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED'].includes(code)) return true;
+  const name = err.name || err.cause?.name;
+  if (name === 'APIConnectionTimeoutError' || name === 'APIConnectionError') return true;
+  if (typeof err.message === 'string' && /timed out|timeout/i.test(err.message)) return true;
   return false;
 }
 
-export async function withRetry(fn, { retries = 1, baseMs = 400, maxWaitMs = 4000, onRetry } = {}) {
+export async function withRetry(fn, { retries = 3, baseMs = 600, maxWaitMs = 8000, onRetry } = {}) {
   let attempt = 0;
   while (true) {
     try {

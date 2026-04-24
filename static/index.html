@@ -129,6 +129,23 @@
     .tag-chip:hover { background: var(--accent); }
     .tag-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 2px rgba(55,50,47,0.2); }
 
+    .quad-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 14px; border-radius: 999px;
+      font-size: 13px; font-weight: 600; letter-spacing: .01em;
+      background: #FFFFFF; color: var(--foreground);
+      border: 1px solid var(--border);
+      cursor: pointer; transition: all .15s;
+      user-select: none;
+    }
+    .quad-chip:hover { background: var(--accent); border-color: rgba(55,50,47,0.2); }
+    .quad-chip input { margin: 0; width: 16px; height: 16px; cursor: pointer; }
+    .quad-chip .quad-dot { width: 10px; height: 10px; border-radius: 999px; display:inline-block; }
+    .quad-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 2px rgba(55,50,47,0.2); }
+    .quad-chip.active .quad-dot { box-shadow: 0 0 0 2px rgba(255,255,255,0.35); }
+
+    .task-tick { width: 22px; height: 22px; border-radius: 6px; cursor: pointer; accent-color: var(--primary); }
+
     .cat-pill {
       display: inline-flex; align-items: center;
       padding: 2px 10px; border-radius: 999px;
@@ -627,41 +644,50 @@
           <div class="section-label">Needs Clarification</div>
           <div id="dash-clarifications"></div>
         </div>
-        <div class="mt-6">
-          <div class="section-label">Clarification Inbox (AI is waiting for your answer)</div>
-          <div id="dash-clarification-threads"></div>
-        </div>
-        <div class="mt-6">
-          <div class="section-label">Dependency Graph</div>
-          <div id="dash-dependencies" class="text-sm text-[color:var(--muted-foreground)]"></div>
-        </div>
-
         <!-- Legacy mount point kept so renderViews still has a target; hidden via CSS -->
         <div id="dash-upnext" class="hidden"></div>
       </div>
 
       <!-- Checklist View -->
       <div id="view-checklist" class="view-section hidden">
-        <div class="flex justify-between items-end mb-6 border-b border-[var(--border-soft)] pb-5">
-          <h2 class="font-serif text-5xl font-normal text-[color:var(--foreground)] leading-none">Task Checklist</h2>
+        <!-- Today hero -->
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] p-8 mb-6">
+          <div class="flex items-start justify-between gap-6 flex-wrap">
+            <div>
+              <div class="font-serif leading-none text-[color:var(--foreground)]" style="font-size:96px;letter-spacing:-0.03em;">Today</div>
+              <div class="flex items-baseline gap-4 mt-3">
+                <div id="hero-time" class="font-serif leading-none text-[color:var(--foreground)]" style="font-size:56px;letter-spacing:-0.02em;">—</div>
+                <div id="hero-day" class="text-2xl font-medium text-[color:var(--muted-foreground)]">—</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 bg-[var(--accent)] rounded-[var(--radius-xl)] px-6 py-4 border border-[var(--border-soft)]">
+              <div id="hero-weather-icon" style="font-size:56px;line-height:1;">☀️</div>
+              <div>
+                <div id="hero-temp" class="font-serif leading-none text-[color:var(--foreground)]" style="font-size:48px;letter-spacing:-0.02em;">31°</div>
+                <div id="hero-weather-label" class="text-sm text-[color:var(--muted-foreground)] mt-1">Sunny · Singapore</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quadrant picker (check up to 4) -->
+          <div class="mt-7 pt-6 border-t border-[var(--border-soft)]">
+            <div class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-3">Pick a quadrant to see tasks</div>
+            <div id="quadrant-picker" class="flex flex-wrap gap-2">
+              <label class="quad-chip" data-quad="do_now"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#37322F"></span>Do now</label>
+              <label class="quad-chip" data-quad="schedule"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#5B7D4E"></span>Plan</label>
+              <label class="quad-chip" data-quad="quick"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#B4822A"></span>Quick wins</label>
+              <label class="quad-chip" data-quad="defer"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#8A837F"></span>Later</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end items-center mb-4">
           <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
         </div>
 
         <div id="filter-toolbar" class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-4 mb-6 space-y-3 shadow-[var(--shadow-xs)]">
           <div class="flex flex-wrap items-center gap-3">
             <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Filters:</span>
-            <select id="filter-bucket" class="filter-select" onchange="applyFilters()">
-              <option value="">All categories</option>
-              <option value="Academic">Academic</option>
-              <option value="Co-curricular">Co-curricular</option>
-              <option value="Others">Others</option>
-            </select>
-            <select id="filter-priority" class="filter-select" onchange="applyFilters()">
-              <option value="">All priorities</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
             <select id="filter-status" class="filter-select" onchange="applyFilters()">
               <option value="active">Active</option>
               <option value="done">Done</option>
@@ -669,6 +695,7 @@
             </select>
             <input id="filter-q" class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Search…" oninput="applyFiltersDebounced()" />
             <button onclick="clearFilters()" class="ghost-btn">Clear</button>
+            <button onclick="regenerateSchedule(this)" class="ghost-btn ghost-btn-accent" title="Auto-slot tasks into your working hours">Regenerate schedule</button>
           </div>
           <div class="flex flex-wrap items-center gap-2" id="tag-chips">
             <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>
@@ -677,7 +704,7 @@
         </div>
 
         <div id="checklist-content">
-           <div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No actionable tasks found.</div>
+           <div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">Pick a quadrant above to see tasks.</div>
         </div>
       </div>
 
@@ -752,6 +779,29 @@
         </div>
 
         <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
+          <div class="section-label">Working Hours</div>
+          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">The scheduler only places auto-slots inside this window. Deadlines and pinned slots are unaffected.</p>
+          <div class="flex flex-wrap items-end gap-4 max-w-2xl">
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Day starts</label>
+              <input id="pref-start" type="time" class="mt-1 block bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Day ends</label>
+              <input id="pref-end" type="time" class="mt-1 block bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
+            </div>
+            <div class="flex-1 min-w-[240px]">
+              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] block mb-1">Working days</label>
+              <div id="pref-days" class="flex flex-wrap gap-1"></div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 mt-4">
+            <button onclick="savePreferences(this)" class="ghost-btn ghost-btn-accent">Save</button>
+            <span id="pref-status" class="text-sm text-[color:var(--muted-foreground)] min-h-5"></span>
+          </div>
+        </div>
+
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
           <div class="section-label">AI Memory</div>
           <div id="adaptation-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">—</div>
           <button onclick="resetAdaptation()" class="ghost-btn">Reset AI memory</button>
@@ -785,28 +835,6 @@
         <span id="modal-deadline" class="text-[color:var(--primary)] font-medium"></span>
       </div>
       <div class="flex items-center gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">AI priority</span>
-        <span id="modal-priority" class="category-tag"></span>
-        <span id="modal-score" class="text-xs text-[color:var(--muted-foreground)]"></span>
-      </div>
-      <div class="flex items-center gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Override</span>
-        <select id="modal-priority-override" onchange="modalSetPriority()" class="filter-select">
-          <option value="">Use AI priority</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-      </div>
-      <div class="flex items-center gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Bucket</span>
-        <select id="modal-bucket" onchange="modalSetBucket()" class="filter-select">
-          <option value="Academic">Academic</option>
-          <option value="Co-curricular">Co-curricular</option>
-          <option value="Others">Others</option>
-        </select>
-      </div>
-      <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Quadrant</span>
         <select id="modal-eisenhower" onchange="modalSetEisenhower()" class="filter-select">
           <option value="">Use AI quadrant</option>
@@ -836,6 +864,16 @@
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Depends on</span>
         <div id="modal-deps" class="flex flex-wrap gap-2 flex-1"></div>
       </div>
+      <div class="flex items-start gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Calendar</span>
+        <div class="flex-1">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input id="modal-calendar-sync" type="checkbox" onchange="modalToggleCalendarSync()" class="h-4 w-4" />
+            <span class="text-[color:var(--heading-2)]">Sync this task to Google Calendar</span>
+          </label>
+          <div id="modal-calendar-sync-subtext" class="text-xs text-[color:var(--muted-foreground)] mt-1"></div>
+        </div>
+      </div>
     </div>
 
     <div id="modal-steps-section" class="mb-6">
@@ -850,13 +888,6 @@
         <input id="modal-clarify-input" class="flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Your answer…" />
         <button onclick="modalSubmitClarification()" class="ghost-btn ghost-btn-accent">Submit</button>
       </div>
-    </div>
-
-    <div id="modal-timeline-section" class="mb-6">
-      <details>
-        <summary class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-3 cursor-pointer">Timeline</summary>
-        <div id="modal-timeline" class="mt-3 text-xs space-y-1 text-[color:var(--muted-foreground)]"></div>
-      </details>
     </div>
 
     <div class="flex gap-3 pt-4 border-t border-[var(--border-soft)]">
@@ -1107,9 +1138,12 @@ function loadFilters() {
       status: f.status ?? 'active',
       q: f.q || '',
       tags: Array.isArray(f.tags) ? f.tags : [],
+      quadrants: (f.quadrants && typeof f.quadrants === 'object')
+        ? { do_now: !!f.quadrants.do_now, schedule: !!f.quadrants.schedule, quick: !!f.quadrants.quick, defer: !!f.quadrants.defer }
+        : { do_now: true, schedule: true, quick: true, defer: true },
     };
   } catch {
-    return { status: 'active', tags: [] };
+    return { status: 'active', tags: [], quadrants: { do_now: true, schedule: true, quick: true, defer: true } };
   }
 }
 function saveFilters() { localStorage.setItem('filters', JSON.stringify(filters)); }
@@ -1175,25 +1209,30 @@ function sortByUrgency(items, now = new Date()) {
 }
 
 function activeTasks(data) {
-  const combined = [
-    ...(data.do_now || []),
-    ...(data.in_progress || []),
-    ...(data.need_info || []),
-    ...(data.schedule || []),
-    ...(data.defer || []),
-  ];
-  return sortByUrgency(combined);
+  const raw = filters.quadrants || {};
+  const allOff = !raw.do_now && !raw.schedule && !raw.quick && !raw.defer;
+  const q = allOff
+    ? { do_now: true, schedule: true, quick: true, defer: true }
+    : raw;
+  const isQuick = (t) => (t.eisenhower === 'quick');
+  const keep = [];
+  const pushAll = (arr, ok) => { for (const t of (arr || [])) if (ok(t)) keep.push(t); };
+  pushAll(data.do_now,      t => (isQuick(t) ? q.quick : q.do_now));
+  pushAll(data.in_progress, t => (isQuick(t) ? q.quick : q.do_now));
+  pushAll(data.schedule,    t => q.schedule);
+  pushAll(data.defer,       t => (isQuick(t) ? q.quick : q.defer));
+  // Also surface tasks still awaiting clarification or blocked by deps so they
+  // don't vanish from the board. Route them through the `defer` chip.
+  pushAll(data.need_info,   t => (isQuick(t) ? q.quick : q.defer));
+  pushAll(data.waiting,     t => (isQuick(t) ? q.quick : q.defer));
+  return sortByUrgency(keep);
 }
 
 // ---------------- Filters UI ----------------
 function renderFilterToolbar(data) {
-  const bucketSel = document.getElementById('filter-bucket');
-  const prioSel = document.getElementById('filter-priority');
   const statSel = document.getElementById('filter-status');
   const qInput = document.getElementById('filter-q');
 
-  if (bucketSel) bucketSel.value = filters.bucket || '';
-  prioSel.value = filters.priority || '';
   statSel.value = filters.status ?? 'active';
   qInput.value = filters.q || '';
 
@@ -1220,11 +1259,21 @@ function toggleTag(tag) {
 }
 
 function applyFilters() {
-  const bucketEl = document.getElementById('filter-bucket');
-  filters.bucket = bucketEl ? bucketEl.value : '';
-  filters.priority = document.getElementById('filter-priority').value;
+  filters.bucket = '';
+  filters.priority = '';
   filters.status = document.getElementById('filter-status').value;
   filters.q = document.getElementById('filter-q').value;
+  const quadBoxes = document.querySelectorAll('#quadrant-picker .quad-chip');
+  if (quadBoxes.length) {
+    const q = {};
+    quadBoxes.forEach(lbl => {
+      const name = lbl.dataset.quad;
+      const cb = lbl.querySelector('input');
+      q[name] = !!cb.checked;
+      lbl.classList.toggle('active', !!cb.checked);
+    });
+    filters.quadrants = q;
+  }
   saveFilters();
   refreshDashboard();
 }
@@ -1235,7 +1284,7 @@ function applyFiltersDebounced() {
 }
 
 function clearFilters() {
-  filters = { status: 'active', tags: [] };
+  filters = { status: 'active', tags: [], quadrants: { do_now: true, schedule: true, quick: true, defer: true } };
   saveFilters();
   refreshDashboard();
 }
@@ -1266,8 +1315,6 @@ function renderViews(data) {
   try { renderOverloadBanner(active); } catch (e) { console.error('renderOverloadBanner failed:', e); }
   safeRender('dash-clarifications', () => renderImportantInfo(data, active));
   safeRender('checklist-content', () => renderTasks(data, active));
-  try { renderClarificationThreads(data); } catch (e) { console.error('renderClarificationThreads failed:', e); }
-  try { renderDependencyGraph(data); } catch (e) { console.error('renderDependencyGraph failed:', e); }
   try { renderCalendar(data, active); } catch (e) { console.error('renderCalendar failed:', e); }
 }
 
@@ -1383,6 +1430,46 @@ function formatCustomDate(rawString) {
   return `${dayName} ${day}/${month}/${year} ${hours}:${minutes}${ampm}`;
 }
 
+function formatPlannedSlot(item) {
+  if (!item?.planned_start_iso || !item?.planned_end_iso) return null;
+  const s = new Date(item.planned_start_iso);
+  const e = new Date(item.planned_end_iso);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return null;
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const pad = (n) => String(n).padStart(2, '0');
+  const dateBit = `${days[s.getDay()]} ${s.getDate()} ${mons[s.getMonth()]}`;
+  const sameDay = s.toDateString() === e.toDateString();
+  const timeBit = sameDay
+    ? `${pad(s.getHours())}:${pad(s.getMinutes())}–${pad(e.getHours())}:${pad(e.getMinutes())}`
+    : `${pad(s.getHours())}:${pad(s.getMinutes())} → ${days[e.getDay()]} ${e.getDate()} ${mons[e.getMonth()]} ${pad(e.getHours())}:${pad(e.getMinutes())}`;
+  return `${dateBit} · ${timeBit}`;
+}
+
+function plannedSlotChip(item) {
+  const text = formatPlannedSlot(item);
+  if (!text) return '';
+  const origin = item.slot_origin === 'user' ? 'user' : 'auto';
+  const bg = origin === 'user' ? 'rgba(124,58,237,0.12)' : 'rgba(91,125,78,0.1)';
+  const fg = origin === 'user' ? '#7C3AED' : 'var(--primary)';
+  const border = origin === 'user' ? 'rgba(124,58,237,0.3)' : 'rgba(91,125,78,0.25)';
+  const icon = origin === 'user' ? '📌' : '🗓';
+  const label = origin === 'user' ? 'Pinned' : 'Planned';
+  return `<span class="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5" style="background:${bg};color:${fg};border:1px solid ${border}" title="${label} slot">${icon} ${label}: ${esc(text)}</span>`;
+}
+
+async function regenerateSchedule(btn) {
+  if (btn) { btn.disabled = true; const old = btn.textContent; btn.dataset.oldLabel = old; btn.textContent = 'Regenerating…'; }
+  try {
+    await api('POST', '/api/replan');
+    await refreshDashboard();
+  } catch (e) {
+    alert('Regenerate failed: ' + (e.message || 'unknown error'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.oldLabel || 'Regenerate schedule'; }
+  }
+}
+
 // Category tag color mapping — light theme (subtle tinted pills)
 function getCategoryStyle(category) {
   if (!category) return 'bg-[var(--accent)] text-[color:var(--heading-2)]';
@@ -1432,8 +1519,10 @@ function renderTaskRow(item) {
   const actions = item.status === 'done'
     ? ''
     : item.status === 'in_progress'
-    ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`
-    : `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent mr-3">Start Task</button><button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`;
+    ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Pending</button>`
+    : `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
+
+  const tickbox = `<input type="checkbox" class="task-tick" ${item.status === 'done' ? 'checked' : ''} data-tid="${tid}" onclick="event.stopPropagation()" onchange="markDone(this.dataset.tid)" title="Mark done" />`;
 
   const tagChips = (item.tags || []).map(t =>
     `<button class="tag-chip" onclick="toggleTag('${esc(t)}')">#${esc(t)}</button>`
@@ -1446,16 +1535,17 @@ function renderTaskRow(item) {
   const durationPill = durVal != null
     ? `<span class="pill-duration">${fmtDuration(durVal)}</span>`
     : '';
-  const metaChips = [quadrantPill, durationPill, tagChips].filter(Boolean).join(' ');
+  const plannedChip = plannedSlotChip(item);
+  const metaChips = [quadrantPill, durationPill, plannedChip, tagChips].filter(Boolean).join(' ');
   const assignedBy = item.assigned_by ? `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--muted-foreground)]">by ${esc(item.assigned_by)}</span>` : '';
   const statusText = `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--heading-2)] font-medium">${statusLabel(item)}</span>`;
 
   return `
-    <div class="task-row flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')) return; openTaskModal('${tid}')">
-      <div class="flex-shrink-0">${statusDot(item)}</div>
+    <div class="task-row flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')||event.target.closest('input')) return; openTaskModal('${tid}')">
+      <div class="flex-shrink-0">${tickbox}</div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-0.5">
-          <div class="text-base font-semibold text-[color:var(--foreground)] truncate">${esc(item.task)}</div>
+          <div class="text-base font-semibold text-[color:var(--foreground)] truncate ${item.status === 'done' ? 'line-through opacity-60' : ''}">${esc(item.task)}</div>
           ${overdueBadge}
         </div>
         <div class="text-xs text-[color:var(--muted-foreground)] flex items-center flex-wrap gap-1">
@@ -1529,6 +1619,11 @@ function renderTaskBlock(item) {
   const badges = [];
   if (isOverdue) badges.push(`<span class="task-block-badge overdue">Overdue</span>`);
   if (missing) badges.push(`<span class="task-block-badge needs-info">Needs info</span>`);
+  const plannedText = formatPlannedSlot(item);
+  if (plannedText) {
+    const label = item.slot_origin === 'user' ? '📌' : '🗓';
+    badges.push(`<span class="task-block-badge" style="background:rgba(91,125,78,0.12);color:var(--primary);border:1px solid rgba(91,125,78,0.3)">${label} ${esc(plannedText)}</span>`);
+  }
   const classes = ['task-block'];
   if (missing) classes.push('missing-info');
   return `<div class="${classes.join(' ')}"
@@ -1725,12 +1820,6 @@ function renderUpNext(data, active) {
   if (!items.length) {
     return `<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No upcoming tasks.</div>`;
   }
-  const priorityPill = (p) => {
-    const cls = p === 'high' ? 'bg-[rgba(199,68,58,0.1)] text-[color:var(--destructive)]'
-      : p === 'medium' ? 'bg-[rgba(180,130,42,0.1)] text-[color:var(--warn)]'
-      : 'bg-[var(--accent)] text-[color:var(--muted-foreground)]';
-    return `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${cls}">${esc(p || 'medium')}</span>`;
-  };
   const rows = items.map((item) => {
     const raw = item.deadline_iso || item.deadline;
     const formatted = raw ? formatCustomDate(raw) : null;
@@ -1741,7 +1830,7 @@ function renderUpNext(data, active) {
       <div class="flex items-center gap-3 bg-white border border-[var(--border)] rounded-[var(--radius-lg)] px-4 py-3 shadow-[var(--shadow-xs)]">
         <div class="flex-1 min-w-0">
           <div class="text-sm font-semibold text-[color:var(--foreground)] truncate">${esc(item.task)}</div>
-          <div class="mt-1 flex items-center gap-2">${deadlinePill}${priorityPill(item.priority)}</div>
+          <div class="mt-1 flex items-center gap-2">${deadlinePill}</div>
         </div>
       </div>`;
   }).join('');
@@ -1811,11 +1900,8 @@ function openTaskModal(taskId) {
   if (!item) return;
   modalTaskId = taskId;
 
-  const bucketPill = item.category_bucket
-    ? `<span class="cat-pill">${esc(item.category_bucket)}</span>`
-    : (item.category ? `<span class="cat-pill">${esc(item.category)}</span>` : '');
   const tagChips = (item.tags || []).map((t) => `<span class="tag-chip">#${esc(t)}</span>`).join(' ');
-  document.getElementById('modal-category').innerHTML = [bucketPill, tagChips].filter(Boolean).join(' ');
+  document.getElementById('modal-category').innerHTML = tagChips;
   document.getElementById('modal-title').textContent = item.task || '';
 
   const deadlineRaw = item.deadline_iso || item.deadline;
@@ -1825,19 +1911,6 @@ function openTaskModal(taskId) {
   document.getElementById('modal-deadline').innerHTML = overdue
     ? `${esc(deadlineTxt)} <span class="ml-2 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[var(--destructive)] text-white">Overdue</span>`
     : esc(deadlineTxt);
-
-  const prioEl = document.getElementById('modal-priority');
-  prioEl.outerHTML = priorityPill(item.ai_priority || item.priority).replace('<span', '<span id="modal-priority"');
-  const scoreEl = document.getElementById('modal-score');
-  if (scoreEl) {
-    const ai = item.ai_priority_score;
-    const user = item.user_adjusted_score;
-    scoreEl.textContent = (ai != null || user != null) ? `AI score ${ai ?? '—'} · adjusted ${user ?? '—'}` : '';
-  }
-  const overrideSel = document.getElementById('modal-priority-override');
-  if (overrideSel) overrideSel.value = item.user_priority || '';
-  const bucketSel = document.getElementById('modal-bucket');
-  if (bucketSel) bucketSel.value = item.category_bucket || 'Others';
 
   const quadrantSel = document.getElementById('modal-eisenhower');
   if (quadrantSel) quadrantSel.value = item.user_eisenhower || '';
@@ -1858,6 +1931,7 @@ function openTaskModal(taskId) {
 
   document.getElementById('modal-assignee').textContent = item.assigned_by || '—';
   document.getElementById('modal-status').textContent = statusLabel(item);
+  renderCalendarSyncRow(item);
 
   // Dependencies
   const depsEl = document.getElementById('modal-deps');
@@ -1883,16 +1957,13 @@ function openTaskModal(taskId) {
     clarifySection.classList.add('hidden');
   }
 
-  // Kick off timeline load
-  loadModalTimeline();
-
   const stepsList = document.getElementById('modal-steps');
   const checklist = Array.isArray(item.checklist) ? item.checklist : [];
   if (checklist.length) {
     stepsList.innerHTML = checklist.map((step, i) => `
-      <li class="flex items-start gap-2 text-sm">
-        <input type="checkbox" ${step.done ? 'checked' : ''} onchange="toggleModalStep(${i})" />
-        <span class="${step.done ? 'line-through text-[color:var(--muted-foreground)]' : 'text-[color:var(--foreground)]'}">${esc(step.step || '')}</span>
+      <li class="flex items-start gap-2 text-sm" data-step-index="${i}">
+        <input type="checkbox" class="mt-1" ${step.done ? 'checked' : ''} onchange="toggleModalStep(${i})" />
+        <span class="step-text flex-1 cursor-text ${step.done ? 'line-through text-[color:var(--muted-foreground)]' : 'text-[color:var(--foreground)]'}" onclick="editModalStep(${i})" title="Click to edit">${esc(step.step || '')}</span>
       </li>`).join('');
     document.getElementById('modal-steps-section').classList.remove('hidden');
   } else if (Array.isArray(item.steps) && item.steps.length) {
@@ -1947,6 +2018,47 @@ async function toggleModalStep(index) {
   }
 }
 
+function editModalStep(index) {
+  if (!modalTaskId) return;
+  const li = document.querySelector(`#modal-steps li[data-step-index="${index}"]`);
+  if (!li) return;
+  const span = li.querySelector('.step-text');
+  if (!span || li.querySelector('input.step-edit')) return;
+  const original = span.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = original;
+  input.maxLength = 500;
+  input.className = 'step-edit flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-2 py-1 text-sm text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none';
+  span.replaceWith(input);
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+
+  let submitted = false;
+  const commit = async () => {
+    if (submitted) return;
+    submitted = true;
+    const next = input.value.trim();
+    if (!next || next === original) {
+      openTaskModal(modalTaskId);
+      return;
+    }
+    try {
+      await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/step-text`, { index, text: next });
+      await refreshDashboard();
+      openTaskModal(modalTaskId);
+    } catch (e) {
+      alert('Failed to edit step: ' + e.message);
+      openTaskModal(modalTaskId);
+    }
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+    else if (ev.key === 'Escape') { submitted = true; openTaskModal(modalTaskId); }
+  });
+}
+
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !document.getElementById('task-modal').classList.contains('hidden')) {
     closeModal();
@@ -1965,8 +2077,9 @@ function renderCalendar(data, activeTasksArray) {
 
   const tasksByDate = {};
   activeTasksArray.forEach(t => {
-    if (t.deadline_iso) {
-      const d = new Date(t.deadline_iso);
+    const anchor = t.planned_start_iso || t.deadline_iso;
+    if (anchor) {
+      const d = new Date(anchor);
       if (d.getFullYear() === year && d.getMonth() === month) {
         const dateNum = d.getDate();
         if (!tasksByDate[dateNum]) tasksByDate[dateNum] = [];
@@ -1975,7 +2088,11 @@ function renderCalendar(data, activeTasksArray) {
     }
   });
   for (const k of Object.keys(tasksByDate)) {
-    tasksByDate[k].sort((a, b) => new Date(a.deadline_iso) - new Date(b.deadline_iso));
+    tasksByDate[k].sort((a, b) => {
+      const aKey = new Date(a.planned_start_iso || a.deadline_iso).getTime();
+      const bKey = new Date(b.planned_start_iso || b.deadline_iso).getTime();
+      return aKey - bKey;
+    });
   }
 
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1997,8 +2114,14 @@ function renderCalendar(data, activeTasksArray) {
         const dotColor = t.priority === 'high' ? 'var(--destructive)'
           : t.priority === 'medium' ? 'var(--warn)'
           : 'var(--muted-foreground)';
-        return `<div onclick="openTaskModal('${esc(t.task_id)}')" class="text-xs cursor-pointer hover:bg-[var(--accent)] rounded-md px-1.5 py-1 truncate select-none flex items-center gap-1.5" title="${esc(t.task)}" style="color:var(--heading-2);">
+        const anchorIso = t.planned_start_iso || t.deadline_iso;
+        const anchorD = new Date(anchorIso);
+        const pad = (n) => String(n).padStart(2, '0');
+        const hhmm = `${pad(anchorD.getHours())}:${pad(anchorD.getMinutes())}`;
+        const prefix = t.planned_start_iso ? '🗓' : '⏰';
+        return `<div onclick="openTaskModal('${esc(t.task_id)}')" class="text-xs cursor-pointer hover:bg-[var(--accent)] rounded-md px-1.5 py-1 truncate select-none flex items-center gap-1.5" title="${esc(t.task)} — ${prefix} ${hhmm}" style="color:var(--heading-2);">
           <span style="width:6px;height:6px;border-radius:999px;background:${dotColor};flex-shrink:0;"></span>
+          <span class="text-[10px] font-semibold opacity-70 flex-shrink-0">${hhmm}</span>
           <span class="truncate">${esc(t.task)}</span>
         </div>`;
       }).join('');
@@ -2549,19 +2672,11 @@ async function extractSelectedChat() {
   const timeframe = document.getElementById('timeframe-select')?.value || chat.timeframe || 'all';
   chat.timeframe = timeframe; chat.self = chatSelf;
 
-  // Snapshot existing task ids before processing so we can tag the new ones to this chat
-  let before = new Set();
-  try {
-    const pre = await api('GET', '/api/dashboard');
-    for (const bucket of ['do_now', 'schedule', 'defer', 'need_info', 'in_progress', 'done']) {
-      for (const t of (pre[bucket] || [])) before.add(t.task_id);
-    }
-  } catch {}
-
   // Prepend an identity hint so the LLM knows which voice is the user's
   const prefix = `You are assisting "${chatSelf}". Tasks assigned to or accepted by "${chatSelf}" are the user's own tasks.\n\n`;
   const textToSend = prefix + chat.raw_text;
 
+  let linkedIds = [];
   try {
     const res = await fetch('/api/process-stream', {
       method: 'POST', credentials: 'include',
@@ -2584,25 +2699,23 @@ async function extractSelectedChat() {
           const data = JSON.parse(dataStr);
           if (ev === 'log') consoleLine(data.text);
           else if (ev === 'task') consoleLine(`Extracted: ${data.task}${data.tags?.length ? ' · #' + data.tags.join(' #') : ''}`, 'task');
-          else if (ev === 'done') { finished = true; }
+          else if (ev === 'stored') {
+            if (Array.isArray(data.linked)) linkedIds = data.linked;
+          }
+          else if (ev === 'done') {
+            if (data?.stored?.linked && !linkedIds.length) linkedIds = data.stored.linked;
+            finished = true;
+          }
         } catch {}
       }
     }
 
-    // Diff task ids and save against this chat
-    try {
-      const post = await api('GET', '/api/dashboard');
-      const newIds = [];
-      for (const bucket of ['do_now', 'schedule', 'defer', 'need_info', 'in_progress', 'done']) {
-        for (const t of (post[bucket] || [])) {
-          if (!before.has(t.task_id)) newIds.push(t.task_id);
-        }
-      }
-      chat.task_ids = Array.from(new Set([...(chat.task_ids || []), ...newIds]));
-      chat.processedAt = new Date().toISOString();
-      persistSavedChats(savedChats);
-      consoleLine(`Linked ${newIds.length} new task(s) to this chat.`, 'task');
-    } catch {}
+    const existing = new Set(chat.task_ids || []);
+    const newToChat = linkedIds.filter((id) => !existing.has(id));
+    chat.task_ids = Array.from(new Set([...(chat.task_ids || []), ...linkedIds]));
+    chat.processedAt = new Date().toISOString();
+    persistSavedChats(savedChats);
+    consoleLine(`Linked ${newToChat.length} new task(s) to this chat.`, 'task');
 
     setTimeout(() => setMode('dashboard'), 800);
   } catch (e) {
@@ -2645,6 +2758,7 @@ async function refreshAccount() {
   if (gEl && gLinkBtn && gUnlinkBtn) {
     try {
       const g = await api('GET', '/api/google/status');
+      googleLinkedCache = !!(g && g.linked);
       if (!g.configured) {
         gEl.textContent = '(OAuth not configured)';
         gLinkBtn.disabled = true;
@@ -2668,6 +2782,43 @@ async function refreshAccount() {
     aEl.textContent = a.summary || '—';
   } catch {
     aEl.textContent = '—';
+  }
+
+  try {
+    const prefs = await api('GET', '/api/preferences');
+    document.getElementById('pref-start').value = prefs.working_day_start || '09:00';
+    document.getElementById('pref-end').value = prefs.working_day_end || '18:00';
+    const enabled = new Set((prefs.working_days || 'Mon,Tue,Wed,Thu,Fri').split(',').map(s => s.trim()));
+    const daysEl = document.getElementById('pref-days');
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    daysEl.innerHTML = dayLabels.map(d => {
+      const on = enabled.has(d);
+      return `<button type="button" data-day="${d}" onclick="toggleWorkingDay(this)" class="tag-chip${on ? ' active' : ''}">${d}</button>`;
+    }).join('');
+  } catch {}
+}
+
+function toggleWorkingDay(btn) {
+  btn.classList.toggle('active');
+}
+
+async function savePreferences(btn) {
+  const start = document.getElementById('pref-start').value || '09:00';
+  const end = document.getElementById('pref-end').value || '18:00';
+  const days = Array.from(document.querySelectorAll('#pref-days button.active'))
+    .map(b => b.dataset.day)
+    .join(',');
+  const statusEl = document.getElementById('pref-status');
+  if (!days) { statusEl.textContent = 'Pick at least one working day.'; return; }
+  if (btn) btn.disabled = true;
+  statusEl.textContent = 'Saving…';
+  try {
+    await api('PUT', '/api/preferences', { working_day_start: start, working_day_end: end, working_days: days });
+    statusEl.textContent = 'Saved. Regenerate the schedule for changes to take effect.';
+  } catch (e) {
+    statusEl.textContent = 'Failed: ' + (e.message || 'unknown error');
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -2703,69 +2854,7 @@ async function resetAdaptation() {
   } catch (e) { alert('Reset failed: ' + e.message); }
 }
 
-// ---------------- Clarifications & Dependencies ----------------
-function renderClarificationThreads(data) {
-  const el = document.getElementById('dash-clarification-threads');
-  if (!el) return;
-  const threads = data.clarifications || [];
-  if (!threads.length) {
-    el.innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-6 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No open clarifications.</div>';
-    return;
-  }
-  el.innerHTML = threads.map(t => `
-    <div class="bg-white border border-[rgba(180,130,42,0.35)] rounded-[var(--radius-xl)] px-4 py-3 mb-2 shadow-[var(--shadow-xs)]">
-      <div class="text-xs uppercase tracking-wider text-[color:var(--warn)] mb-1 font-semibold">${esc(t.field)} · ${esc(t.task_id)}</div>
-      <div class="text-sm text-[color:var(--heading-2)] mb-2">${esc(t.question)}</div>
-      <div class="flex gap-2">
-        <input id="clar-${esc(t.id)}" class="flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Your answer…" />
-        <button onclick="submitClarification('${esc(t.id)}')" class="ghost-btn ghost-btn-accent">Submit</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-async function submitClarification(threadId) {
-  const input = document.getElementById(`clar-${threadId}`);
-  const value = input?.value?.trim();
-  if (!value) { input?.focus(); return; }
-  try {
-    await api('POST', `/api/clarifications/${encodeURIComponent(threadId)}/answer`, { answer: value });
-    refreshDashboard();
-  } catch (e) { alert('Failed: ' + e.message); }
-}
-
-function renderDependencyGraph(data) {
-  const el = document.getElementById('dash-dependencies');
-  if (!el) return;
-  const deps = data.dependencies || [];
-  if (!deps.length) {
-    el.innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)]">No dependencies between tasks yet.</div>';
-    return;
-  }
-  el.innerHTML = deps.map(d =>
-    `<div class="text-sm py-1"><code class="text-[color:var(--primary)] font-serif">${esc(d.task_id)}</code> <span class="text-[color:var(--muted-foreground)]">depends on</span> <code class="text-[color:var(--primary)] font-serif">${esc(d.depends_on)}</code>${d.reason ? ` <span class="text-[color:var(--muted-foreground)]">— ${esc(d.reason)}</span>` : ''}</div>`
-  ).join('');
-}
-
 // ---------------- Modal enhancements ----------------
-async function modalSetPriority() {
-  if (!modalTaskId) return;
-  const v = document.getElementById('modal-priority-override').value || null;
-  try {
-    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/priority`, { priority: v });
-    await refreshDashboard();
-  } catch (e) { alert('Failed: ' + e.message); }
-}
-
-async function modalSetBucket() {
-  if (!modalTaskId) return;
-  const v = document.getElementById('modal-bucket').value;
-  try {
-    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/bucket`, { bucket: v });
-    await refreshDashboard();
-  } catch (e) { alert('Failed: ' + e.message); }
-}
-
 async function modalSetEisenhower() {
   if (!modalTaskId) return;
   const raw = document.getElementById('modal-eisenhower').value;
@@ -2790,6 +2879,75 @@ async function modalSetDuration() {
   } catch (e) { alert('Failed: ' + e.message); }
 }
 
+let googleLinkedCache = null;
+async function getGoogleLinked(force = false) {
+  if (!force && googleLinkedCache !== null) return googleLinkedCache;
+  try {
+    const g = await api('GET', '/api/google/status');
+    googleLinkedCache = !!(g && g.linked);
+  } catch {
+    googleLinkedCache = false;
+  }
+  return googleLinkedCache;
+}
+
+function renderCalendarSyncRow(item) {
+  const cb = document.getElementById('modal-calendar-sync');
+  const sub = document.getElementById('modal-calendar-sync-subtext');
+  if (!cb || !sub) return;
+  cb.checked = !!item.calendar_sync_enabled;
+  cb.disabled = true;
+  sub.textContent = 'Checking…';
+
+  const effective = item.user_duration_minutes != null
+    ? { mins: item.user_duration_minutes, src: 'your override' }
+    : (item.ai_duration_minutes != null
+      ? { mins: item.ai_duration_minutes, src: 'AI estimate' }
+      : { mins: 30, src: 'default — set a duration to override' });
+
+  const deadlineOk = !!item.deadline_iso;
+
+  getGoogleLinked().then((linked) => {
+    if (!linked) {
+      cb.checked = false;
+      cb.disabled = true;
+      sub.textContent = 'Link Google Calendar in Account to enable sync.';
+      return;
+    }
+    if (!deadlineOk) {
+      cb.disabled = true;
+      sub.textContent = 'Set a deadline to sync this task.';
+      return;
+    }
+    cb.disabled = false;
+    sub.textContent = `Duration: ${effective.mins} min (${effective.src}).`;
+  });
+}
+
+async function modalToggleCalendarSync() {
+  if (!modalTaskId) return;
+  const cb = document.getElementById('modal-calendar-sync');
+  const sub = document.getElementById('modal-calendar-sync-subtext');
+  const desired = cb.checked;
+  cb.disabled = true;
+  const prev = sub.textContent;
+  sub.textContent = 'Saving…';
+  try {
+    const res = await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/calendar-sync`, { enabled: desired });
+    if (res.skipped && res.reason) {
+      sub.textContent = `Saved, but not synced yet (${res.reason.replace('_', ' ')}).`;
+    } else {
+      sub.textContent = desired ? 'Synced to Google Calendar.' : 'Removed from Google Calendar.';
+    }
+    await refreshDashboard();
+  } catch (e) {
+    cb.checked = !desired;
+    sub.textContent = e.message;
+  } finally {
+    cb.disabled = false;
+  }
+}
+
 async function modalSubmitClarification() {
   if (!modalTaskId) return;
   const item = findTaskInDashboard(modalTaskId);
@@ -2802,21 +2960,6 @@ async function modalSubmitClarification() {
     await refreshDashboard();
     openTaskModal(modalTaskId);
   } catch (e) { alert('Failed: ' + e.message); }
-}
-
-async function loadModalTimeline() {
-  if (!modalTaskId) return;
-  const tl = document.getElementById('modal-timeline');
-  try {
-    const data = await api('GET', `/api/tasks/${encodeURIComponent(modalTaskId)}/timeline`);
-    const events = data.events || [];
-    if (!events.length) { tl.textContent = 'No events yet.'; return; }
-    tl.innerHTML = events.map(e => {
-      const d = new Date(e.created_at);
-      const ts = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-      return `<div>· <span class="text-[color:var(--muted-foreground)]">${ts}</span> <span class="text-[color:var(--primary)] font-medium">${esc(e.kind)}</span> <span class="text-[color:var(--muted-foreground)]">${esc(JSON.stringify(e.payload))}</span></div>`;
-    }).join('');
-  } catch (e) { tl.textContent = 'Failed to load timeline.'; }
 }
 
 // ---------------- Avatar Picker ----------------
@@ -2903,7 +3046,25 @@ function handleAvatarUpload(input) {
 (async () => {
   const ok = await checkAuth();
   if (ok) refreshDashboard();
+  startHeroClock();
 })();
+
+function startHeroClock() {
+  const timeEl = document.getElementById('hero-time');
+  const dayEl = document.getElementById('hero-day');
+  if (!timeEl || !dayEl) return;
+  const tick = () => {
+    const d = new Date();
+    const hh = d.getHours(), mm = d.getMinutes();
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const h12 = ((hh + 11) % 12) + 1;
+    timeEl.textContent = `${h12}:${String(mm).padStart(2,'0')} ${ampm}`;
+    const fmt = new Intl.DateTimeFormat(undefined, { weekday:'long', day:'numeric', month:'long' });
+    dayEl.textContent = fmt.format(d);
+  };
+  tick();
+  setInterval(tick, 1000 * 15);
+}
 </script>
 </body>
 </html>
