@@ -14,6 +14,8 @@ import {
   respondToClarification,
   setUserEisenhower,
   setUserDurationMinutes,
+  setUserPriority,
+  setBucket,
   addTaskDependency,
   removeTaskDependency,
   toggleStep,
@@ -297,6 +299,29 @@ app.post('/api/tasks/:taskId/duration', requireUser, async (req, res) => {
     return res.status(400).json({ detail: 'minutes must be null or a number between 5 and 1440' });
   }
   if (!setUserDurationMinutes(req.user.id, req.params.taskId, minutes)) {
+    return res.status(404).json({ detail: 'Task not found' });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/tasks/:taskId/priority', requireUser, (req, res) => {
+  const { priority } = req.body || {};
+  const allowed = [null, 'high', 'medium', 'low'];
+  if (!allowed.includes(priority ?? null)) {
+    return res.status(400).json({ detail: 'priority must be high, medium, low, or null' });
+  }
+  if (!setUserPriority(req.user.id, req.params.taskId, priority ?? null)) {
+    return res.status(404).json({ detail: 'Task not found' });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/tasks/:taskId/bucket', requireUser, (req, res) => {
+  const { bucket } = req.body || {};
+  if (!bucket || typeof bucket !== 'string') {
+    return res.status(400).json({ detail: 'bucket (string) is required' });
+  }
+  if (!setBucket(req.user.id, req.params.taskId, bucket)) {
     return res.status(404).json({ detail: 'Task not found' });
   }
   res.json({ ok: true });
