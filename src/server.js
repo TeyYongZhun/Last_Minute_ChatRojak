@@ -33,6 +33,12 @@ import authRouter from './routes/auth.js';
 import telegramRouter from './routes/telegram.js';
 import googleOAuthRouter from './routes/googleOAuth.js';
 import { requireUser } from './auth/middleware.js';
+import { getTask, setCalendarSyncEnabled } from './db/repos/tasks.js';
+import { getPlan } from './db/repos/plans.js';
+import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
+import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
+import { addTaskEvent } from './db/repos/taskEvents.js';
+import { updateChecklistItemText } from './db/repos/checklists.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
 
@@ -253,6 +259,25 @@ app.post('/api/tasks/:taskId/step', requireUser, (req, res) => {
   res.json({ status: 'toggled' });
 });
 
+app.post('/api/tasks/:taskId/step-text', requireUser, (req, res) => {
+  const { index, text } = req.body || {};
+  if (typeof index !== 'number') {
+    return res.status(400).json({ detail: 'index (number) is required' });
+  }
+  const trimmed = typeof text === 'string' ? text.trim() : '';
+  if (!trimmed) {
+    return res.status(400).json({ detail: 'text is required' });
+  }
+  if (trimmed.length > 500) {
+    return res.status(400).json({ detail: 'text must be 500 characters or fewer' });
+  }
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  const changes = updateChecklistItemText(req.params.taskId, index, trimmed);
+  if (!changes) return res.status(404).json({ detail: 'Step not found' });
+  res.json({ status: 'updated' });
+});
+
 app.post('/api/tasks/:taskId/eisenhower', requireUser, async (req, res) => {
   const { quadrant } = req.body || {};
   const allowed = [null, 'do', 'plan', 'quick', 'later'];
@@ -382,6 +407,50 @@ app.post('/api/adaptation/reset', requireUser, (req, res) => {
 app.post('/api/reset', requireUser, (req, res) => {
   resetUser(req.user.id);
   res.json({ status: 'reset' });
+});
+
+app.post('/api/tasks/:taskId/calendar-sync', requireUser, async (req, res) => {
+  const { enabled } = req.body || {};
+  if (typeof enabled !== 'boolean') {
+    return res.status(400).json({ detail: 'enabled must be boolean' });
+  }
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+
+  if (!enabled) {
+    setCalendarSyncEnabled(req.user.id, task.id, 0);
+    addTaskEvent(req.user.id, task.id, 'calendar_sync_toggled', { enabled: false });
+    try {
+      await deleteCalendarEvent(req.user.id, task.id);
+    } catch (err) {
+      console.error('[/api/tasks/:id/calendar-sync] delete error:', err.message);
+    }
+    return res.json({ ok: true, enabled: false });
+  }
+
+  if (!getGoogleTokens(req.user.id)) {
+    return res.status(409).json({ detail: 'Google Calendar not linked' });
+  }
+
+  setCalendarSyncEnabled(req.user.id, task.id, 1);
+  addTaskEvent(req.user.id, task.id, 'calendar_sync_toggled', { enabled: true });
+
+  const fresh = getTask(req.user.id, task.id);
+  const plan = getPlan(req.user.id, task.id);
+  try {
+    const result = await upsertCalendarEvent(req.user.id, fresh, plan, new Date());
+    return res.json({
+      ok: true,
+      enabled: true,
+      event_id: result?.event_id,
+      skipped: result?.skipped ? true : undefined,
+      reason: result?.reason,
+      error: result?.error,
+    });
+  } catch (err) {
+    console.error('[/api/tasks/:id/calendar-sync] upsert error:', err.message);
+    return res.status(500).json({ detail: err.message || 'Calendar sync failed' });
+  }
 });
 
 

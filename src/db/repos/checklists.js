@@ -21,6 +21,13 @@ export function replaceChecklist(taskId, steps) {
   }
 }
 
+export function updateChecklistItemText(taskId, position, text) {
+  const db = getDb();
+  return db
+    .prepare('UPDATE checklist_items SET step = ? WHERE task_id = ? AND position = ?')
+    .run(String(text), taskId, position).changes;
+}
+
 export function toggleChecklistItem(taskId, position) {
   const db = getDb();
   const row = db

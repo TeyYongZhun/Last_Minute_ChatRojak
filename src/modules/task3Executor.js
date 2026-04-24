@@ -30,6 +30,7 @@ import {
   setAiDurationMinutes,
   setUserDurationMinutes as repoSetUserDurationMinutes,
   markCompleted,
+  setCalendarSyncEnabled,
 } from '../db/repos/tasks.js';
 import {
   listPlans,
@@ -290,6 +291,7 @@ export function completeTask(userId, taskId) {
   const db = getDb();
   const tx = db.transaction(() => {
     markCompleted(userId, taskId);
+    setCalendarSyncEnabled(userId, taskId, 0);
     updatePlanStatus(userId, taskId, 'done');
     pruneActionsForTask(taskId);
     addReplanEvent(userId, `[${ts()}] Task ${taskId} marked done.`);

@@ -650,18 +650,6 @@
         <div id="filter-toolbar" class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-4 mb-6 space-y-3 shadow-[var(--shadow-xs)]">
           <div class="flex flex-wrap items-center gap-3">
             <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Filters:</span>
-            <select id="filter-bucket" class="filter-select" onchange="applyFilters()">
-              <option value="">All categories</option>
-              <option value="Academic">Academic</option>
-              <option value="Co-curricular">Co-curricular</option>
-              <option value="Others">Others</option>
-            </select>
-            <select id="filter-priority" class="filter-select" onchange="applyFilters()">
-              <option value="">All priorities</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
             <select id="filter-status" class="filter-select" onchange="applyFilters()">
               <option value="active">Active</option>
               <option value="done">Done</option>
@@ -785,28 +773,6 @@
         <span id="modal-deadline" class="text-[color:var(--primary)] font-medium"></span>
       </div>
       <div class="flex items-center gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">AI priority</span>
-        <span id="modal-priority" class="category-tag"></span>
-        <span id="modal-score" class="text-xs text-[color:var(--muted-foreground)]"></span>
-      </div>
-      <div class="flex items-center gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Override</span>
-        <select id="modal-priority-override" onchange="modalSetPriority()" class="filter-select">
-          <option value="">Use AI priority</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-      </div>
-      <div class="flex items-center gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Bucket</span>
-        <select id="modal-bucket" onchange="modalSetBucket()" class="filter-select">
-          <option value="Academic">Academic</option>
-          <option value="Co-curricular">Co-curricular</option>
-          <option value="Others">Others</option>
-        </select>
-      </div>
-      <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Quadrant</span>
         <select id="modal-eisenhower" onchange="modalSetEisenhower()" class="filter-select">
           <option value="">Use AI quadrant</option>
@@ -836,6 +802,16 @@
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Depends on</span>
         <div id="modal-deps" class="flex flex-wrap gap-2 flex-1"></div>
       </div>
+      <div class="flex items-start gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Calendar</span>
+        <div class="flex-1">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input id="modal-calendar-sync" type="checkbox" onchange="modalToggleCalendarSync()" class="h-4 w-4" />
+            <span class="text-[color:var(--heading-2)]">Sync this task to Google Calendar</span>
+          </label>
+          <div id="modal-calendar-sync-subtext" class="text-xs text-[color:var(--muted-foreground)] mt-1"></div>
+        </div>
+      </div>
     </div>
 
     <div id="modal-steps-section" class="mb-6">
@@ -850,13 +826,6 @@
         <input id="modal-clarify-input" class="flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Your answer…" />
         <button onclick="modalSubmitClarification()" class="ghost-btn ghost-btn-accent">Submit</button>
       </div>
-    </div>
-
-    <div id="modal-timeline-section" class="mb-6">
-      <details>
-        <summary class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-3 cursor-pointer">Timeline</summary>
-        <div id="modal-timeline" class="mt-3 text-xs space-y-1 text-[color:var(--muted-foreground)]"></div>
-      </details>
     </div>
 
     <div class="flex gap-3 pt-4 border-t border-[var(--border-soft)]">
@@ -1187,13 +1156,9 @@ function activeTasks(data) {
 
 // ---------------- Filters UI ----------------
 function renderFilterToolbar(data) {
-  const bucketSel = document.getElementById('filter-bucket');
-  const prioSel = document.getElementById('filter-priority');
   const statSel = document.getElementById('filter-status');
   const qInput = document.getElementById('filter-q');
 
-  if (bucketSel) bucketSel.value = filters.bucket || '';
-  prioSel.value = filters.priority || '';
   statSel.value = filters.status ?? 'active';
   qInput.value = filters.q || '';
 
@@ -1220,9 +1185,8 @@ function toggleTag(tag) {
 }
 
 function applyFilters() {
-  const bucketEl = document.getElementById('filter-bucket');
-  filters.bucket = bucketEl ? bucketEl.value : '';
-  filters.priority = document.getElementById('filter-priority').value;
+  filters.bucket = '';
+  filters.priority = '';
   filters.status = document.getElementById('filter-status').value;
   filters.q = document.getElementById('filter-q').value;
   saveFilters();
@@ -1725,12 +1689,6 @@ function renderUpNext(data, active) {
   if (!items.length) {
     return `<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No upcoming tasks.</div>`;
   }
-  const priorityPill = (p) => {
-    const cls = p === 'high' ? 'bg-[rgba(199,68,58,0.1)] text-[color:var(--destructive)]'
-      : p === 'medium' ? 'bg-[rgba(180,130,42,0.1)] text-[color:var(--warn)]'
-      : 'bg-[var(--accent)] text-[color:var(--muted-foreground)]';
-    return `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${cls}">${esc(p || 'medium')}</span>`;
-  };
   const rows = items.map((item) => {
     const raw = item.deadline_iso || item.deadline;
     const formatted = raw ? formatCustomDate(raw) : null;
@@ -1741,7 +1699,7 @@ function renderUpNext(data, active) {
       <div class="flex items-center gap-3 bg-white border border-[var(--border)] rounded-[var(--radius-lg)] px-4 py-3 shadow-[var(--shadow-xs)]">
         <div class="flex-1 min-w-0">
           <div class="text-sm font-semibold text-[color:var(--foreground)] truncate">${esc(item.task)}</div>
-          <div class="mt-1 flex items-center gap-2">${deadlinePill}${priorityPill(item.priority)}</div>
+          <div class="mt-1 flex items-center gap-2">${deadlinePill}</div>
         </div>
       </div>`;
   }).join('');
@@ -1811,11 +1769,8 @@ function openTaskModal(taskId) {
   if (!item) return;
   modalTaskId = taskId;
 
-  const bucketPill = item.category_bucket
-    ? `<span class="cat-pill">${esc(item.category_bucket)}</span>`
-    : (item.category ? `<span class="cat-pill">${esc(item.category)}</span>` : '');
   const tagChips = (item.tags || []).map((t) => `<span class="tag-chip">#${esc(t)}</span>`).join(' ');
-  document.getElementById('modal-category').innerHTML = [bucketPill, tagChips].filter(Boolean).join(' ');
+  document.getElementById('modal-category').innerHTML = tagChips;
   document.getElementById('modal-title').textContent = item.task || '';
 
   const deadlineRaw = item.deadline_iso || item.deadline;
@@ -1825,19 +1780,6 @@ function openTaskModal(taskId) {
   document.getElementById('modal-deadline').innerHTML = overdue
     ? `${esc(deadlineTxt)} <span class="ml-2 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[var(--destructive)] text-white">Overdue</span>`
     : esc(deadlineTxt);
-
-  const prioEl = document.getElementById('modal-priority');
-  prioEl.outerHTML = priorityPill(item.ai_priority || item.priority).replace('<span', '<span id="modal-priority"');
-  const scoreEl = document.getElementById('modal-score');
-  if (scoreEl) {
-    const ai = item.ai_priority_score;
-    const user = item.user_adjusted_score;
-    scoreEl.textContent = (ai != null || user != null) ? `AI score ${ai ?? '—'} · adjusted ${user ?? '—'}` : '';
-  }
-  const overrideSel = document.getElementById('modal-priority-override');
-  if (overrideSel) overrideSel.value = item.user_priority || '';
-  const bucketSel = document.getElementById('modal-bucket');
-  if (bucketSel) bucketSel.value = item.category_bucket || 'Others';
 
   const quadrantSel = document.getElementById('modal-eisenhower');
   if (quadrantSel) quadrantSel.value = item.user_eisenhower || '';
@@ -1858,6 +1800,7 @@ function openTaskModal(taskId) {
 
   document.getElementById('modal-assignee').textContent = item.assigned_by || '—';
   document.getElementById('modal-status').textContent = statusLabel(item);
+  renderCalendarSyncRow(item);
 
   // Dependencies
   const depsEl = document.getElementById('modal-deps');
@@ -1883,16 +1826,13 @@ function openTaskModal(taskId) {
     clarifySection.classList.add('hidden');
   }
 
-  // Kick off timeline load
-  loadModalTimeline();
-
   const stepsList = document.getElementById('modal-steps');
   const checklist = Array.isArray(item.checklist) ? item.checklist : [];
   if (checklist.length) {
     stepsList.innerHTML = checklist.map((step, i) => `
-      <li class="flex items-start gap-2 text-sm">
-        <input type="checkbox" ${step.done ? 'checked' : ''} onchange="toggleModalStep(${i})" />
-        <span class="${step.done ? 'line-through text-[color:var(--muted-foreground)]' : 'text-[color:var(--foreground)]'}">${esc(step.step || '')}</span>
+      <li class="flex items-start gap-2 text-sm" data-step-index="${i}">
+        <input type="checkbox" class="mt-1" ${step.done ? 'checked' : ''} onchange="toggleModalStep(${i})" />
+        <span class="step-text flex-1 cursor-text ${step.done ? 'line-through text-[color:var(--muted-foreground)]' : 'text-[color:var(--foreground)]'}" onclick="editModalStep(${i})" title="Click to edit">${esc(step.step || '')}</span>
       </li>`).join('');
     document.getElementById('modal-steps-section').classList.remove('hidden');
   } else if (Array.isArray(item.steps) && item.steps.length) {
@@ -1945,6 +1885,47 @@ async function toggleModalStep(index) {
   } catch (e) {
     console.error('toggleModalStep failed:', e);
   }
+}
+
+function editModalStep(index) {
+  if (!modalTaskId) return;
+  const li = document.querySelector(`#modal-steps li[data-step-index="${index}"]`);
+  if (!li) return;
+  const span = li.querySelector('.step-text');
+  if (!span || li.querySelector('input.step-edit')) return;
+  const original = span.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = original;
+  input.maxLength = 500;
+  input.className = 'step-edit flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-2 py-1 text-sm text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none';
+  span.replaceWith(input);
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+
+  let submitted = false;
+  const commit = async () => {
+    if (submitted) return;
+    submitted = true;
+    const next = input.value.trim();
+    if (!next || next === original) {
+      openTaskModal(modalTaskId);
+      return;
+    }
+    try {
+      await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/step-text`, { index, text: next });
+      await refreshDashboard();
+      openTaskModal(modalTaskId);
+    } catch (e) {
+      alert('Failed to edit step: ' + e.message);
+      openTaskModal(modalTaskId);
+    }
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+    else if (ev.key === 'Escape') { submitted = true; openTaskModal(modalTaskId); }
+  });
 }
 
 document.addEventListener('keydown', (e) => {
@@ -2645,6 +2626,7 @@ async function refreshAccount() {
   if (gEl && gLinkBtn && gUnlinkBtn) {
     try {
       const g = await api('GET', '/api/google/status');
+      googleLinkedCache = !!(g && g.linked);
       if (!g.configured) {
         gEl.textContent = '(OAuth not configured)';
         gLinkBtn.disabled = true;
@@ -2748,24 +2730,6 @@ function renderDependencyGraph(data) {
 }
 
 // ---------------- Modal enhancements ----------------
-async function modalSetPriority() {
-  if (!modalTaskId) return;
-  const v = document.getElementById('modal-priority-override').value || null;
-  try {
-    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/priority`, { priority: v });
-    await refreshDashboard();
-  } catch (e) { alert('Failed: ' + e.message); }
-}
-
-async function modalSetBucket() {
-  if (!modalTaskId) return;
-  const v = document.getElementById('modal-bucket').value;
-  try {
-    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/bucket`, { bucket: v });
-    await refreshDashboard();
-  } catch (e) { alert('Failed: ' + e.message); }
-}
-
 async function modalSetEisenhower() {
   if (!modalTaskId) return;
   const raw = document.getElementById('modal-eisenhower').value;
@@ -2790,6 +2754,75 @@ async function modalSetDuration() {
   } catch (e) { alert('Failed: ' + e.message); }
 }
 
+let googleLinkedCache = null;
+async function getGoogleLinked(force = false) {
+  if (!force && googleLinkedCache !== null) return googleLinkedCache;
+  try {
+    const g = await api('GET', '/api/google/status');
+    googleLinkedCache = !!(g && g.linked);
+  } catch {
+    googleLinkedCache = false;
+  }
+  return googleLinkedCache;
+}
+
+function renderCalendarSyncRow(item) {
+  const cb = document.getElementById('modal-calendar-sync');
+  const sub = document.getElementById('modal-calendar-sync-subtext');
+  if (!cb || !sub) return;
+  cb.checked = !!item.calendar_sync_enabled;
+  cb.disabled = true;
+  sub.textContent = 'Checking…';
+
+  const effective = item.user_duration_minutes != null
+    ? { mins: item.user_duration_minutes, src: 'your override' }
+    : (item.ai_duration_minutes != null
+      ? { mins: item.ai_duration_minutes, src: 'AI estimate' }
+      : { mins: 30, src: 'default — set a duration to override' });
+
+  const deadlineOk = !!item.deadline_iso;
+
+  getGoogleLinked().then((linked) => {
+    if (!linked) {
+      cb.checked = false;
+      cb.disabled = true;
+      sub.textContent = 'Link Google Calendar in Account to enable sync.';
+      return;
+    }
+    if (!deadlineOk) {
+      cb.disabled = true;
+      sub.textContent = 'Set a deadline to sync this task.';
+      return;
+    }
+    cb.disabled = false;
+    sub.textContent = `Duration: ${effective.mins} min (${effective.src}).`;
+  });
+}
+
+async function modalToggleCalendarSync() {
+  if (!modalTaskId) return;
+  const cb = document.getElementById('modal-calendar-sync');
+  const sub = document.getElementById('modal-calendar-sync-subtext');
+  const desired = cb.checked;
+  cb.disabled = true;
+  const prev = sub.textContent;
+  sub.textContent = 'Saving…';
+  try {
+    const res = await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/calendar-sync`, { enabled: desired });
+    if (res.skipped && res.reason) {
+      sub.textContent = `Saved, but not synced yet (${res.reason.replace('_', ' ')}).`;
+    } else {
+      sub.textContent = desired ? 'Synced to Google Calendar.' : 'Removed from Google Calendar.';
+    }
+    await refreshDashboard();
+  } catch (e) {
+    cb.checked = !desired;
+    sub.textContent = e.message;
+  } finally {
+    cb.disabled = false;
+  }
+}
+
 async function modalSubmitClarification() {
   if (!modalTaskId) return;
   const item = findTaskInDashboard(modalTaskId);
@@ -2802,21 +2835,6 @@ async function modalSubmitClarification() {
     await refreshDashboard();
     openTaskModal(modalTaskId);
   } catch (e) { alert('Failed: ' + e.message); }
-}
-
-async function loadModalTimeline() {
-  if (!modalTaskId) return;
-  const tl = document.getElementById('modal-timeline');
-  try {
-    const data = await api('GET', `/api/tasks/${encodeURIComponent(modalTaskId)}/timeline`);
-    const events = data.events || [];
-    if (!events.length) { tl.textContent = 'No events yet.'; return; }
-    tl.innerHTML = events.map(e => {
-      const d = new Date(e.created_at);
-      const ts = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-      return `<div>· <span class="text-[color:var(--muted-foreground)]">${ts}</span> <span class="text-[color:var(--primary)] font-medium">${esc(e.kind)}</span> <span class="text-[color:var(--muted-foreground)]">${esc(JSON.stringify(e.payload))}</span></div>`;
-    }).join('');
-  } catch (e) { tl.textContent = 'Failed to load timeline.'; }
 }
 
 // ---------------- Avatar Picker ----------------
