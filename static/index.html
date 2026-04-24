@@ -1,0 +1,2090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Last Minute ChatRojak</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: light;
+      --background:#F7F5F3; --card:#FFFFFF;
+      --foreground:#37322F; --heading-2:#49423D; --muted-foreground:#605A57;
+      --muted:#F2EFEC; --accent:#F2EFEC;
+      --primary:#37322F; --primary-foreground:#FFFFFF;
+      --border:#E0DEDB; --border-soft:rgba(55,50,47,0.12);
+      --input:#E3E2E1; --ring:rgba(55,50,47,0.25);
+      --destructive:#C7443A; --warn:#B4822A; --success:#5B7D4E;
+      --radius:0.625rem; --radius-md:calc(0.625rem - 2px); --radius-lg:0.625rem; --radius-xl:calc(0.625rem + 4px);
+      --shadow-xs:0 1px 2px rgba(55,50,47,0.06);
+      --shadow-sm:0 1px 2px rgba(55,50,47,0.08),0 2px 4px rgba(55,50,47,0.04);
+      --font-sans:'Inter',ui-sans-serif,system-ui,sans-serif;
+      --font-serif:'Instrument Serif',ui-serif,Georgia,serif;
+    }
+    html, body { font-family: var(--font-sans); height: 100%; margin: 0; overflow: hidden; }
+    body { background: var(--background); color: var(--foreground); -webkit-font-smoothing: antialiased; display: flex; }
+
+    .font-serif { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
+
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+
+    .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; background: #C9C5C1; }
+    .dot-active   { background: var(--primary); box-shadow: 0 0 0 3px rgba(55,50,47,0.08); }
+    .dot-needinfo { background: var(--warn); box-shadow: 0 0 0 3px rgba(180,130,42,0.15); }
+
+    .ghost-btn {
+      padding: 8px 14px; border: 1px solid var(--border); border-radius: var(--radius-md);
+      font-size: 13px; font-weight: 500; color: var(--foreground); background: #fff;
+      box-shadow: var(--shadow-xs);
+      transition: all 0.15s ease; cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: rgba(55,50,47,0.2); background: var(--accent); }
+    .ghost-btn:active { transform: translateY(0); scale: 0.98; }
+    .ghost-btn.danger { color: var(--destructive); border-color: rgba(199,68,58,0.3); }
+    .ghost-btn.danger:hover { background: rgba(199,68,58,0.06); border-color: var(--destructive); }
+
+    .ghost-btn-accent {
+      background: var(--primary); color: var(--primary-foreground);
+      border-color: var(--primary);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06), var(--shadow-xs);
+    }
+    .ghost-btn-accent:hover { background: var(--primary); filter: brightness(1.12); border-color: var(--primary); }
+
+    .task-row {
+      background: #fff; border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px 16px;
+      box-shadow: var(--shadow-xs);
+      transition: all 0.15s ease;
+    }
+    .task-row:hover { box-shadow: var(--shadow-sm); border-color: rgba(55,50,47,0.18); }
+
+    .info-item { border-left: 3px solid var(--border); padding: 12px 16px; margin-bottom: 16px; background: #fff; border-radius: 0 var(--radius-lg) var(--radius-lg) 0; box-shadow: var(--shadow-xs); }
+    .info-item.accent-amber { border-left-color: var(--warn); background: linear-gradient(to right, rgba(180,130,42,0.08), #fff); }
+
+    .loading-dot::after { content: ''; animation: dots 1.2s steps(3, end) infinite; }
+    @keyframes dots { 0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; } }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.8s linear infinite; display: inline-block; }
+
+    input[type=checkbox] { accent-color: var(--primary); width: 18px; height: 18px; cursor: pointer; }
+
+    .section-label {
+      font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted-foreground); padding-bottom: 12px; border-bottom: 1px solid var(--border-soft); margin-bottom: 12px;
+    }
+
+    .nav-btn {
+      display: flex; align-items: center; width: 100%; text-align: left; padding: 10px 12px; border-radius: var(--radius-md);
+      font-size: 15px; font-weight: 500; color: var(--muted-foreground); transition: all .15s; margin-bottom: 6px; border: 1px solid transparent;
+    }
+    .nav-btn:hover { background: var(--accent); color: var(--foreground); }
+    .nav-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 1px 2px rgba(55,50,47,0.15);
+      font-weight: 600;
+      border-color: var(--primary);
+    }
+
+    .dropzone {
+      border: 1.5px dashed var(--border); border-radius: var(--radius-xl); padding: 56px 24px; text-align: center;
+      transition: all .15s ease-out; cursor: pointer; background: #FFFFFF;
+      color: var(--muted-foreground);
+      box-shadow: var(--shadow-xs);
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: var(--primary);
+      background: #FBFAF8;
+    }
+
+    .console {
+      background: #FBFAF8; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; color: #3E5A3C; max-height: 250px; overflow-y: auto;
+      box-shadow: inset 0 1px 2px rgba(55,50,47,0.04);
+    }
+    .console-line { animation: fadeIn .25s ease-out; opacity: 0.95; margin-bottom: 6px; }
+    .console-line.error { color: var(--destructive); }
+    .console-line.task { color: var(--primary); font-weight: 600; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: .95; transform: none; } }
+
+    .hidden { display: none !important; }
+
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(55,50,47,0.25); }
+
+    .tag-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 500; letter-spacing: .02em;
+      background: #FFFFFF; color: var(--foreground);
+      border: 1px solid var(--border);
+      cursor: pointer; transition: all .15s;
+    }
+    .tag-chip:hover { background: var(--accent); }
+    .tag-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 2px rgba(55,50,47,0.2); }
+
+    .cat-pill {
+      display: inline-flex; align-items: center;
+      padding: 2px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+      background: #FFFFFF; color: var(--heading-2);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .category-tag {
+      display: inline-flex; align-items: center;
+      padding: 2px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+      background: var(--accent); color: var(--heading-2);
+      border: 1px solid var(--border);
+    }
+
+    .filter-select {
+      background: #fff; border: 1px solid var(--border); color: var(--foreground);
+      padding: 6px 28px 6px 12px; border-radius: var(--radius-md); font-size: 13px;
+      appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%2337322F' stroke-width='1.5'><polyline points='3 5 6 8 9 5'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(55,50,47,0.45);
+      backdrop-filter: blur(8.25px); -webkit-backdrop-filter: blur(8.25px);
+      z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .modal-box {
+      background: #fff; border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 20px 40px rgba(55,50,47,0.12);
+      padding: 28px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+    }
+
+    .edge-hatch {
+      background-image: repeating-linear-gradient(-45deg, rgba(55,50,47,0.08) 0 0.5px, transparent 0.5px 14px);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="auth-gate" class="hidden fixed inset-0 z-50 bg-[var(--background)] flex items-center justify-center">
+    <div class="w-full max-w-sm px-6">
+      <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] p-8">
+        <h1 class="font-serif text-5xl font-normal tracking-tight text-[color:var(--foreground)] mb-2 leading-none">Last Minute ChatRojak</h1>
+        <p class="text-sm text-[color:var(--muted-foreground)] mb-8" id="auth-subtitle">Sign in to continue</p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Email</label>
+            <input id="auth-email" type="email" autocomplete="email" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Password</label>
+            <input id="auth-password" type="password" autocomplete="current-password" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+            <div class="text-xs text-[color:var(--muted-foreground)] mt-1" id="auth-password-hint">At least 8 characters</div>
+          </div>
+          <div id="auth-error" class="text-sm text-[color:var(--destructive)] min-h-5"></div>
+          <button id="auth-submit" onclick="submitAuth()" class="w-full py-2.5 bg-[var(--primary)] hover:brightness-110 text-white rounded-full text-sm font-bold shadow-[var(--shadow-xs)] transition-all">Log in</button>
+          <div class="text-center text-sm text-[color:var(--muted-foreground)]">
+            <span id="auth-switch-label">Don't have an account?</span>
+            <button onclick="toggleAuthMode()" class="ml-2 text-[color:var(--primary)] hover:underline font-semibold" id="auth-switch-btn">Sign up</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="w-72 border-r border-[var(--border)] bg-white flex flex-col pt-8 pb-4 px-5 flex-shrink-0 z-10 shadow-[var(--shadow-xs)]">
+    <div class="mb-10 px-2">
+      <h1 class="font-serif text-3xl font-normal tracking-tight text-[color:var(--foreground)] leading-tight">Last Minute ChatRojak</h1>
+      <div id="summary-line" class="text-sm font-medium text-[color:var(--muted-foreground)] mt-2 h-5">Loading...</div>
+    </div>
+
+    <nav class="flex-1 space-y-2" id="sidebar-nav">
+      <button data-mode="upload" class="nav-btn active" onclick="setMode('upload')">
+        <span class="mr-3 text-xl">📁</span> Upload Chat
+      </button>
+      <button data-mode="dashboard" class="nav-btn" onclick="setMode('dashboard')">
+        <span class="mr-3 text-xl">🏠</span> Dashboard
+      </button>
+      <button data-mode="checklist" class="nav-btn" onclick="setMode('checklist')">
+        <span class="mr-3 text-xl">✓</span> Checklist
+      </button>
+      <button data-mode="calendar" class="nav-btn" onclick="setMode('calendar')">
+        <span class="mr-3 text-xl">📅</span> Calendar
+      </button>
+      <button data-mode="account" class="nav-btn" onclick="setMode('account')">
+        <span class="mr-3 text-xl">👤</span> Account
+      </button>
+    </nav>
+
+    <div class="border-t border-[var(--border)] pt-4 px-2 text-xs text-[color:var(--muted-foreground)]">
+      <div id="user-email" class="truncate mb-2"></div>
+      <button onclick="logout()" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] transition">Log out</button>
+    </div>
+  </aside>
+
+  <main class="flex-1 overflow-y-auto bg-[var(--background)] relative">
+    <div class="max-w-5xl mx-auto px-10 py-12">
+
+      <!-- Upload View -->
+      <div id="view-upload" class="view-section">
+        <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Import Your Tasks</h2>
+
+        <div class="grid gap-5 mb-6" style="grid-template-columns: 260px 1fr; align-items: start;">
+
+          <!-- Left: saved chat list -->
+          <div class="flex flex-col gap-2">
+            <div class="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-0.5">Uploaded Chats</div>
+            <div id="chat-file-list" class="flex flex-col gap-1.5"></div>
+            <label for="file-input" class="block text-center cursor-pointer transition-all mt-1"
+                   style="border:1.5px dashed var(--border); border-radius:var(--radius-xl); padding:14px; background:#fff;"
+                   onmouseover="this.style.borderColor='var(--primary)'; this.style.background='#FBFAF8'"
+                   onmouseout="this.style.borderColor='var(--border)'; this.style.background='#fff'">
+              <div class="text-2xl opacity-50 leading-none mb-0.5">+</div>
+              <div class="text-xs font-semibold text-[color:var(--foreground)]">Add chat</div>
+              <div class="text-[11px] text-[color:var(--muted-foreground)] mt-0.5">Drop .txt or click</div>
+            </label>
+            <input id="file-input" type="file" accept=".txt,text/plain" multiple class="hidden" onchange="handleChatFiles(event)" />
+          </div>
+
+          <!-- Right: preview + identity picker -->
+          <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] overflow-hidden flex flex-col" style="min-height:420px;">
+
+            <div id="chat-placeholder" class="flex-1 flex flex-col items-center justify-center text-center" style="padding:40px 24px; background:#F7F5F3;">
+              <div class="text-4xl mb-3 opacity-30">💬</div>
+              <div class="text-sm font-semibold text-[color:var(--muted-foreground)]">Select a chat to preview</div>
+              <div class="text-xs text-[color:var(--muted-foreground)] mt-1">Choose from the list on the left, or add a new chat</div>
+            </div>
+
+            <div id="chat-active" class="hidden flex-col flex-1">
+              <div class="flex items-center gap-2.5 flex-shrink-0" style="background:var(--primary); padding:12px 16px;">
+                <div id="chat-avatar" class="rounded-full flex items-center justify-center text-[13px] text-white font-bold flex-shrink-0" style="width:34px; height:34px; background:rgba(255,255,255,0.15);"></div>
+                <div class="flex-1 min-w-0">
+                  <div id="chat-title" class="text-[13px] font-semibold text-white overflow-hidden text-ellipsis whitespace-nowrap"></div>
+                  <div id="chat-subtitle" class="text-[11px]" style="color:rgba(255,255,255,0.65);"></div>
+                </div>
+              </div>
+
+              <div id="chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-2" style="padding:12px 14px; max-height:260px; background:#F7F5F3;"></div>
+
+              <div class="flex-shrink-0 border-t border-[var(--border)] bg-white" style="padding:14px 16px;">
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-2">Who are you in this chat?</div>
+                <div class="relative mb-3">
+                  <input id="who-search" type="text" placeholder="Type name or number to search…" autocomplete="off"
+                         class="w-full bg-white border border-[var(--input)] text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-[13px] transition-colors"
+                         style="border-radius:var(--radius-md); padding:7px 36px 7px 12px;"
+                         onfocus="showWhoDropdown()" onclick="this.select(); showWhoDropdown()"
+                        onblur="onWhoBlur()" oninput="onWhoInput(this.value)" />
+                  <button id="who-clear" onclick="clearWhoSelection()" class="hidden absolute text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)]"
+                          style="right:8px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:16px; line-height:1; padding:2px 4px;">&times;</button>
+                  <div id="who-dropdown" class="hidden absolute bg-white border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-y-auto z-20"
+                      onmouseenter="setWhoDropdownHover(true)" onmouseleave="setWhoDropdownHover(false)"
+                      style="top:calc(100% + 4px); left:0; right:0; border-radius:var(--radius-md); max-height:180px; overscroll-behavior:contain;"></div>
+                </div>
+                <div class="flex items-center gap-2.5">
+                  <label class="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] whitespace-nowrap flex-shrink-0">Timeframe</label>
+                  <select id="timeframe-select" class="filter-select" style="font-size:12px;">
+                    <option value="all">All Time</option>
+                    <option value="last7" selected>Last 7 Days</option>
+                    <option value="thisMonth">This Month</option>
+                  </select>
+                  <button id="extract-btn" onclick="extractSelectedChat()" disabled
+                          class="flex-1 text-white font-bold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                          style="padding:9px; background:var(--success); border-radius:999px; font-size:13px; border:none; cursor:pointer;">Extract Tasks →</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="status-msg" class="mt-3 text-sm font-medium text-[color:var(--muted-foreground)] min-h-5"></div>
+
+        <div id="upload-processing" class="hidden mt-6 border-t border-[var(--border-soft)] pt-6">
+          <div class="text-sm font-medium text-[color:var(--primary)] mb-4 flex items-center gap-3">
+            <span class="dot dot-active"></span>
+            <span class="loading-dot" id="processing-label">AI is analyzing conversation</span>
+          </div>
+          <div id="console" class="console"></div>
+          <button onclick="resetUpload()" class="mt-5 ghost-btn">Clear Console</button>
+        </div>
+      </div>
+
+      <!-- Dashboard View -->
+      <div id="view-dashboard" class="view-section hidden">
+        <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Dashboard Overview</h2>
+        <div id="dash-stat-cards" class="grid grid-cols-3 gap-4 mb-6"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <div class="section-label">Needs Clarification</div>
+            <div id="dash-clarifications"></div>
+          </div>
+          <div>
+            <div class="section-label">Up Next</div>
+            <div id="dash-upnext"></div>
+          </div>
+        </div>
+        <div class="mt-6">
+          <div class="section-label">Clarification Inbox (AI is waiting for your answer)</div>
+          <div id="dash-clarification-threads"></div>
+        </div>
+        <div class="mt-6">
+          <div class="section-label">Dependency Graph</div>
+          <div id="dash-dependencies" class="text-sm text-[color:var(--muted-foreground)]"></div>
+        </div>
+      </div>
+
+      <!-- Checklist View -->
+      <div id="view-checklist" class="view-section hidden">
+        <div class="flex justify-between items-end mb-6 border-b border-[var(--border-soft)] pb-5">
+          <h2 class="font-serif text-5xl font-normal text-[color:var(--foreground)] leading-none">Task Checklist</h2>
+          <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
+        </div>
+
+        <div id="filter-toolbar" class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-4 mb-6 space-y-3 shadow-[var(--shadow-xs)]">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Filters:</span>
+            <select id="filter-bucket" class="filter-select" onchange="applyFilters()">
+              <option value="">All categories</option>
+              <option value="Academic">Academic</option>
+              <option value="Co-curricular">Co-curricular</option>
+              <option value="Others">Others</option>
+            </select>
+            <select id="filter-priority" class="filter-select" onchange="applyFilters()">
+              <option value="">All priorities</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <select id="filter-status" class="filter-select" onchange="applyFilters()">
+              <option value="active">Active</option>
+              <option value="done">Done</option>
+              <option value="">All</option>
+            </select>
+            <input id="filter-q" class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Search…" oninput="applyFiltersDebounced()" />
+            <button onclick="clearFilters()" class="ghost-btn">Clear</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2" id="tag-chips">
+            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>
+            <span class="text-xs text-[color:var(--muted-foreground)]">none yet</span>
+          </div>
+        </div>
+
+        <div id="checklist-content">
+           <div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No actionable tasks found.</div>
+        </div>
+      </div>
+
+      <!-- Calendar View -->
+      <div id="view-calendar" class="view-section hidden">
+        <div class="flex justify-between items-center mb-6 border-b border-[var(--border-soft)] pb-5">
+          <h2 class="font-serif text-5xl font-normal text-[color:var(--foreground)] leading-none">Monthly Calendar</h2>
+          <div class="flex items-center gap-2 bg-white border border-[var(--border)] rounded-full p-1.5 shadow-[var(--shadow-xs)]">
+            <button onclick="changeMonth(-1)" class="ghost-btn border-transparent shadow-none hover:bg-[var(--accent)] px-4 py-2 text-lg">&lt;</button>
+            <span id="calendar-month-label" class="font-serif text-xl w-40 text-center inline-block text-[color:var(--foreground)]"></span>
+            <button onclick="changeMonth(1)" class="ghost-btn border-transparent shadow-none hover:bg-[var(--accent)] px-4 py-2 text-lg">&gt;</button>
+          </div>
+        </div>
+
+        <div id="calendar-grid" class="grid grid-cols-7 gap-[1px] bg-[var(--border)] border border-[var(--border)] rounded-[var(--radius-xl)] overflow-hidden shadow-[var(--shadow-sm)]">
+        </div>
+
+        <!-- Google Calendar link card -->
+        <div class="mt-5 flex justify-center">
+          <div class="flex items-center gap-3 bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)]" style="padding:12px 20px;">
+            <svg width="22" height="22" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="6" y="6" width="36" height="36" rx="4" fill="#fff" stroke="#E0DEDB" stroke-width="2"/>
+              <path d="M6 20h36v18a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V20z" fill="#fff"/>
+              <rect x="6" y="14" width="36" height="6" fill="#4285F4"/>
+              <text x="24" y="38" text-anchor="middle" font-size="14" font-weight="700" fill="#4285F4" font-family="Inter,sans-serif">G</text>
+              <line x1="16" y1="6" x2="16" y2="14" stroke="#5F6368" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="32" y1="6" x2="32" y2="14" stroke="#5F6368" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+            <span class="text-[13px] text-[color:var(--muted-foreground)]">Sync deadlines to</span>
+            <span class="text-[13px] font-semibold text-[color:var(--foreground)]">Google Calendar</span>
+            <span id="google-status-inline" class="text-[11px] text-[color:var(--muted-foreground)]"></span>
+            <button onclick="linkGoogleCalendar()" id="google-link-btn" class="ghost-btn ghost-btn-accent" style="padding:6px 14px; font-size:12px;">Link</button>
+            <button onclick="unlinkGoogleCalendar()" id="google-unlink-btn" class="ghost-btn hidden" style="padding:6px 14px; font-size:12px;">Unlink</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-account" class="view-section hidden">
+        <h2 class="font-serif text-5xl font-normal mb-8 text-[color:var(--foreground)] leading-none">Account</h2>
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mb-6 shadow-[var(--shadow-xs)]">
+          <div class="section-label">Signed in as</div>
+          <div class="font-serif text-2xl text-[color:var(--foreground)]" id="account-email">—</div>
+        </div>
+
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 shadow-[var(--shadow-xs)]">
+          <div class="section-label">Telegram</div>
+          <div id="telegram-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">Checking…</div>
+          <button onclick="generateLinkCode()" id="link-code-btn" class="ghost-btn ghost-btn-accent">Generate link code</button>
+          <div id="link-code-display" class="mt-4 hidden">
+            <div class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Send this to the bot:</div>
+            <code class="font-serif text-3xl text-[color:var(--primary)] tracking-widest" id="link-code-value"></code>
+            <div class="text-xs text-[color:var(--muted-foreground)] mt-2">In Telegram, send <code class="text-[color:var(--heading-2)]">/link &lt;code&gt;</code> to the bot within 10 minutes.</div>
+          </div>
+        </div>
+
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
+          <div class="section-label">Adaptive Priority Learning</div>
+          <div id="adaptation-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">—</div>
+          <button onclick="resetAdaptation()" class="ghost-btn">Reset adaptation</button>
+          <div class="text-xs text-[color:var(--muted-foreground)] mt-3">The system learns from your priority overrides to better rank future tasks.</div>
+        </div>
+
+        <div class="bg-white border border-[rgba(199,68,58,0.3)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
+          <div class="section-label" style="color:var(--destructive)">Danger Zone</div>
+          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">Permanently delete all your tasks, plans, and history. This cannot be undone.</p>
+          <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+<!-- Task Detail Modal -->
+<div id="task-modal" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="flex items-start justify-between mb-5">
+      <div class="flex-1 min-w-0 pr-3">
+        <div id="modal-category" class="mb-2"></div>
+        <h3 id="modal-title" class="font-serif text-3xl font-normal text-[color:var(--foreground)] leading-tight"></h3>
+      </div>
+      <button onclick="closeModal()" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] text-2xl leading-none flex-shrink-0 mt-1">&times;</button>
+    </div>
+
+    <div class="space-y-3 mb-6">
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Deadline</span>
+        <span id="modal-deadline" class="text-[color:var(--primary)] font-medium"></span>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">AI priority</span>
+        <span id="modal-priority" class="category-tag"></span>
+        <span id="modal-score" class="text-xs text-[color:var(--muted-foreground)]"></span>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Override</span>
+        <select id="modal-priority-override" onchange="modalSetPriority()" class="filter-select">
+          <option value="">Use AI priority</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Bucket</span>
+        <select id="modal-bucket" onchange="modalSetBucket()" class="filter-select">
+          <option value="Academic">Academic</option>
+          <option value="Co-curricular">Co-curricular</option>
+          <option value="Others">Others</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Assigned by</span>
+        <span id="modal-assignee" class="text-[color:var(--heading-2)]"></span>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Status</span>
+        <span id="modal-status" class="text-[color:var(--heading-2)]"></span>
+      </div>
+      <div class="flex items-start gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Depends on</span>
+        <div id="modal-deps" class="flex flex-wrap gap-2 flex-1"></div>
+      </div>
+    </div>
+
+    <div id="modal-steps-section" class="mb-6">
+      <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-3">Action Steps</div>
+      <ol id="modal-steps" class="space-y-2"></ol>
+    </div>
+
+    <div id="modal-clarify-section" class="mb-6 hidden">
+      <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--warn)] mb-2">Clarification needed</div>
+      <div id="modal-clarify-q" class="text-sm text-[color:var(--heading-2)] mb-2"></div>
+      <div class="flex gap-2">
+        <input id="modal-clarify-input" class="flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Your answer…" />
+        <button onclick="modalSubmitClarification()" class="ghost-btn ghost-btn-accent">Submit</button>
+      </div>
+    </div>
+
+    <div id="modal-timeline-section" class="mb-6">
+      <details>
+        <summary class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-3 cursor-pointer">Timeline</summary>
+        <div id="modal-timeline" class="mt-3 text-xs space-y-1 text-[color:var(--muted-foreground)]"></div>
+      </details>
+    </div>
+
+    <div class="flex gap-3 pt-4 border-t border-[var(--border-soft)]">
+      <button id="modal-start-btn" onclick="modalStartTask()" class="flex-1 py-2.5 bg-[var(--primary)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Start Task</button>
+      <button id="modal-done-btn" onclick="modalMarkDone()" class="flex-1 py-2.5 bg-[var(--success)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Mark Done</button>
+      <button onclick="closeModal()" class="px-4 py-2.5 ghost-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------------- Auth ----------------
+let authMode = 'login';
+let currentUser = null;
+
+async function api(method, path, body) {
+  const opts = { method, credentials: 'include', headers: {} };
+  if (body !== undefined) {
+    opts.headers['content-type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(path, opts);
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+  if (!res.ok) {
+    const err = new Error(data?.detail || `${res.status} ${res.statusText}`);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+function showAuthGate() {
+  document.getElementById('auth-gate').classList.remove('hidden');
+  document.getElementById('sidebar').classList.add('hidden');
+  document.querySelector('main').classList.add('hidden');
+}
+
+function hideAuthGate() {
+  document.getElementById('auth-gate').classList.add('hidden');
+  document.getElementById('sidebar').classList.remove('hidden');
+  document.querySelector('main').classList.remove('hidden');
+}
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('auth-subtitle').textContent = authMode === 'login' ? 'Sign in to continue' : 'Create a new account';
+  document.getElementById('auth-submit').textContent = authMode === 'login' ? 'Log in' : 'Sign up';
+  document.getElementById('auth-switch-label').textContent = authMode === 'login' ? "Don't have an account?" : 'Already have one?';
+  document.getElementById('auth-switch-btn').textContent = authMode === 'login' ? 'Sign up' : 'Log in';
+  document.getElementById('auth-password').autocomplete = authMode === 'login' ? 'current-password' : 'new-password';
+  document.getElementById('auth-error').textContent = '';
+}
+
+async function submitAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Fill in both fields.'; return; }
+  const btn = document.getElementById('auth-submit');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const data = await api('POST', `/api/auth/${authMode}`, { email, password });
+    currentUser = data;
+    hideAuthGate();
+    document.getElementById('user-email').textContent = data.email;
+    await refreshDashboard();
+  } catch (e) {
+    errEl.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = authMode === 'login' ? 'Log in' : 'Sign up';
+  }
+}
+
+async function logout() {
+  try { await api('POST', '/api/auth/logout'); } catch {}
+  currentUser = null;
+  localStorage.removeItem('filters');
+  showAuthGate();
+}
+
+async function checkAuth() {
+  try {
+    currentUser = await api('GET', '/api/auth/me');
+    hideAuthGate();
+    document.getElementById('user-email').textContent = currentUser.email;
+    savedChats = loadSavedChats();
+    renderChatFileList();
+    return true;
+  } catch {
+    showAuthGate();
+    return false;
+  }
+}
+
+// ---------------- Navigation ----------------
+function setMode(mode) {
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+  document.querySelectorAll('.view-section').forEach(view => view.classList.add('hidden'));
+  document.getElementById(`view-${mode}`).classList.remove('hidden');
+  if (mode === 'account') refreshAccount();
+  else if (mode === 'upload') renderChatFileList();
+  else refreshDashboard();
+}
+
+// ---------------- State ----------------
+let globalDashboardData = {};
+let calDate = new Date();
+const answeredQuestions = new Set();
+let filters = loadFilters();
+let filterDebounceTimer = null;
+
+function loadFilters() {
+  try {
+    const raw = localStorage.getItem('filters');
+    if (!raw) return { status: 'active', tags: [] };
+    const f = JSON.parse(raw);
+    return {
+      category: f.category || '',
+      priority: f.priority || '',
+      status: f.status ?? 'active',
+      q: f.q || '',
+      tags: Array.isArray(f.tags) ? f.tags : [],
+    };
+  } catch {
+    return { status: 'active', tags: [] };
+  }
+}
+function saveFilters() { localStorage.setItem('filters', JSON.stringify(filters)); }
+
+function filtersToQuery() {
+  const p = new URLSearchParams();
+  if (filters.bucket) p.set('bucket', filters.bucket);
+  if (filters.category) p.set('category', filters.category);
+  if (filters.priority) p.set('priority', filters.priority);
+  if (filters.status) p.set('status', filters.status);
+  if (filters.q) p.set('q', filters.q);
+  if (filters.tags?.length) p.set('tags', filters.tags.join(','));
+  const s = p.toString();
+  return s ? `?${s}` : '';
+}
+
+function esc(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function setStatus(msg, type = 'info') {
+  const el = document.getElementById('status-msg');
+  if (!el) return;
+  const colors = { info: 'text-[color:var(--muted-foreground)]', success: 'text-[color:var(--success)]', error: 'text-[color:var(--destructive)]', loading: 'text-[color:var(--primary)]' };
+  el.className = `mt-3 text-sm font-medium ${colors[type] || colors.info} min-h-5`;
+  el.innerHTML = msg;
+}
+
+// ---------------- API actions ----------------
+const SPINNER_SVG = `<svg class="spin" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"/></svg>`;
+
+async function refreshDashboard() {
+  if (!currentUser) return;
+  try {
+    globalDashboardData = await api('GET', '/api/dashboard' + filtersToQuery());
+    renderViews(globalDashboardData);
+  } catch (e) {
+    if (e.status === 401) { showAuthGate(); return; }
+    console.error('Data refresh failed:', e);
+  }
+}
+
+function urgencyRank(item, now) {
+  const score = typeof item.priority_score === 'number' ? item.priority_score : 0;
+  const d = item.deadline_iso ? new Date(item.deadline_iso).getTime() : null;
+  const overdue = d !== null && d < now.getTime() && item.status !== 'done';
+  const hoursUntil = d !== null ? (d - now.getTime()) / 3_600_000 : Infinity;
+  return { score, d, overdue, hoursUntil };
+}
+
+function sortByUrgency(items, now = new Date()) {
+  return items.slice().sort((a, b) => {
+    const ra = urgencyRank(a, now);
+    const rb = urgencyRank(b, now);
+    if (ra.overdue !== rb.overdue) return ra.overdue ? -1 : 1;
+    if (rb.score !== ra.score) return rb.score - ra.score;
+    if (ra.d !== null && rb.d !== null && ra.d !== rb.d) return ra.d - rb.d;
+    if (ra.d === null && rb.d !== null) return 1;
+    if (rb.d === null && ra.d !== null) return -1;
+    return 0;
+  });
+}
+
+function activeTasks(data) {
+  const combined = [
+    ...(data.do_now || []),
+    ...(data.in_progress || []),
+    ...(data.need_info || []),
+    ...(data.schedule || []),
+    ...(data.defer || []),
+  ];
+  return sortByUrgency(combined);
+}
+
+// ---------------- Filters UI ----------------
+function renderFilterToolbar(data) {
+  const bucketSel = document.getElementById('filter-bucket');
+  const prioSel = document.getElementById('filter-priority');
+  const statSel = document.getElementById('filter-status');
+  const qInput = document.getElementById('filter-q');
+
+  if (bucketSel) bucketSel.value = filters.bucket || '';
+  prioSel.value = filters.priority || '';
+  statSel.value = filters.status ?? 'active';
+  qInput.value = filters.q || '';
+
+  const chipsEl = document.getElementById('tag-chips');
+  const tagRows = (data.available_tags || []);
+  if (!tagRows.length) {
+    chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span><span class="text-xs text-[color:var(--muted-foreground)]">none yet — process a chat to see AI-generated tags</span>`;
+    return;
+  }
+  const active = new Set(filters.tags || []);
+  const chipsHtml = tagRows.map(t => {
+    const cls = active.has(t.tag) ? 'tag-chip active' : 'tag-chip';
+    return `<button class="${cls}" onclick="toggleTag('${esc(t.tag)}')">#${esc(t.tag)} <span class="opacity-60">${t.count}</span></button>`;
+  }).join('');
+  chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>${chipsHtml}`;
+}
+
+function toggleTag(tag) {
+  const set = new Set(filters.tags || []);
+  if (set.has(tag)) set.delete(tag); else set.add(tag);
+  filters.tags = [...set];
+  saveFilters();
+  refreshDashboard();
+}
+
+function applyFilters() {
+  const bucketEl = document.getElementById('filter-bucket');
+  filters.bucket = bucketEl ? bucketEl.value : '';
+  filters.priority = document.getElementById('filter-priority').value;
+  filters.status = document.getElementById('filter-status').value;
+  filters.q = document.getElementById('filter-q').value;
+  saveFilters();
+  refreshDashboard();
+}
+
+function applyFiltersDebounced() {
+  if (filterDebounceTimer) clearTimeout(filterDebounceTimer);
+  filterDebounceTimer = setTimeout(applyFilters, 300);
+}
+
+function clearFilters() {
+  filters = { status: 'active', tags: [] };
+  saveFilters();
+  refreshDashboard();
+}
+
+// ---------------- Rendering ----------------
+function renderViews(data) {
+  const summary = document.getElementById('summary-line');
+  renderFilterToolbar(data);
+  if (!data.total_tasks) {
+    summary.textContent = 'No active tasks';
+    document.getElementById('dash-stat-cards').innerHTML = '';
+    document.getElementById('dash-clarifications').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No data yet. Head to Upload to process a chat.</div>';
+    document.getElementById('dash-upnext').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No upcoming tasks.</div>';
+    document.getElementById('checklist-content').innerHTML = '<div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No tasks available.</div>';
+    renderCalendar(data, []);
+    return;
+  }
+
+  const active = activeTasks(data);
+  const dueToday = (active || []).filter(t => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
+
+  const parts = [`${active.length} Active Tasks`];
+  if (dueToday) parts.push(`<span class="text-[color:var(--destructive)] font-semibold">${dueToday} Due Today</span>`);
+  summary.innerHTML = parts.join(' <span class="mx-1 text-[color:var(--muted-foreground)]">•</span> ');
+
+  safeRender('dash-stat-cards', () => renderStatCards(data, active));
+  safeRender('dash-clarifications', () => renderImportantInfo(data, active));
+  safeRender('dash-upnext', () => renderUpNext(data, active));
+  safeRender('checklist-content', () => renderTasks(data, active));
+  try { renderClarificationThreads(data); } catch (e) { console.error('renderClarificationThreads failed:', e); }
+  try { renderDependencyGraph(data); } catch (e) { console.error('renderDependencyGraph failed:', e); }
+  try { renderCalendar(data, active); } catch (e) { console.error('renderCalendar failed:', e); }
+}
+
+function safeRender(containerId, fn) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  try {
+    el.innerHTML = fn();
+  } catch (e) {
+    console.error(`render for #${containerId} failed:`, e);
+    el.innerHTML = `<div class="text-sm text-[color:var(--destructive)] py-4 text-center bg-[rgba(199,68,58,0.06)] rounded-[var(--radius-xl)] border border-[rgba(199,68,58,0.3)]">Failed to render. Check console.</div>`;
+  }
+}
+
+function statusDot(item) {
+  if (item.status === 'in_progress') return '<span class="dot dot-active"></span>';
+  if (item.decision === 'ask_user')  return '<span class="dot dot-needinfo"></span>';
+  return '<span class="dot"></span>';
+}
+
+function renderTasks(data, active) {
+  if (!active.length) {
+    return `<div class="text-base text-[color:var(--muted-foreground)] py-8">No active tasks match your filters.</div>`;
+  }
+  // Group tasks by source chat (client-side mapping from savedChats)
+  const groups = new Map(); // chatId -> { chat, items }
+  const ungrouped = [];
+  for (const item of active) {
+    const chat = chatForTaskId(item.task_id);
+    if (chat) {
+      if (!groups.has(chat.id)) groups.set(chat.id, { chat, items: [] });
+      groups.get(chat.id).items.push(item);
+    } else {
+      ungrouped.push(item);
+    }
+  }
+  // If nothing is grouped (user hasn't imported via the new flow), render flat
+  if (!groups.size) {
+    return `<div class="space-y-4">${active.map(renderTaskRow).join('')}</div>`;
+  }
+  const renderGroup = (chat, items) => `
+    <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] overflow-hidden">
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-soft)]" style="background:#FBFAF8;">
+        <div class="rounded-full flex items-center justify-center text-[11px] font-bold text-[color:var(--muted-foreground)] flex-shrink-0" style="width:28px;height:28px;background:var(--accent);">${esc(avatarInitials(chat.name))}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-[color:var(--foreground)] truncate">${esc(chat.name)}</div>
+          <div class="text-[11px] text-[color:var(--muted-foreground)]">${items.length} task${items.length === 1 ? '' : 's'} from this chat</div>
+        </div>
+        <button onclick="setMode('upload'); setTimeout(() => selectChat('${esc(chat.id)}'), 50)" class="ghost-btn" style="padding:4px 10px;font-size:11px;">Open chat</button>
+      </div>
+      <div class="p-3 space-y-3">${items.map(renderTaskRow).join('')}</div>
+    </div>`;
+  const groupsHtml = Array.from(groups.values()).map(g => renderGroup(g.chat, g.items)).join('');
+  const ungroupedHtml = ungrouped.length ? `
+    <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] overflow-hidden">
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-soft)]" style="background:#FBFAF8;">
+        <div class="rounded-full flex items-center justify-center text-[11px] font-bold text-[color:var(--muted-foreground)] flex-shrink-0" style="width:28px;height:28px;background:var(--accent);">—</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-[color:var(--foreground)]">Other tasks</div>
+          <div class="text-[11px] text-[color:var(--muted-foreground)]">${ungrouped.length} task${ungrouped.length === 1 ? '' : 's'} not linked to an uploaded chat</div>
+        </div>
+      </div>
+      <div class="p-3 space-y-3">${ungrouped.map(renderTaskRow).join('')}</div>
+    </div>` : '';
+  return `<div class="space-y-5">${groupsHtml}${ungroupedHtml}</div>`;
+}
+
+function parseAnyDate(str) {
+  if (!str) return null;
+  let d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+  const dateRegex = /\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{1,4})\b/;
+  const dateMatch = str.match(dateRegex);
+  const timeRegex = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
+  const timeMatch = str.match(timeRegex);
+
+  if (dateMatch || timeMatch) {
+    let year = new Date().getFullYear(), month = new Date().getMonth(), day = new Date().getDate();
+    let hours = 0, minutes = 0;
+    if (dateMatch) {
+      day = parseInt(dateMatch[1], 10);
+      month = parseInt(dateMatch[2], 10) - 1;
+      let y = parseInt(dateMatch[3], 10);
+      year = y < 100 ? 2000 + y : y;
+    }
+    if (timeMatch) {
+      let h = parseInt(timeMatch[1], 10);
+      let m = parseInt(timeMatch[2] || '0', 10);
+      let ampm = timeMatch[3] ? timeMatch[3].toLowerCase() : null;
+      if (ampm === 'pm' && h < 12) h += 12;
+      if (ampm === 'am' && h === 12) h = 0;
+      hours = h; minutes = m;
+    }
+    let parsedDate = new Date(year, month, day, hours, minutes);
+    if (!isNaN(parsedDate.getTime())) return parsedDate;
+  }
+  return null;
+}
+
+function formatCustomDate(rawString) {
+  const d = parseAnyDate(rawString);
+  if (!d) return null;
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayName = days[d.getDay()];
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const year = d.getFullYear().toString().slice(-2);
+  let hours = d.getHours();
+  let minutes = d.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12; hours = hours ? hours : 12;
+  minutes = minutes < 10 ? '0' + minutes : minutes;
+  return `${dayName} ${day}/${month}/${year} ${hours}:${minutes}${ampm}`;
+}
+
+// Category tag color mapping — light theme (subtle tinted pills)
+function getCategoryStyle(category) {
+  if (!category) return 'bg-[var(--accent)] text-[color:var(--heading-2)]';
+  const cat = category.toLowerCase();
+  if (cat.includes('academic') || cat.includes('study') || cat.includes('assignment')) return 'bg-[rgba(55,50,47,0.08)] text-[color:var(--primary)]';
+  if (cat.includes('finance') || cat.includes('payment') || cat.includes('money')) return 'bg-[rgba(91,125,78,0.12)] text-[color:var(--success)]';
+  if (cat.includes('event') || cat.includes('social') || cat.includes('cca')) return 'bg-[rgba(180,130,42,0.12)] text-[color:var(--warn)]';
+  if (cat.includes('project') || cat.includes('work')) return 'bg-[rgba(73,66,61,0.1)] text-[color:var(--heading-2)]';
+  return 'bg-[var(--accent)] text-[color:var(--heading-2)]';
+}
+
+function priorityPill(priority) {
+  const p = priority || 'medium';
+  const cls = p === 'high' ? 'bg-[rgba(199,68,58,0.1)] text-[color:var(--destructive)] border-[rgba(199,68,58,0.3)]'
+    : p === 'medium' ? 'bg-[rgba(180,130,42,0.1)] text-[color:var(--warn)] border-[rgba(180,130,42,0.3)]'
+    : 'bg-[var(--accent)] text-[color:var(--muted-foreground)] border-[var(--border)]';
+  return `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border ${cls}">${esc(p)}</span>`;
+}
+
+function statusLabel(item) {
+  if (item.status === 'done') return 'Done';
+  if (item.status === 'in_progress') return 'In progress';
+  if (item.status === 'blocked_waiting_info' || item.decision === 'ask_user') return 'Needs info';
+  if (item.decision === 'do_now') return 'Do now';
+  if (item.decision === 'schedule') return 'Scheduled';
+  if (item.decision === 'defer') return 'Deferred';
+  return 'Pending';
+}
+
+function renderTaskRow(item) {
+  const tid = esc(item.task_id);
+  let displayDeadline = 'No deadline';
+  const textToFormat = item.deadline_iso || item.deadline;
+
+  if (textToFormat) {
+    const formatted = formatCustomDate(textToFormat);
+    displayDeadline = formatted ? `<span class="text-[color:var(--primary)] font-medium">${formatted}</span>` : esc(item.deadline);
+  }
+
+  const now = new Date();
+  const isOverdue = item.deadline_iso && new Date(item.deadline_iso) < now && item.status !== 'done';
+  const overdueBadge = isOverdue ? `<span class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[var(--destructive)] text-white">Overdue</span>` : '';
+  const waitingBadge = (item.depends_remaining && item.depends_remaining.length)
+    ? `<span class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[rgba(180,130,42,0.12)] text-[color:var(--warn)] border border-[rgba(180,130,42,0.3)]" title="Waiting on ${esc(item.depends_remaining.join(', '))}">⛔ waiting on ${esc(item.depends_remaining.join(', '))}</span>`
+    : '';
+
+  const actions = item.status === 'done'
+    ? ''
+    : item.status === 'in_progress'
+    ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`
+    : `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent mr-3">Start Task</button><button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`;
+
+  const tagChips = (item.tags || []).map(t =>
+    `<button class="tag-chip" onclick="toggleTag('${esc(t)}')">#${esc(t)}</button>`
+  ).join(' ');
+
+  const bucketPill = item.category_bucket ? `<span class="cat-pill">${esc(item.category_bucket)}</span>` : '';
+  const scoreChip = typeof item.user_adjusted_score === 'number'
+    ? `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-[var(--accent)] text-[color:var(--heading-2)] border border-[var(--border)]" title="AI ${item.ai_priority_score ?? '—'} / adjusted ${item.user_adjusted_score}">score ${item.user_adjusted_score}</span>`
+    : '';
+  const metaChips = [bucketPill, priorityPill(item.user_priority || item.priority), scoreChip, tagChips].filter(Boolean).join(' ');
+  const assignedBy = item.assigned_by ? `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--muted-foreground)]">by ${esc(item.assigned_by)}</span>` : '';
+  const statusText = `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--heading-2)] font-medium">${statusLabel(item)}</span>`;
+
+  return `
+    <div class="task-row flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')) return; openTaskModal('${tid}')">
+      <div class="flex-shrink-0">${statusDot(item)}</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-0.5">
+          <div class="text-base font-semibold text-[color:var(--foreground)] truncate">${esc(item.task)}</div>
+          ${overdueBadge}
+        </div>
+        <div class="text-xs text-[color:var(--muted-foreground)] flex items-center flex-wrap gap-1">
+          <span class="text-base">⏰</span> ${displayDeadline}${statusText}${assignedBy}
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mt-3">${metaChips}</div>
+      </div>
+      <div class="flex shrink-0 items-center">${actions}</div>
+    </div>`;
+}
+
+function renderStatCards(data, active) {
+  const total = active.length;
+  const dueToday = active.filter((t) => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
+  const completed = (data.done || []).length;
+  const card = (value, label, valueClass) => `
+    <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)]">
+      <div class="font-serif text-4xl font-normal leading-none ${valueClass}">${value}</div>
+      <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2">${label}</div>
+    </div>`;
+  return [
+    card(total, 'Active', 'text-[color:var(--foreground)]'),
+    card(dueToday, 'Due Today', dueToday ? 'text-[color:var(--destructive)]' : 'text-[color:var(--foreground)]'),
+    card(completed, 'Completed', 'text-[color:var(--success)]'),
+  ].join('');
+}
+
+function renderUpNext(data, active) {
+  const items = active.slice(0, 5);
+  if (!items.length) {
+    return `<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No upcoming tasks.</div>`;
+  }
+  const priorityPill = (p) => {
+    const cls = p === 'high' ? 'bg-[rgba(199,68,58,0.1)] text-[color:var(--destructive)]'
+      : p === 'medium' ? 'bg-[rgba(180,130,42,0.1)] text-[color:var(--warn)]'
+      : 'bg-[var(--accent)] text-[color:var(--muted-foreground)]';
+    return `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${cls}">${esc(p || 'medium')}</span>`;
+  };
+  const rows = items.map((item) => {
+    const raw = item.deadline_iso || item.deadline;
+    const formatted = raw ? formatCustomDate(raw) : null;
+    const deadlinePill = formatted
+      ? `<span class="text-xs text-[color:var(--primary)] font-medium">⏰ ${formatted}</span>`
+      : `<span class="text-xs text-[color:var(--muted-foreground)]">No deadline</span>`;
+    return `
+      <div class="flex items-center gap-3 bg-white border border-[var(--border)] rounded-[var(--radius-lg)] px-4 py-3 shadow-[var(--shadow-xs)]">
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-[color:var(--foreground)] truncate">${esc(item.task)}</div>
+          <div class="mt-1 flex items-center gap-2">${deadlinePill}${priorityPill(item.priority)}</div>
+        </div>
+      </div>`;
+  }).join('');
+  return `<div class="space-y-3">${rows}</div>`;
+}
+
+function renderImportantInfo(data, active) {
+  const items = [];
+  for (const t of (data.need_info || [])) {
+    const tid = esc(t.task_id);
+    for (const [i, q] of (t.missing_info_questions || []).entries()) {
+      if (answeredQuestions.has(`${tid}-${i}`)) continue;
+
+      items.push(`
+        <div id="clarify-${tid}-${i}" class="info-item accent-amber">
+          <div class="flex items-start justify-between gap-2 mb-3">
+            <div class="text-sm font-semibold text-[color:var(--warn)] flex items-center gap-2">
+              <span>⚠️</span> ${esc(q)}
+            </div>
+            <button data-tid="${tid}" data-idx="${i}" onclick="dismissQuestion(this)" title="Not important" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] text-lg leading-none flex-shrink-0 transition-colors">&times;</button>
+          </div>
+          <div class="flex gap-3">
+            <input type="text" id="q-${tid}-${i}" class="flex-1 bg-white rounded-[var(--radius-md)] px-3 py-2 text-sm border border-[var(--input)] focus:border-[color:var(--warn)] focus:ring-1 focus:ring-[rgba(180,130,42,0.3)] focus:outline-none text-[color:var(--foreground)] transition-colors" placeholder="Type your answer..." />
+            <button data-tid="${tid}" data-field="${esc(q.toLowerCase().includes('due') ? 'deadline' : 'assigned_by')}" data-idx="${i}" onclick="answerQuestion(this)" class="ghost-btn ghost-btn-accent px-4 font-bold text-xs">Submit</button>
+          </div>
+        </div>`);
+    }
+  }
+  if (!items.length) {
+    return `<div class="text-sm text-[color:var(--success)] font-medium py-6 flex flex-col items-center gap-2 bg-white rounded-[var(--radius-xl)] border border-[rgba(91,125,78,0.3)]"><span class="text-2xl">✨</span> All clear!</div>`;
+  }
+  return items.join('');
+}
+
+// ---------------- Calendar ----------------
+function isToday(d) {
+  const today = new Date();
+  return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+}
+
+function changeMonth(direction) {
+  calDate.setMonth(calDate.getMonth() + direction);
+  renderViews(globalDashboardData);
+}
+
+function getTaskPillStyle(t) {
+  if (t.priority === 'high') return 'bg-[rgba(199,68,58,0.1)] text-[color:var(--destructive)] border-[rgba(199,68,58,0.3)]';
+  if (t.priority === 'medium') return 'bg-[rgba(180,130,42,0.1)] text-[color:var(--warn)] border-[rgba(180,130,42,0.3)]';
+  return 'bg-[var(--accent)] text-[color:var(--muted-foreground)] border-[var(--border)]';
+}
+
+let modalTaskId = null;
+
+function findTaskInDashboard(taskId) {
+  const data = globalDashboardData || {};
+  const buckets = ['do_now', 'in_progress', 'need_info', 'schedule', 'defer', 'done'];
+  for (const b of buckets) {
+    for (const t of (data[b] || [])) {
+      if (t.task_id === taskId) return t;
+    }
+  }
+  return null;
+}
+
+function openTaskModal(taskId) {
+  const item = findTaskInDashboard(taskId);
+  if (!item) return;
+  modalTaskId = taskId;
+
+  const bucketPill = item.category_bucket
+    ? `<span class="cat-pill">${esc(item.category_bucket)}</span>`
+    : (item.category ? `<span class="cat-pill">${esc(item.category)}</span>` : '');
+  const tagChips = (item.tags || []).map((t) => `<span class="tag-chip">#${esc(t)}</span>`).join(' ');
+  document.getElementById('modal-category').innerHTML = [bucketPill, tagChips].filter(Boolean).join(' ');
+  document.getElementById('modal-title').textContent = item.task || '';
+
+  const deadlineRaw = item.deadline_iso || item.deadline;
+  const deadlineTxt = deadlineRaw ? (formatCustomDate(deadlineRaw) || item.deadline) : 'No deadline';
+  const now = new Date();
+  const overdue = item.deadline_iso && new Date(item.deadline_iso) < now && item.status !== 'done';
+  document.getElementById('modal-deadline').innerHTML = overdue
+    ? `${esc(deadlineTxt)} <span class="ml-2 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[var(--destructive)] text-white">Overdue</span>`
+    : esc(deadlineTxt);
+
+  const prioEl = document.getElementById('modal-priority');
+  prioEl.outerHTML = priorityPill(item.ai_priority || item.priority).replace('<span', '<span id="modal-priority"');
+  const scoreEl = document.getElementById('modal-score');
+  if (scoreEl) {
+    const ai = item.ai_priority_score;
+    const user = item.user_adjusted_score;
+    scoreEl.textContent = (ai != null || user != null) ? `AI score ${ai ?? '—'} · adjusted ${user ?? '—'}` : '';
+  }
+  const overrideSel = document.getElementById('modal-priority-override');
+  if (overrideSel) overrideSel.value = item.user_priority || '';
+  const bucketSel = document.getElementById('modal-bucket');
+  if (bucketSel) bucketSel.value = item.category_bucket || 'Others';
+
+  document.getElementById('modal-assignee').textContent = item.assigned_by || '—';
+  document.getElementById('modal-status').textContent = statusLabel(item);
+
+  // Dependencies
+  const depsEl = document.getElementById('modal-deps');
+  if (depsEl) {
+    const deps = item.dependencies || [];
+    if (!deps.length) {
+      depsEl.innerHTML = '<span class="text-[color:var(--muted-foreground)] text-xs">No dependencies.</span>';
+    } else {
+      depsEl.innerHTML = deps.map(d =>
+        `<span class="tag-chip" title="${esc(d.reason || '')}">${esc(d.depends_on)} <button onclick="removeDep('${esc(item.task_id)}','${esc(d.depends_on)}')" class="ml-1 text-[color:var(--destructive)]">×</button></span>`
+      ).join('');
+    }
+  }
+
+  // Clarification inline answer (if any thread is open for this task)
+  const clarifySection = document.getElementById('modal-clarify-section');
+  const threads = (globalDashboardData?.clarifications || []).filter(t => t.task_id === item.task_id);
+  if (threads.length && clarifySection) {
+    clarifySection.classList.remove('hidden');
+    document.getElementById('modal-clarify-q').textContent = `${threads[0].field}: ${threads[0].question}`;
+    document.getElementById('modal-clarify-input').value = '';
+  } else if (clarifySection) {
+    clarifySection.classList.add('hidden');
+  }
+
+  // Kick off timeline load
+  loadModalTimeline();
+
+  const stepsList = document.getElementById('modal-steps');
+  const checklist = Array.isArray(item.checklist) ? item.checklist : [];
+  if (checklist.length) {
+    stepsList.innerHTML = checklist.map((step, i) => `
+      <li class="flex items-start gap-2 text-sm">
+        <input type="checkbox" ${step.done ? 'checked' : ''} onchange="toggleModalStep(${i})" />
+        <span class="${step.done ? 'line-through text-[color:var(--muted-foreground)]' : 'text-[color:var(--foreground)]'}">${esc(step.step || '')}</span>
+      </li>`).join('');
+    document.getElementById('modal-steps-section').classList.remove('hidden');
+  } else if (Array.isArray(item.steps) && item.steps.length) {
+    stepsList.innerHTML = item.steps.map((s) => `
+      <li class="text-sm text-[color:var(--heading-2)] flex items-start gap-2">
+        <span class="text-[color:var(--muted-foreground)] mt-0.5">•</span><span>${esc(s)}</span>
+      </li>`).join('');
+    document.getElementById('modal-steps-section').classList.remove('hidden');
+  } else {
+    document.getElementById('modal-steps-section').classList.add('hidden');
+  }
+
+  const startBtn = document.getElementById('modal-start-btn');
+  const doneBtn = document.getElementById('modal-done-btn');
+  if (item.status === 'done') {
+    startBtn.classList.add('hidden');
+    doneBtn.classList.add('hidden');
+  } else {
+    doneBtn.classList.remove('hidden');
+    if (item.status === 'in_progress') startBtn.classList.add('hidden');
+    else startBtn.classList.remove('hidden');
+  }
+
+  document.getElementById('task-modal').classList.remove('hidden');
+}
+
+function closeModal() {
+  modalTaskId = null;
+  document.getElementById('task-modal').classList.add('hidden');
+}
+
+async function modalStartTask() {
+  if (!modalTaskId) return;
+  await startTaskAction(modalTaskId);
+  closeModal();
+}
+
+async function modalMarkDone() {
+  if (!modalTaskId) return;
+  await markDone(modalTaskId);
+  closeModal();
+}
+
+async function toggleModalStep(index) {
+  if (!modalTaskId) return;
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/step`, { index });
+    await refreshDashboard();
+    openTaskModal(modalTaskId);
+  } catch (e) {
+    console.error('toggleModalStep failed:', e);
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !document.getElementById('task-modal').classList.contains('hidden')) {
+    closeModal();
+  }
+});
+
+function renderCalendar(data, activeTasksArray) {
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  document.getElementById('calendar-month-label').textContent = `${monthNames[month]} ${year}`;
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const grid = document.getElementById('calendar-grid');
+
+  const tasksByDate = {};
+  activeTasksArray.forEach(t => {
+    if (t.deadline_iso) {
+      const d = new Date(t.deadline_iso);
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        const dateNum = d.getDate();
+        if (!tasksByDate[dateNum]) tasksByDate[dateNum] = [];
+        tasksByDate[dateNum].push(t);
+      }
+    }
+  });
+  for (const k of Object.keys(tasksByDate)) {
+    tasksByDate[k].sort((a, b) => new Date(a.deadline_iso) - new Date(b.deadline_iso));
+  }
+
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  let html = daysOfWeek.map(d => `<div class="bg-white text-center text-xs font-bold text-[color:var(--muted-foreground)] py-3 border-b border-[var(--border)] uppercase tracking-wider">${d}</div>`).join('');
+
+  for (let i = 0; i < firstDayIndex; i++) {
+    html += `<div class="bg-[var(--muted)] min-h-[120px] p-2"></div>`;
+  }
+
+  const today = new Date();
+  for (let i = 1; i <= daysInMonth; i++) {
+    const isCurrentDay = today.getDate() === i && today.getMonth() === month && today.getFullYear() === year;
+    const dayClass = isCurrentDay ? 'bg-white border-t-2 border-[var(--primary)]' : 'bg-white';
+    const textClass = isCurrentDay ? 'font-serif text-[color:var(--primary)] font-normal text-2xl' : 'text-[color:var(--heading-2)] font-semibold';
+
+    let tasksHtml = '';
+    if (tasksByDate[i]) {
+      tasksHtml = tasksByDate[i].map(t => {
+        const dotColor = t.priority === 'high' ? 'var(--destructive)'
+          : t.priority === 'medium' ? 'var(--warn)'
+          : 'var(--muted-foreground)';
+        return `<div onclick="openTaskModal('${esc(t.task_id)}')" class="text-xs cursor-pointer hover:bg-[var(--accent)] rounded-md px-1.5 py-1 truncate select-none flex items-center gap-1.5" title="${esc(t.task)}" style="color:var(--heading-2);">
+          <span style="width:6px;height:6px;border-radius:999px;background:${dotColor};flex-shrink:0;"></span>
+          <span class="truncate">${esc(t.task)}</span>
+        </div>`;
+      }).join('');
+    }
+
+    html += `
+      <div class="${dayClass} min-h-[120px] p-3 hover:bg-[var(--accent)] transition-colors flex flex-col gap-2 relative group">
+        <div class="text-sm ${textClass} text-right w-full">${i}</div>
+        <div class="flex-1 overflow-y-auto">${tasksHtml}</div>
+      </div>
+    `;
+  }
+
+  const totalCells = firstDayIndex + daysInMonth;
+  const trailingEmpty = (7 - (totalCells % 7)) % 7;
+  for (let i = 0; i < trailingEmpty; i++) {
+    html += `<div class="bg-[var(--muted)] min-h-[120px] p-2"></div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+// ---------------- Actions ----------------
+async function markDone(taskId) { try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/complete`); refreshDashboard(); } catch (e) { console.error(e); } }
+async function startTaskAction(taskId) {
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/start`);
+    refreshDashboard();
+  } catch (e) {
+    console.error(e);
+    if (e.status === 409) {
+      alert(e.message || 'Task cannot be started right now.');
+    } else if (e.status === 404) {
+      alert('Task not found.');
+    } else {
+      alert('Failed to start task: ' + (e.message || 'unknown error'));
+    }
+  }
+}
+
+async function answerQuestion(btn) {
+  const { tid, field, idx } = btn.dataset;
+  const input = document.getElementById(`q-${tid}-${idx}`);
+  const value = input?.value?.trim();
+
+  if (!value) { input?.focus(); return; }
+
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  try {
+    answeredQuestions.add(`${tid}-${idx}`);
+    const infoBox = btn.closest('.info-item');
+    if (infoBox) {
+      const parentContainer = infoBox.parentElement;
+      infoBox.style.opacity = '0';
+      infoBox.style.transform = 'translateY(-10px)';
+      setTimeout(() => {
+        infoBox.remove();
+        if (parentContainer.children.length === 0) {
+          parentContainer.innerHTML = `<div class="text-sm text-[color:var(--success)] font-medium py-6 flex flex-col items-center gap-2 bg-white rounded-[var(--radius-xl)] border border-[rgba(91,125,78,0.3)]"><span class="text-2xl">✨</span> All clear!</div>`;
+        }
+      }, 200);
+    }
+
+    await api('POST', '/api/clarify', { task_id: tid, field, value });
+    refreshDashboard();
+  } catch (e) {
+    console.error(e); btn.disabled = false; btn.textContent = 'Submit'; answeredQuestions.delete(`${tid}-${idx}`);
+  }
+}
+async function resetAll() { if (!confirm('Are you sure you want to delete all your tasks? This cannot be undone.')) return; try { await api('POST', '/api/reset'); refreshDashboard(); } catch (e) { console.error(e); } }
+
+async function removeDep(taskId, dep) {
+  try {
+    await api('DELETE', `/api/tasks/${encodeURIComponent(taskId)}/dependencies/${encodeURIComponent(dep)}`);
+    await refreshDashboard();
+    openTaskModal(taskId);
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+// ---------------- Upload streaming ----------------
+function consoleLine(text, kind = '') {
+  const el = document.getElementById('console');
+  const div = document.createElement('div');
+  div.className = kind ? `console-line ${kind}` : 'console-line';
+  div.textContent = `> ${text}`;
+  el.appendChild(div); el.scrollTop = el.scrollHeight;
+}
+
+// ---------------- Saved chats (localStorage) ----------------
+function savedChatsKey() { return `cr_chats_${currentUser?.id || 'anon'}`; }
+function loadSavedChats() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(savedChatsKey()) || '[]');
+    return (Array.isArray(raw) ? raw : []).map((c) => {
+      const reparsed = c?.raw_text ? parseChatText(c.raw_text) : null;
+      const messages = reparsed?.messages || c?.messages || [];
+      const participants = reparsed?.participants?.length
+        ? reparsed.participants
+        : (deriveParticipantsFromMessages(messages).length
+          ? deriveParticipantsFromMessages(messages)
+          : normalizeParticipants(c?.participants || []));
+      const self = isSystemSender(c?.self) ? '' : String(c?.self || '').trim();
+      return {
+        ...c,
+        messages,
+        participants,
+        self: participants.includes(self) ? self : '',
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+function persistSavedChats(list) {
+  localStorage.setItem(savedChatsKey(), JSON.stringify(list));
+}
+let savedChats = [];
+let activeChatId = null;
+let chatSelf = '';
+let isWhoDropdownHovered = false;
+
+function isDateLikeParticipantName(name) {
+  const s = String(name || '').trim();
+  if (!s) return true;
+  // Exclude timestamps/date fragments that can be misread as participant names.
+  if (/^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}(?:,\s*\d{1,2})?$/.test(s)) return true;
+  if (/^\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?$/i.test(s)) return true;
+  if (/^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4},?\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?$/i.test(s)) return true;
+  return false;
+}
+
+function normalizeParticipantName(name) {
+  let s = String(name || '').replace(/[\u200E\u200F]/g, '').trim();
+  // Handle exports like "65 - Alex" or "+65 9123 4567 - Alex",
+  // but keep pure phone-number senders unchanged.
+  const m = s.match(/^(\+?\d[\d\s-]{2,24})\s*[-–]\s*(.+)$/);
+  if (m && /[A-Za-z]/.test(m[2])) s = m[2].trim();
+  return s.trim();
+}
+
+function normalizeParticipants(participants) {
+  const seen = new Set();
+  const out = [];
+  for (const p of (participants || [])) {
+    const cleaned = normalizeParticipantName(p);
+    if (!cleaned || isDateLikeParticipantName(cleaned) || isSystemSender(cleaned)) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(cleaned);
+    if (out.length >= 50) break;
+  }
+  return out;
+}
+
+function isSystemSender(sender) {
+  return String(sender || '').trim() === '__system__';
+}
+
+function isLikelyParticipantName(name) {
+  const cleaned = normalizeParticipantName(name);
+  if (!cleaned || isDateLikeParticipantName(cleaned) || isSystemSender(cleaned)) return false;
+  // Ignore poll/meta labels and numeric-only fragments.
+  if (/^(option|options|poll|vote|votes)$/i.test(cleaned)) return false;
+  if (/^[\d\s()+-]{3,}$/.test(cleaned)) {
+    const digits = (cleaned.match(/\d/g) || []).length;
+    return digits >= 7;
+  }
+  return true;
+}
+
+function isPollStartPayload(payload) {
+  const s = String(payload || '').trim();
+  return /\bcreated\s+poll\b/i.test(s) || /^poll\s*[:\-]/i.test(s);
+}
+
+function deriveParticipantsFromMessages(messages) {
+  return normalizeParticipants((messages || [])
+    .filter((m) => m && !m.system && !isSystemSender(m.sender))
+    .map((m) => m.sender));
+}
+
+// Best-effort WhatsApp-ish parser: handles "[dd/mm/yy, hh:mm:ss] Name: msg",
+// "dd/mm/yyyy, hh:mm - Name: msg", or simple "Name: msg".
+function parseChatText(raw) {
+  const lines = String(raw || '').split(/\r?\n/);
+  const patterns = [
+    /^\[?(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?)\]?\s*[-–]?\s*([^:]+?):\s*(.*)$/i,
+    /^\[?(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?)\]?\s*[-–]\s*(.+)$/i,
+    /^([^:\n]{1,40}):\s*(.+)$/
+  ];
+  const messages = [];
+  let current = null;
+  let inPollBlock = false;
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    if (inPollBlock && !patterns[0].test(line) && !patterns[1].test(line)) {
+      continue;
+    }
+    let m = line.match(patterns[0]);
+    if (m) {
+      if (current) messages.push(current);
+      const sender = normalizeParticipantName(m[3]);
+      if (isLikelyParticipantName(sender)) {
+        current = { sender, text: m[4].trim(), time: `${m[1]} ${m[2]}` };
+      } else {
+        current = { sender: '__system__', text: `${String(m[3] || '').trim()}: ${m[4].trim()}`, time: `${m[1]} ${m[2]}`, system: true };
+      }
+      inPollBlock = false;
+      continue;
+    }
+    m = line.match(patterns[1]);
+    if (m) {
+      const payload = m[3].trim();
+      const maybeChat = payload.match(/^([^:\n]{1,60}):\s*(.*)$/);
+      if (maybeChat) {
+        const senderGuess = normalizeParticipantName(maybeChat[1]);
+        if (senderGuess && !/^https?/i.test(senderGuess) && isLikelyParticipantName(senderGuess)) {
+          if (current) messages.push(current);
+          current = { sender: senderGuess, text: String(maybeChat[2] || '').trim(), time: `${m[1]} ${m[2]}` };
+          inPollBlock = false;
+          continue;
+        }
+      }
+      if (current) messages.push(current);
+      current = { sender: '__system__', text: payload, time: `${m[1]} ${m[2]}`, system: true };
+      inPollBlock = isPollStartPayload(payload);
+      continue;
+    }
+    m = line.match(patterns[2]);
+    const senderGuess = m ? normalizeParticipantName(m[1]) : '';
+    if (m && !/^https?/i.test(m[1]) && isLikelyParticipantName(senderGuess)) {
+      if (current) messages.push(current);
+      current = { sender: senderGuess, text: m[2].trim(), time: '' };
+      continue;
+    }
+    if (current) current.text += '\n' + line.trim();
+  }
+  if (current) messages.push(current);
+  const participants = normalizeParticipants(messages.map(m => m.sender));
+  return { messages, participants };
+}
+
+function avatarInitials(name) {
+  return String(name || '?').replace(/[^A-Za-z0-9+]/g, '').slice(0, 2).toUpperCase() || '?';
+}
+
+function renderChatFileList() {
+  const list = document.getElementById('chat-file-list');
+  if (!list) return;
+  if (!savedChats.length) {
+    list.innerHTML = `<div class="text-[11px] text-[color:var(--muted-foreground)] italic" style="padding:8px 4px;">No chats yet. Add one below.</div>`;
+    return;
+  }
+  list.innerHTML = savedChats.map(c => {
+    const isActive = c.id === activeChatId;
+    const bg = isActive ? 'var(--primary)' : '#fff';
+    const fg = isActive ? '#fff' : 'var(--foreground)';
+    const sub = isActive ? 'rgba(255,255,255,0.65)' : 'var(--muted-foreground)';
+    const avBg = isActive ? 'rgba(255,255,255,0.2)' : 'var(--accent)';
+    const participants = deriveParticipantsFromMessages(c.messages || []).length
+      ? deriveParticipantsFromMessages(c.messages || [])
+      : normalizeParticipants(c.participants || []);
+    if (participants.length !== (c.participants || []).length) c.participants = participants;
+    const taskCount = (c.task_ids || []).length;
+    return `<div style="display:flex;align-items:center;gap:2px;">
+      <div onclick="selectChat('${esc(c.id)}')" style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-lg);cursor:pointer;transition:all .15s;background:${bg};border:1px solid ${isActive ? 'var(--primary)' : 'var(--border)'};box-shadow:var(--shadow-xs);min-width:0;">
+        <div style="width:32px;height:32px;border-radius:50%;background:${avBg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${isActive ? '#fff' : 'var(--muted-foreground)'};flex-shrink:0;">${esc(avatarInitials(c.name))}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${fg}">${esc(c.name)}</div>
+          <div style="font-size:11px;color:${sub}">${participants.length} participants${taskCount ? ` · ${taskCount} task${taskCount === 1 ? '' : 's'}` : ''}</div>
+        </div>
+      </div>
+      <button onclick="deleteSavedChat('${esc(c.id)}')" title="Delete chat" style="flex-shrink:0;background:none;border:none;color:${isActive ? 'var(--primary)' : 'var(--muted-foreground)'};cursor:pointer;font-size:16px;padding:6px 8px;line-height:1;">&times;</button>
+    </div>`;
+  }).join('');
+}
+
+function activeChat() { return savedChats.find(c => c.id === activeChatId); }
+
+function selectChat(id) {
+  activeChatId = id;
+  chatSelf = '';
+  const chat = activeChat();
+  if (!chat) return;
+  chat.participants = deriveParticipantsFromMessages(chat.messages || []).length
+    ? deriveParticipantsFromMessages(chat.messages || [])
+    : normalizeParticipants(chat.participants || []);
+  document.getElementById('chat-placeholder').classList.add('hidden');
+  const active = document.getElementById('chat-active');
+  active.classList.remove('hidden');
+  active.style.display = 'flex';
+  document.getElementById('chat-avatar').textContent = avatarInitials(chat.name);
+  document.getElementById('chat-title').textContent = chat.name;
+  document.getElementById('chat-subtitle').textContent = `${chat.participants.length} participants${chat.task_ids?.length ? ` · ${chat.task_ids.length} extracted` : ''}`;
+  const input = document.getElementById('who-search');
+  input.value = '';
+  document.getElementById('who-clear').classList.add('hidden');
+  document.getElementById('extract-btn').disabled = true;
+  const tf = document.getElementById('timeframe-select');
+  if (tf && chat.timeframe) tf.value = chat.timeframe;
+  buildChatMessages(chat, '');
+  renderChatFileList();
+}
+
+function buildChatMessages(chat, self) {
+  const container = document.getElementById('chat-messages');
+  if (!container || !chat) return;
+  const SENDER_COLORS = ['#4A6FA5', '#7A5C8A', '#5A8A6A', '#8A6A3A', '#5A6A8A', '#7A5A4A', '#4A5A7A', '#7A4A6A'];
+  const colorFor = (name) => {
+    let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return SENDER_COLORS[h % SENDER_COLORS.length];
+  };
+  const frag = document.createDocumentFragment();
+  (chat.messages || []).slice(0, 60).forEach(msg => {
+    if (msg.system || isSystemSender(msg.sender)) {
+      const row = document.createElement('div');
+      row.style.cssText = 'font-size:11px;color:var(--muted-foreground);text-align:center;padding:2px 8px;line-height:1.35;';
+      row.textContent = msg.text;
+      frag.appendChild(row);
+      return;
+    }
+    const isSelf = msg.sender === self;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:' + (isSelf ? 'flex-end' : 'flex-start') + ';';
+    if (!isSelf) {
+      const name = document.createElement('div');
+      name.style.cssText = `font-size:10px;font-weight:700;color:${colorFor(msg.sender)};margin:0 2px 2px;`;
+      name.textContent = msg.sender;
+      wrap.appendChild(name);
+    }
+    const bubble = document.createElement('div');
+    bubble.style.cssText = isSelf
+      ? 'background:var(--primary);color:#fff;border-radius:14px 14px 4px 14px;padding:7px 12px;font-size:13px;max-width:80%;line-height:1.4;word-wrap:break-word;'
+      : 'background:#fff;color:var(--foreground);border:1px solid var(--border);border-radius:14px 14px 14px 4px;padding:7px 12px;font-size:13px;max-width:80%;line-height:1.4;box-shadow:var(--shadow-xs);word-wrap:break-word;';
+    bubble.textContent = msg.text;
+    wrap.appendChild(bubble);
+    if (msg.time) {
+      const t = document.createElement('div');
+      t.style.cssText = 'font-size:10px;color:var(--muted-foreground);margin:2px 2px 0;';
+      t.textContent = msg.time;
+      wrap.appendChild(t);
+    }
+    frag.appendChild(wrap);
+  });
+  container.innerHTML = '';
+  container.appendChild(frag);
+  container.scrollTop = container.scrollHeight;
+}
+
+function getWhoDropdownClipBounds(el) {
+  let node = el?.parentElement;
+  while (node && node !== document.body) {
+    const style = window.getComputedStyle(node);
+    const clipsY = /(auto|scroll|hidden|clip)/.test(style.overflowY);
+    const clipsX = /(auto|scroll|hidden|clip)/.test(style.overflowX);
+    if (clipsY || clipsX) {
+      const rect = node.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom };
+    }
+    node = node.parentElement;
+  }
+  return { top: 0, bottom: window.innerHeight };
+}
+
+function positionWhoDropdown() {
+  const input = document.getElementById('who-search');
+  const dd = document.getElementById('who-dropdown');
+  if (!input || !dd) return;
+
+  const gap = 4;
+  const preferredMax = 180;
+  const minUsable = 96;
+  const inputRect = input.getBoundingClientRect();
+  const clip = getWhoDropdownClipBounds(input);
+  const topLimit = Math.max(0, clip.top);
+  const bottomLimit = Math.min(window.innerHeight, clip.bottom);
+  const spaceBelow = Math.max(0, bottomLimit - inputRect.bottom - gap);
+  const spaceAbove = Math.max(0, inputRect.top - topLimit - gap);
+  const openDown = spaceBelow >= spaceAbove;
+  const available = openDown ? spaceBelow : spaceAbove;
+  const dynamicMax = Math.max(minUsable, Math.min(preferredMax, Math.floor(available)));
+
+  dd.style.maxHeight = `${dynamicMax}px`;
+  if (openDown) {
+    dd.style.top = `calc(100% + ${gap}px)`;
+    dd.style.bottom = 'auto';
+  } else {
+    dd.style.bottom = `calc(100% + ${gap}px)`;
+    dd.style.top = 'auto';
+  }
+}
+
+function showWhoDropdown() {
+  const chat = activeChat(); if (!chat) return;
+  const val = document.getElementById('who-search').value;
+  const showAll = !val || val === chatSelf;
+  const dd = document.getElementById('who-dropdown');
+  const participants = deriveParticipantsFromMessages(chat.messages || []).length
+    ? deriveParticipantsFromMessages(chat.messages || [])
+    : normalizeParticipants(chat.participants || []);
+  if (participants.length !== (chat.participants || []).length) {
+    chat.participants = participants;
+    persistSavedChats(savedChats);
+  }
+  const list = showAll ? participants : participants.filter(p => p.toLowerCase().includes(val.toLowerCase()));
+  if (!list.length) {
+    dd.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:var(--muted-foreground);">No match — type a custom name, then press ↵</div>`;
+  } else {
+    dd.innerHTML = list.map(p => {
+      const isSel = p === chatSelf;
+      return `<div onclick="selectWho('${esc(p).replace(/'/g, '&#39;')}')" style="padding:9px 14px;font-size:13px;color:var(--foreground);cursor:pointer;transition:background .1s;${isSel ? 'background:var(--accent);font-weight:600;' : ''}" onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background='${isSel ? 'var(--accent)' : ''}'">${esc(p)}${isSel ? ' ✓' : ''}</div>`;
+    }).join('');
+  }
+  positionWhoDropdown();
+  dd.classList.remove('hidden');
+}
+function hideWhoDropdown() { document.getElementById('who-dropdown').classList.add('hidden'); }
+function onWhoBlur() {
+  setTimeout(() => {
+    const input = document.getElementById('who-search');
+    if (isWhoDropdownHovered || document.activeElement === input) return;
+    hideWhoDropdown();
+  }, 150);
+}
+function setWhoDropdownHover(isHovered) {
+  isWhoDropdownHovered = !!isHovered;
+  if (!isWhoDropdownHovered) {
+    const input = document.getElementById('who-search');
+    if (document.activeElement !== input) hideWhoDropdown();
+  }
+}
+function onWhoInput(val) {
+  showWhoDropdown();
+  const clearBtn = document.getElementById('who-clear');
+  if (!val) {
+    chatSelf = '';
+    clearBtn.classList.add('hidden');
+    document.getElementById('extract-btn').disabled = true;
+    const chat = activeChat(); if (chat) buildChatMessages(chat, '');
+  } else {
+    clearBtn.classList.remove('hidden');
+  }
+}
+function selectWho(name) {
+  chatSelf = name;
+  document.getElementById('who-search').value = name;
+  document.getElementById('who-clear').classList.remove('hidden');
+  hideWhoDropdown();
+  document.getElementById('extract-btn').disabled = false;
+  const chat = activeChat();
+  if (chat) {
+    chat.self = name;
+    persistSavedChats(savedChats);
+    buildChatMessages(chat, name);
+  }
+}
+function clearWhoSelection() {
+  chatSelf = '';
+  const input = document.getElementById('who-search');
+  input.value = '';
+  input.focus();
+  document.getElementById('who-clear').classList.add('hidden');
+  document.getElementById('extract-btn').disabled = true;
+  const chat = activeChat();
+  if (chat) buildChatMessages(chat, '');
+}
+
+window.addEventListener('resize', () => {
+  const dd = document.getElementById('who-dropdown');
+  if (dd && !dd.classList.contains('hidden')) positionWhoDropdown();
+});
+window.addEventListener('scroll', () => {
+  const dd = document.getElementById('who-dropdown');
+  if (dd && !dd.classList.contains('hidden')) positionWhoDropdown();
+}, true);
+
+function handleChatFiles(e) {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  const readers = files.map(f => new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = () => resolve({ name: f.name.replace(/\.txt$/i, ''), raw: String(r.result || '') });
+    r.onerror = () => resolve(null);
+    r.readAsText(f);
+  }));
+  Promise.all(readers).then(results => {
+    let firstId = null;
+    for (const item of results) {
+      if (!item || !item.raw.trim()) continue;
+      const parsed = parseChatText(item.raw);
+      const id = 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      const record = {
+        id, name: item.name || 'Chat', raw_text: item.raw,
+        participants: parsed.participants,
+        messages: parsed.messages,
+        timeframe: document.getElementById('timeframe-select')?.value || 'last7',
+        self: '', task_ids: [], processedAt: null,
+        createdAt: new Date().toISOString(),
+      };
+      savedChats.unshift(record);
+      if (!firstId) firstId = id;
+    }
+    persistSavedChats(savedChats);
+    renderChatFileList();
+    if (firstId) selectChat(firstId);
+    e.target.value = '';
+  });
+}
+
+function deleteSavedChat(id) {
+  if (!confirm('Delete this saved chat? Tasks already extracted will remain.')) return;
+  savedChats = savedChats.filter(c => c.id !== id);
+  persistSavedChats(savedChats);
+  if (activeChatId === id) {
+    activeChatId = null; chatSelf = '';
+    document.getElementById('chat-placeholder').classList.remove('hidden');
+    const active = document.getElementById('chat-active');
+    active.classList.add('hidden'); active.style.display = '';
+  }
+  renderChatFileList();
+}
+
+function consoleLine(text, kind = '') {
+  const el = document.getElementById('console');
+  const div = document.createElement('div');
+  div.className = kind ? `console-line ${kind}` : 'console-line';
+  div.textContent = `> ${text}`;
+  el.appendChild(div); el.scrollTop = el.scrollHeight;
+}
+
+function resetUpload() { document.getElementById('console').innerHTML = ''; document.getElementById('upload-processing').classList.add('hidden'); }
+
+async function extractSelectedChat() {
+  const chat = activeChat();
+  if (!chat) { setStatus('Select a chat first.', 'error'); return; }
+  if (!chatSelf) { setStatus('Pick who you are in this chat.', 'error'); return; }
+
+  const btn = document.getElementById('extract-btn');
+  btn.disabled = true;
+  btn.innerHTML = `${SPINNER_SVG}Extracting...`;
+  document.getElementById('upload-processing').classList.remove('hidden');
+  document.getElementById('console').innerHTML = '';
+  consoleLine(`Initializing for chat: ${chat.name}`);
+  consoleLine(`Speaker identity: ${chatSelf}`);
+
+  const timeframe = document.getElementById('timeframe-select')?.value || chat.timeframe || 'all';
+  chat.timeframe = timeframe; chat.self = chatSelf;
+
+  // Snapshot existing task ids before processing so we can tag the new ones to this chat
+  let before = new Set();
+  try {
+    const pre = await api('GET', '/api/dashboard');
+    for (const bucket of ['do_now', 'schedule', 'defer', 'need_info', 'in_progress', 'done']) {
+      for (const t of (pre[bucket] || [])) before.add(t.task_id);
+    }
+  } catch {}
+
+  // Prepend an identity hint so the LLM knows which voice is the user's
+  const prefix = `You are assisting "${chatSelf}". Tasks assigned to or accepted by "${chatSelf}" are the user's own tasks.\n\n`;
+  const textToSend = prefix + chat.raw_text;
+
+  try {
+    const res = await fetch('/api/process-stream', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: textToSend, timeframe }),
+    });
+    if (res.status === 401) { showAuthGate(); return; }
+    const reader = res.body.getReader(); const decoder = new TextDecoder(); let buf = '';
+    let finished = false;
+    while (!finished) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const block = buf.slice(0, idx); buf = buf.slice(idx + 2);
+        const ev = block.match(/^event:\s*(\S+)/m)?.[1];
+        const dataStr = block.match(/^data:\s*(.+)$/m)?.[1];
+        if (!ev || dataStr == null) continue;
+        try {
+          const data = JSON.parse(dataStr);
+          if (ev === 'log') consoleLine(data.text);
+          else if (ev === 'task') consoleLine(`Extracted: ${data.task}${data.tags?.length ? ' · #' + data.tags.join(' #') : ''}`, 'task');
+          else if (ev === 'done') { finished = true; }
+        } catch {}
+      }
+    }
+
+    // Diff task ids and save against this chat
+    try {
+      const post = await api('GET', '/api/dashboard');
+      const newIds = [];
+      for (const bucket of ['do_now', 'schedule', 'defer', 'need_info', 'in_progress', 'done']) {
+        for (const t of (post[bucket] || [])) {
+          if (!before.has(t.task_id)) newIds.push(t.task_id);
+        }
+      }
+      chat.task_ids = Array.from(new Set([...(chat.task_ids || []), ...newIds]));
+      chat.processedAt = new Date().toISOString();
+      persistSavedChats(savedChats);
+      consoleLine(`Linked ${newIds.length} new task(s) to this chat.`, 'task');
+    } catch {}
+
+    setTimeout(() => setMode('dashboard'), 800);
+  } catch (e) {
+    consoleLine(`Failed: ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Extract Tasks →';
+  }
+}
+
+// Client-side helpers for grouping tasks by source chat
+function chatForTaskId(taskId) {
+  for (const c of savedChats) {
+    if ((c.task_ids || []).includes(taskId)) return c;
+  }
+  return null;
+}
+
+// ---------------- Account ----------------
+async function refreshAccount() {
+  if (!currentUser) return;
+  document.getElementById('account-email').textContent = currentUser.email;
+  const statusEl = document.getElementById('telegram-status');
+  try {
+    const s = await api('GET', '/api/telegram/status');
+    if (!s.bot_enabled) {
+      statusEl.textContent = 'Telegram bot is not configured on this server.';
+      document.getElementById('link-code-btn').disabled = true;
+    } else if (s.linked_chat_id) {
+      statusEl.innerHTML = `Linked to chat <code class="text-[color:var(--primary)] font-serif">${esc(String(s.linked_chat_id))}</code>. Reminders and clarifications will be pushed there.`;
+    } else {
+      statusEl.textContent = 'No telegram chat linked yet. Generate a code, then send /link <code> to the bot.';
+    }
+  } catch (e) {
+    statusEl.textContent = 'Could not load telegram status.';
+  }
+
+  const gEl = document.getElementById('google-status-inline');
+  const gLinkBtn = document.getElementById('google-link-btn');
+  const gUnlinkBtn = document.getElementById('google-unlink-btn');
+  if (gEl && gLinkBtn && gUnlinkBtn) {
+    try {
+      const g = await api('GET', '/api/google/status');
+      if (!g.configured) {
+        gEl.textContent = '(OAuth not configured)';
+        gLinkBtn.disabled = true;
+      } else if (g.linked) {
+        gEl.innerHTML = `✓ linked to <code class="text-[color:var(--primary)] font-serif">${esc(g.calendar_id || 'primary')}</code>`;
+        gLinkBtn.classList.add('hidden');
+        gUnlinkBtn.classList.remove('hidden');
+      } else {
+        gEl.textContent = '';
+        gLinkBtn.classList.remove('hidden');
+        gUnlinkBtn.classList.add('hidden');
+      }
+    } catch (e) {
+      gEl.textContent = '(status unavailable)';
+    }
+  }
+
+  const aEl = document.getElementById('adaptation-status');
+  try {
+    const a = await api('GET', '/api/adaptation');
+    aEl.textContent = a.summary || '—';
+  } catch {
+    aEl.textContent = '—';
+  }
+}
+
+async function generateLinkCode() {
+  try {
+    const data = await api('POST', '/api/telegram/link-code');
+    document.getElementById('link-code-value').textContent = data.code;
+    document.getElementById('link-code-display').classList.remove('hidden');
+  } catch (e) {
+    alert('Failed to generate link code: ' + e.message);
+  }
+}
+
+function linkGoogleCalendar() {
+  window.open('/api/google/auth/start', '_blank', 'width=520,height=640');
+  setTimeout(refreshAccount, 2000);
+  setTimeout(refreshAccount, 8000);
+}
+
+async function unlinkGoogleCalendar() {
+  if (!confirm('Unlink Google Calendar? Existing calendar events will remain but new tasks will not sync.')) return;
+  try {
+    await api('POST', '/api/google/unlink');
+    refreshAccount();
+  } catch (e) { alert('Unlink failed: ' + e.message); }
+}
+
+async function resetAdaptation() {
+  if (!confirm('Reset adaptive priority learning? The system will go back to defaults.')) return;
+  try {
+    await api('POST', '/api/adaptation/reset');
+    refreshAccount();
+  } catch (e) { alert('Reset failed: ' + e.message); }
+}
+
+// ---------------- Clarifications & Dependencies ----------------
+function renderClarificationThreads(data) {
+  const el = document.getElementById('dash-clarification-threads');
+  if (!el) return;
+  const threads = data.clarifications || [];
+  if (!threads.length) {
+    el.innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-6 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No open clarifications.</div>';
+    return;
+  }
+  el.innerHTML = threads.map(t => `
+    <div class="bg-white border border-[rgba(180,130,42,0.35)] rounded-[var(--radius-xl)] px-4 py-3 mb-2 shadow-[var(--shadow-xs)]">
+      <div class="text-xs uppercase tracking-wider text-[color:var(--warn)] mb-1 font-semibold">${esc(t.field)} · ${esc(t.task_id)}</div>
+      <div class="text-sm text-[color:var(--heading-2)] mb-2">${esc(t.question)}</div>
+      <div class="flex gap-2">
+        <input id="clar-${esc(t.id)}" class="flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Your answer…" />
+        <button onclick="submitClarification('${esc(t.id)}')" class="ghost-btn ghost-btn-accent">Submit</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function submitClarification(threadId) {
+  const input = document.getElementById(`clar-${threadId}`);
+  const value = input?.value?.trim();
+  if (!value) { input?.focus(); return; }
+  try {
+    await api('POST', `/api/clarifications/${encodeURIComponent(threadId)}/answer`, { answer: value });
+    refreshDashboard();
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+function renderDependencyGraph(data) {
+  const el = document.getElementById('dash-dependencies');
+  if (!el) return;
+  const deps = data.dependencies || [];
+  if (!deps.length) {
+    el.innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)]">No dependencies between tasks yet.</div>';
+    return;
+  }
+  el.innerHTML = deps.map(d =>
+    `<div class="text-sm py-1"><code class="text-[color:var(--primary)] font-serif">${esc(d.task_id)}</code> <span class="text-[color:var(--muted-foreground)]">depends on</span> <code class="text-[color:var(--primary)] font-serif">${esc(d.depends_on)}</code>${d.reason ? ` <span class="text-[color:var(--muted-foreground)]">— ${esc(d.reason)}</span>` : ''}</div>`
+  ).join('');
+}
+
+// ---------------- Modal enhancements ----------------
+async function modalSetPriority() {
+  if (!modalTaskId) return;
+  const v = document.getElementById('modal-priority-override').value || null;
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/priority`, { priority: v });
+    await refreshDashboard();
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+async function modalSetBucket() {
+  if (!modalTaskId) return;
+  const v = document.getElementById('modal-bucket').value;
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/bucket`, { bucket: v });
+    await refreshDashboard();
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+async function modalSubmitClarification() {
+  if (!modalTaskId) return;
+  const item = findTaskInDashboard(modalTaskId);
+  const threads = (globalDashboardData?.clarifications || []).filter(t => t.task_id === modalTaskId);
+  if (!threads.length) return;
+  const v = document.getElementById('modal-clarify-input').value.trim();
+  if (!v) return;
+  try {
+    await api('POST', `/api/clarifications/${encodeURIComponent(threads[0].id)}/answer`, { answer: v });
+    await refreshDashboard();
+    openTaskModal(modalTaskId);
+  } catch (e) { alert('Failed: ' + e.message); }
+}
+
+async function loadModalTimeline() {
+  if (!modalTaskId) return;
+  const tl = document.getElementById('modal-timeline');
+  try {
+    const data = await api('GET', `/api/tasks/${encodeURIComponent(modalTaskId)}/timeline`);
+    const events = data.events || [];
+    if (!events.length) { tl.textContent = 'No events yet.'; return; }
+    tl.innerHTML = events.map(e => {
+      const d = new Date(e.created_at);
+      const ts = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+      return `<div>· <span class="text-[color:var(--muted-foreground)]">${ts}</span> <span class="text-[color:var(--primary)] font-medium">${esc(e.kind)}</span> <span class="text-[color:var(--muted-foreground)]">${esc(JSON.stringify(e.payload))}</span></div>`;
+    }).join('');
+  } catch (e) { tl.textContent = 'Failed to load timeline.'; }
+}
+
+// ---------------- Init ----------------
+(async () => {
+  const ok = await checkAuth();
+  if (ok) refreshDashboard();
+})();
+</script>
+</body>
+</html>
