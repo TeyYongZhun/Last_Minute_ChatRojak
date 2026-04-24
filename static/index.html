@@ -692,34 +692,14 @@
           <!-- Quadrant picker (check up to 4) -->
           <div class="mt-7 pt-6 border-t border-[var(--border-soft)]">
             <div class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-3">Pick a quadrant to see tasks</div>
-            <div id="quadrant-picker" class="flex flex-wrap gap-2">
+            <div id="quadrant-picker" class="flex flex-wrap items-center gap-2">
               <label class="quad-chip" data-quad="do_now"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#37322F"></span>Do now</label>
               <label class="quad-chip" data-quad="schedule"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#5B7D4E"></span>Plan</label>
               <label class="quad-chip" data-quad="quick"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#B4822A"></span>Quick wins</label>
               <label class="quad-chip" data-quad="defer"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#8A837F"></span>Later</label>
+              <input id="task-search" type="text" placeholder="Search tasks…" oninput="applyFiltersDebounced()"
+                class="ml-2 bg-white border border-[var(--input)] rounded-full px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" style="min-width:160px;" />
             </div>
-          </div>
-        </div>
-
-        <div class="flex justify-end items-center mb-4">
-          <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
-        </div>
-
-        <div id="filter-toolbar" class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-4 mb-6 space-y-3 shadow-[var(--shadow-xs)]">
-          <div class="flex flex-wrap items-center gap-3">
-            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Filters:</span>
-            <select id="filter-status" class="filter-select" onchange="applyFilters()">
-              <option value="active">Active</option>
-              <option value="done">Done</option>
-              <option value="">All</option>
-            </select>
-            <input id="filter-q" class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Search…" oninput="applyFiltersDebounced()" />
-            <button onclick="clearFilters()" class="ghost-btn">Clear</button>
-            <button onclick="regenerateSchedule(this)" class="ghost-btn ghost-btn-accent" title="Auto-slot tasks into your working hours">Regenerate schedule</button>
-          </div>
-          <div class="flex flex-wrap items-center gap-2" id="tag-chips">
-            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>
-            <span class="text-xs text-[color:var(--muted-foreground)]">none yet</span>
           </div>
         </div>
 
@@ -1231,43 +1211,32 @@ function sortByUrgency(items, now = new Date()) {
 function activeTasks(data) {
   const raw = filters.quadrants || {};
   const allOff = !raw.do_now && !raw.schedule && !raw.quick && !raw.defer;
-  const q = allOff
-    ? { do_now: true, schedule: true, quick: true, defer: true }
-    : raw;
-  const isQuick = (t) => (t.eisenhower === 'quick');
-  const keep = [];
-  const pushAll = (arr, ok) => { for (const t of (arr || [])) if (ok(t)) keep.push(t); };
-  pushAll(data.do_now,      t => (isQuick(t) ? q.quick : q.do_now));
-  pushAll(data.in_progress, t => (isQuick(t) ? q.quick : q.do_now));
-  pushAll(data.schedule,    t => q.schedule);
-  pushAll(data.defer,       t => (isQuick(t) ? q.quick : q.defer));
-  // Also surface tasks still awaiting clarification or blocked by deps so they
-  // don't vanish from the board. Route them through the `defer` chip.
-  pushAll(data.need_info,   t => (isQuick(t) ? q.quick : q.defer));
-  pushAll(data.waiting,     t => (isQuick(t) ? q.quick : q.defer));
-  return sortByUrgency(keep);
+
+  const all = [
+    ...(data.do_now      || []),
+    ...(data.in_progress || []),
+    ...(data.schedule    || []),
+    ...(data.defer       || []),
+    ...(data.need_info   || []),
+    ...(data.waiting     || []),
+  ];
+
+  if (allOff) return sortByUrgency(all);
+
+  return sortByUrgency(all.filter(t => {
+    const eq = effectiveQuadrant(t);
+    if (raw.do_now   && eq === 'do')    return true;
+    if (raw.schedule && eq === 'plan')  return true;
+    if (raw.quick    && eq === 'quick') return true;
+    if (raw.defer    && eq === 'later') return true;
+    return false;
+  }));
 }
 
 // ---------------- Filters UI ----------------
-function renderFilterToolbar(data) {
-  const statSel = document.getElementById('filter-status');
-  const qInput = document.getElementById('filter-q');
-
-  statSel.value = filters.status ?? 'active';
-  qInput.value = filters.q || '';
-
-  const chipsEl = document.getElementById('tag-chips');
-  const tagRows = (data.available_tags || []);
-  if (!tagRows.length) {
-    chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span><span class="text-xs text-[color:var(--muted-foreground)]">none yet — process a chat to see AI-generated tags</span>`;
-    return;
-  }
-  const active = new Set(filters.tags || []);
-  const chipsHtml = tagRows.map(t => {
-    const cls = active.has(t.tag) ? 'tag-chip active' : 'tag-chip';
-    return `<button class="${cls}" onclick="toggleTag('${esc(t.tag)}')">#${esc(t.tag)} <span class="opacity-60">${t.count}</span></button>`;
-  }).join('');
-  chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>${chipsHtml}`;
+function renderFilterToolbar(_data) {
+  const searchEl = document.getElementById('task-search');
+  if (searchEl && document.activeElement !== searchEl) searchEl.value = filters.q || '';
 }
 
 function toggleTag(tag) {
@@ -1281,8 +1250,8 @@ function toggleTag(tag) {
 function applyFilters() {
   filters.bucket = '';
   filters.priority = '';
-  filters.status = document.getElementById('filter-status').value;
-  filters.q = document.getElementById('filter-q').value;
+  filters.status = 'active';
+  filters.q = (document.getElementById('task-search')?.value || '').trim();
   const quadBoxes = document.querySelectorAll('#quadrant-picker .quad-chip');
   if (quadBoxes.length) {
     const q = {};
