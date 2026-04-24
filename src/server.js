@@ -35,12 +35,12 @@ import authRouter from './routes/auth.js';
 import telegramRouter from './routes/telegram.js';
 import googleOAuthRouter from './routes/googleOAuth.js';
 import { requireUser } from './auth/middleware.js';
-import { getTask, setCalendarSyncEnabled, deleteTask } from './db/repos/tasks.js';
+import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField } from './db/repos/tasks.js';
 import { getPlan } from './db/repos/plans.js';
 import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
 import { addTaskEvent } from './db/repos/taskEvents.js';
-import { addChecklistItem, updateChecklistItemText, deleteChecklistItem, toggleChecklistItem } from './db/repos/checklists.js';
+import { addChecklistItem, updateChecklistItemText, deleteChecklistItem, toggleChecklistItem, getChecklist, replaceChecklist } from './db/repos/checklists.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
 import { getPreferences, upsertPreferences } from './db/repos/userPreferences.js';
@@ -349,6 +349,13 @@ app.post('/api/tasks/:taskId/step-delete', requireUser, (req, res) => {
   }
   const task = getTask(req.user.id, req.params.taskId);
   if (!task) return res.status(404).json({ detail: 'Task not found' });
+  // If no checklist items exist yet, lazily migrate plan steps into checklist_items first
+  if (!getChecklist(req.params.taskId).length) {
+    const plan = getPlan(req.user.id, req.params.taskId);
+    if (Array.isArray(plan?.steps) && plan.steps.length) {
+      replaceChecklist(req.params.taskId, plan.steps);
+    }
+  }
   if (!deleteChecklistItem(req.params.taskId, index)) {
     return res.status(404).json({ detail: 'Step not found' });
   }
@@ -439,6 +446,54 @@ app.delete('/api/tasks/:taskId', requireUser, (req, res) => {
   const deleted = deleteTask(req.user.id, req.params.taskId);
   if (!deleted) return res.status(404).json({ detail: 'Task not found' });
   res.json({ ok: true });
+});
+
+app.post('/api/tasks/:taskId/deadline', requireUser, (req, res) => {
+  const { deadline_iso } = req.body || {};
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  const iso = deadline_iso ? String(deadline_iso) : null;
+  updateTaskField(req.user.id, req.params.taskId, 'deadline_iso', iso);
+  if (iso) {
+    const d = new Date(iso);
+    const human = d.toLocaleString('en-SG', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Singapore' });
+    updateTaskField(req.user.id, req.params.taskId, 'deadline', human);
+  } else {
+    updateTaskField(req.user.id, req.params.taskId, 'deadline', null);
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/tasks/manual', requireUser, (req, res) => {
+  const { task, priority = 'medium', quadrant, deadline, deadline_iso, estimated_duration_minutes, category = 'Other' } = req.body || {};
+  if (!task || !String(task).trim()) {
+    return res.status(400).json({ detail: 'task is required' });
+  }
+  const allowed = ['high', 'medium', 'low'];
+  const p = allowed.includes(priority) ? priority : 'medium';
+  const allowedQ = [null, 'do', 'plan', 'quick', 'later'];
+  const q = allowedQ.includes(quadrant ?? null) ? (quadrant || null) : null;
+  const dur = estimated_duration_minutes != null ? Math.max(5, Math.min(1440, Number(estimated_duration_minutes))) : null;
+
+  const id = `m${Date.now()}`;
+  const { idMap } = mergeNewTasks(req.user.id, [{
+    id,
+    task: String(task).trim(),
+    deadline: deadline ?? null,
+    deadline_iso: deadline_iso ?? null,
+    assigned_by: null,
+    priority: p,
+    confidence: 1,
+    category: String(category).trim() || 'Other',
+    estimated_duration_minutes: dur,
+    missing_fields: [],
+    status: 'pending',
+  }]);
+
+  const realId = idMap[id] || id;
+  if (q) setUserEisenhower(req.user.id, realId, q);
+
+  res.json({ ok: true, id: realId });
 });
 
 app.get('/api/clarifications', requireUser, (req, res) => {

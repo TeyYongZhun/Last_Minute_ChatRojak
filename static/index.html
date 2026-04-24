@@ -670,7 +670,7 @@
         <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Power Grid</h2>
 
         <!-- Stat strip -->
-        <div id="dash-stat-cards" class="grid gap-3 mb-5" style="grid-template-columns:repeat(2,minmax(0,1fr));"></div>
+        <div id="dash-stat-cards" class="grid gap-3 mb-5" style="grid-template-columns:repeat(3,minmax(0,1fr));"></div>
 
         <!-- Overload warning banner -->
         <div id="overload-banner" class="hidden mb-5"></div>
@@ -840,28 +840,6 @@
           </div>
         </div>
 
-        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
-          <div class="section-label">Working Hours</div>
-          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">The scheduler only places auto-slots inside this window. Deadlines and pinned slots are unaffected.</p>
-          <div class="flex flex-wrap items-end gap-4 max-w-2xl">
-            <div>
-              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Day starts</label>
-              <input id="pref-start" type="time" class="mt-1 block bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
-            </div>
-            <div>
-              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Day ends</label>
-              <input id="pref-end" type="time" class="mt-1 block bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
-            </div>
-            <div class="flex-1 min-w-[240px]">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] block mb-1">Working days</label>
-              <div id="pref-days" class="flex flex-wrap gap-1"></div>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 mt-4">
-            <button onclick="savePreferences(this)" class="ghost-btn ghost-btn-accent">Save</button>
-            <span id="pref-status" class="text-sm text-[color:var(--muted-foreground)] min-h-5"></span>
-          </div>
-        </div>
 
         <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
           <div class="section-label">AI Memory</div>
@@ -982,6 +960,55 @@
       <button id="modal-start-btn" onclick="modalStartTask()" class="flex-1 py-2.5 hover:brightness-110 text-white rounded-full text-sm font-bold transition-all" style="background:var(--primary)">Start Task</button>
       <button id="modal-done-btn" onclick="modalMarkDone()" class="flex-1 py-2.5 bg-[var(--success)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Mark Done</button>
 
+    </div>
+  </div>
+</div>
+
+<!-- Add Task Modal -->
+<div id="add-task-modal" class="modal-backdrop hidden" onclick="if(event.target===this)closeAddTaskModal()">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="flex items-center justify-between mb-5">
+      <div class="font-serif text-2xl font-normal text-[color:var(--foreground)]">New Task</div>
+      <button onclick="closeAddTaskModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted-foreground);line-height:1;padding:2px 6px;">&times;</button>
+    </div>
+
+    <div class="flex flex-col gap-4">
+      <!-- Task name -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Task *</label>
+        <textarea id="add-task-name" rows="2" placeholder="What needs to be done?" class="w-full border border-[var(--input)] rounded-[var(--radius-md)] bg-white text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-sm transition-colors resize-none" style="padding:8px 10px;font-family:var(--font-sans);" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitAddTask();}"></textarea>
+      </div>
+
+      <!-- Quadrant -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Quadrant</label>
+        <select id="add-task-quadrant" class="filter-select w-full" style="font-size:13px;">
+          <option value="">— Unassigned —</option>
+          <option value="do">⚡ Do Now</option>
+          <option value="plan">📅 Plan</option>
+          <option value="quick">⚡ Quick Win</option>
+          <option value="later">🌿 Later</option>
+        </select>
+      </div>
+
+      <!-- Deadline + Duration row -->
+      <div class="grid gap-3" style="grid-template-columns:1fr 1fr;">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Deadline</label>
+          <input id="add-task-deadline" type="datetime-local" class="w-full border border-[var(--input)] rounded-[var(--radius-md)] bg-white text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-sm transition-colors" style="padding:7px 10px;font-family:var(--font-sans);" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Est. Duration (min)</label>
+          <input id="add-task-duration" type="number" min="5" max="1440" step="5" placeholder="e.g. 30" class="w-full border border-[var(--input)] rounded-[var(--radius-md)] bg-white text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-sm transition-colors" style="padding:7px 10px;font-family:var(--font-sans);" />
+        </div>
+      </div>
+    </div>
+
+    <div id="add-task-error" class="hidden mt-3 text-sm font-medium text-[color:var(--destructive)]"></div>
+
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeAddTaskModal()" class="ghost-btn flex-1">Cancel</button>
+      <button onclick="submitAddTask()" class="flex-1 text-white font-bold rounded-full py-2.5 text-sm transition-all hover:brightness-110" style="background:var(--primary);border:none;cursor:pointer;font-family:var(--font-sans);">Add Task</button>
     </div>
   </div>
 </div>
@@ -1285,10 +1312,14 @@ function setStatus(msg, type = 'info') {
 // ---------------- API actions ----------------
 const SPINNER_SVG = `<svg class="spin" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"/></svg>`;
 
+let _refreshSeq = 0;
 async function refreshDashboard() {
   if (!currentUser) return;
+  const seq = ++_refreshSeq;
   try {
-    globalDashboardData = await api('GET', '/api/dashboard' + filtersToQuery());
+    const data = await api('GET', '/api/dashboard' + filtersToQuery());
+    if (seq !== _refreshSeq) return; // a newer refresh already arrived — discard this one
+    globalDashboardData = data;
     renderViews(globalDashboardData);
   } catch (e) {
     if (e.status === 401) { showAuthGate(); return; }
@@ -1541,33 +1572,7 @@ function formatCustomDate(rawString) {
   return `${dayName} ${day}/${month}/${year} ${hours}:${minutes}${ampm}`;
 }
 
-function formatPlannedSlot(item) {
-  if (!item?.planned_start_iso || !item?.planned_end_iso) return null;
-  const s = new Date(item.planned_start_iso);
-  const e = new Date(item.planned_end_iso);
-  if (isNaN(s.getTime()) || isNaN(e.getTime())) return null;
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const pad = (n) => String(n).padStart(2, '0');
-  const dateBit = `${days[s.getDay()]} ${s.getDate()} ${mons[s.getMonth()]}`;
-  const sameDay = s.toDateString() === e.toDateString();
-  const timeBit = sameDay
-    ? `${pad(s.getHours())}:${pad(s.getMinutes())}–${pad(e.getHours())}:${pad(e.getMinutes())}`
-    : `${pad(s.getHours())}:${pad(s.getMinutes())} → ${days[e.getDay()]} ${e.getDate()} ${mons[e.getMonth()]} ${pad(e.getHours())}:${pad(e.getMinutes())}`;
-  return `${dateBit} · ${timeBit}`;
-}
-
-function plannedSlotChip(item) {
-  const text = formatPlannedSlot(item);
-  if (!text) return '';
-  const origin = item.slot_origin === 'user' ? 'user' : 'auto';
-  const bg = origin === 'user' ? 'rgba(124,58,237,0.12)' : 'rgba(91,125,78,0.1)';
-  const fg = origin === 'user' ? '#7C3AED' : 'var(--primary)';
-  const border = origin === 'user' ? 'rgba(124,58,237,0.3)' : 'rgba(91,125,78,0.25)';
-  const icon = origin === 'user' ? '📌' : '🗓';
-  const label = origin === 'user' ? 'Pinned' : 'Planned';
-  return `<span class="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5" style="background:${bg};color:${fg};border:1px solid ${border}" title="${label} slot">${icon} ${label}: ${esc(text)}</span>`;
-}
+function plannedSlotChip() { return ''; }
 
 async function regenerateSchedule(btn) {
   if (btn) { btn.disabled = true; const old = btn.textContent; btn.dataset.oldLabel = old; btn.textContent = 'Regenerating…'; }
@@ -1631,7 +1636,7 @@ function renderTaskRow(item) {
     ? ''
     : item.status === 'in_progress'
     ? `<button data-tid="${tid}" onclick="event.stopPropagation();unstartTask(this.dataset.tid)" class="ghost-btn" style="background:#EA6C00;color:#fff;border-color:#EA6C008,0.3);">In Progress</button>`
-    : `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
+    : `<button data-tid="${tid}" onclick="event.stopPropagation();startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
 
   const tickbox = `<input type="checkbox" class="task-tick" ${item.status === 'done' ? 'checked' : ''} data-tid="${tid}" onclick="event.stopPropagation()" onchange="markDone(this.dataset.tid)" title="Mark done" />`;
 
@@ -1676,9 +1681,15 @@ function renderStatCards(data, active) {
       <div class="font-serif text-4xl font-normal leading-none ${valueClass}">${value}</div>
       <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2">${label}</div>
     </div>`;
+  const addCard = `
+    <button onclick="openAddTaskModal()" class="bg-white border border-dashed border-[var(--border)] rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)] flex flex-col items-start cursor-pointer transition-all hover:border-[color:var(--primary)] hover:shadow-[var(--shadow-sm)] group" style="font-family:var(--font-sans);text-align:left;">
+      <div class="font-serif text-4xl font-normal leading-none text-[color:var(--muted-foreground)] group-hover:text-[color:var(--primary)] transition-colors">+</div>
+      <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2 group-hover:text-[color:var(--primary)] transition-colors">Add Task</div>
+    </button>`;
   return [
     card(total, 'Active', 'text-[color:var(--foreground)]'),
     card(dueToday, 'Due Today', dueToday ? 'text-[color:var(--destructive)]' : 'text-[color:var(--foreground)]'),
+    addCard,
   ].join('');
 }
 
@@ -1723,11 +1734,6 @@ function renderTaskBlock(item) {
   const badges = [];
   if (isOverdue) badges.push(`<span class="task-block-badge overdue">Overdue</span>`);
   if (missing) badges.push(`<span class="task-block-badge needs-info">Needs info</span>`);
-  const plannedText = formatPlannedSlot(item);
-  if (plannedText) {
-    const label = item.slot_origin === 'user' ? '📌' : '🗓';
-    badges.push(`<span class="task-block-badge" style="background:rgba(91,125,78,0.12);color:var(--primary);border:1px solid rgba(91,125,78,0.3)">${label} ${esc(plannedText)}</span>`);
-  }
   const classes = ['task-block'];
   if (missing) classes.push('missing-info');
   return `<div class="${classes.join(' ')}"
@@ -2330,7 +2336,7 @@ async function markDone(taskId) {
       const btns = row.querySelectorAll('button:not(.task-tick)');
       btns.forEach(b => b.style.visibility = '');
     }
-    try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/unstart`); } catch (e) { console.error(e); }
+    try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/pause`); } catch (e) { console.error(e); }
   } else {
     // Tick: mark done visually, stay in list
     _pendingDone.add(taskId);
@@ -2347,20 +2353,40 @@ async function cancelTask(taskId) {
   if (!confirm('Cancel and remove this task? This cannot be undone.')) return;
   try {
     await api('DELETE', `/api/tasks/${encodeURIComponent(taskId)}`);
-    refreshDashboard();
+    await refreshDashboard();
   } catch (e) {
     console.error(e);
   }
 }
+function patchTaskRowButton(taskId, isInProgress) {
+  const eid = String(taskId).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const row = document.querySelector(`.task-row[data-tid="${eid}"]`);
+  if (!row) return;
+  // Swap the action button in place (no re-sort)
+  const actionsEl = row.querySelector('.flex.shrink-0.items-center');
+  if (actionsEl) {
+    if (isInProgress) {
+      actionsEl.innerHTML = `<button data-tid="${taskId}" onclick="event.stopPropagation();unstartTask(this.dataset.tid)" class="ghost-btn" style="background:#EA6C00;color:#fff;border-color:rgba(234,108,0,0.3);">In Progress</button>`;
+    } else {
+      actionsEl.innerHTML = `<button data-tid="${taskId}" onclick="event.stopPropagation();startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
+    }
+  }
+  // Patch the status label text inside the row
+  const statusSpan = row.querySelector('.text-\\[color\\:var\\(--heading-2\\)\\]');
+  if (statusSpan) statusSpan.textContent = isInProgress ? 'In progress' : 'Pending';
+}
+
 async function unstartTask(taskId) {
   try {
-    await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/unstart`);
+    await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/pause`);
+    patchTaskRowButton(taskId, false);
     refreshDashboard();
   } catch (e) { console.error(e); }
 }
 async function startTaskAction(taskId) {
   try {
     await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/start`);
+    patchTaskRowButton(taskId, true);
     refreshDashboard();
   } catch (e) {
     console.error(e);
@@ -3342,6 +3368,49 @@ async function saveNewModalStep() {
   openTaskModal(modalTaskId);
 }
 
+
+// ---------------- Add Task Modal ----------------
+function openAddTaskModal() {
+  document.getElementById('add-task-name').value = '';
+  document.getElementById('add-task-quadrant').value = '';
+  document.getElementById('add-task-deadline').value = '';
+  document.getElementById('add-task-duration').value = '';
+  document.getElementById('add-task-error').classList.add('hidden');
+  document.getElementById('add-task-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('add-task-name').focus(), 50);
+}
+
+function closeAddTaskModal() {
+  document.getElementById('add-task-modal').classList.add('hidden');
+}
+
+async function submitAddTask() {
+  const name = document.getElementById('add-task-name').value.trim();
+  const errEl = document.getElementById('add-task-error');
+  errEl.classList.add('hidden');
+  if (!name) { errEl.textContent = 'Task name is required.'; errEl.classList.remove('hidden'); return; }
+
+  const quadrant = document.getElementById('add-task-quadrant').value || null;
+  const deadlineRaw = document.getElementById('add-task-deadline').value;
+  const durationRaw = document.getElementById('add-task-duration').value;
+
+  const deadline_iso = deadlineRaw ? new Date(deadlineRaw).toISOString() : null;
+  const deadline = deadlineRaw ? new Date(deadlineRaw).toLocaleString('en-SG', { dateStyle: 'medium', timeStyle: 'short' }) : null;
+  const duration = durationRaw ? Math.max(5, Math.min(1440, parseInt(durationRaw, 10))) : null;
+
+  const btn = document.querySelector('#add-task-modal button[onclick="submitAddTask()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  try {
+    await api('POST', '/api/tasks/manual', { task: name, quadrant, deadline, deadline_iso, estimated_duration_minutes: duration });
+    closeAddTaskModal();
+    await refreshDashboard();
+  } catch (e) {
+    errEl.textContent = e.message || 'Failed to add task.';
+    errEl.classList.remove('hidden');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Add Task'; }
+  }
+}
 
 // ---------------- Login background bubbles ----------------
 (function() {
