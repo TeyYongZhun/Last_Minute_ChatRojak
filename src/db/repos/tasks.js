@@ -1,6 +1,5 @@
 import { getDb } from '../index.js';
 
-const VALID_BUCKETS = new Set(['Academic', 'Co-curricular', 'Others']);
 const VALID_PRIORITIES = new Set(['high', 'medium', 'low']);
 const VALID_QUADRANTS = new Set(['do', 'plan', 'quick', 'later']);
 
@@ -24,7 +23,6 @@ function normaliseRow(row) {
     user_duration_minutes: row.user_duration_minutes ?? null,
     confidence: row.confidence,
     category: row.category,
-    category_bucket: row.category_bucket || 'Others',
     complexity: row.complexity || null,
     missing_fields: JSON.parse(row.missing_fields || '[]'),
     status: row.status,
@@ -88,10 +86,8 @@ export function countTasks(userId) {
 export function insertTask(userId, task) {
   const db = getDb();
   const now = Date.now();
-  const bucket = VALID_BUCKETS.has(task.category_bucket) ? task.category_bucket : 'Others';
   const priority = VALID_PRIORITIES.has(task.priority) ? task.priority : 'medium';
   const aiPriority = VALID_PRIORITIES.has(task.ai_priority) ? task.ai_priority : priority;
-
   const aiQuadrant = VALID_QUADRANTS.has(task.ai_eisenhower) ? task.ai_eisenhower : null;
   const aiDuration = task.ai_duration_minutes == null
     ? null
@@ -102,9 +98,9 @@ export function insertTask(userId, task) {
        id, user_id, task, deadline, deadline_iso, assigned_by,
        priority, confidence, category, missing_fields, status, created_at,
        ai_priority, user_priority, ai_priority_score, user_adjusted_score,
-       category_bucket, updated_at, completed_at, complexity,
+       updated_at, completed_at, complexity,
        ai_eisenhower, user_eisenhower, ai_duration_minutes, user_duration_minutes
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     task.id,
     userId,
@@ -114,7 +110,7 @@ export function insertTask(userId, task) {
     task.assigned_by ?? null,
     priority,
     typeof task.confidence === 'number' ? task.confidence : 0.8,
-    task.category || bucket,
+    task.category || 'Other',
     JSON.stringify(task.missing_fields || []),
     task.status || 'pending',
     now,
@@ -122,7 +118,6 @@ export function insertTask(userId, task) {
     task.user_priority ?? null,
     task.ai_priority_score ?? null,
     task.user_adjusted_score ?? null,
-    bucket,
     now,
     null,
     task.complexity ?? null,
@@ -144,10 +139,9 @@ function stampUpdated(userId, taskId) {
 
 export function updateTaskStatus(userId, taskId, status) {
   const db = getDb();
-  const changes = db
+  return db
     .prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE user_id = ? AND id = ?')
     .run(status, Date.now(), userId, taskId).changes;
-  return changes;
 }
 
 export function markCompleted(userId, taskId) {
@@ -165,20 +159,18 @@ export function updateTaskField(userId, taskId, field, value) {
     throw new Error(`updateTaskField: unsupported field '${field}'`);
   }
   const db = getDb();
-  const changes = db
+  return db
     .prepare(`UPDATE tasks SET ${field} = ?, updated_at = ? WHERE user_id = ? AND id = ?`)
     .run(value, Date.now(), userId, taskId).changes;
-  return changes;
 }
 
 export function updateTaskMissingFields(userId, taskId, missingFields) {
   const db = getDb();
-  const changes = db
+  return db
     .prepare(
       'UPDATE tasks SET missing_fields = ?, updated_at = ? WHERE user_id = ? AND id = ?'
     )
     .run(JSON.stringify(missingFields || []), Date.now(), userId, taskId).changes;
-  return changes;
 }
 
 export function setUserPriority(userId, taskId, value) {
@@ -191,18 +183,6 @@ export function setUserPriority(userId, taskId, value) {
       'UPDATE tasks SET user_priority = ?, updated_at = ? WHERE user_id = ? AND id = ?'
     )
     .run(value, Date.now(), userId, taskId).changes;
-}
-
-export function setCategoryBucket(userId, taskId, bucket) {
-  if (!VALID_BUCKETS.has(bucket)) {
-    throw new Error(`setCategoryBucket: invalid bucket '${bucket}'`);
-  }
-  const db = getDb();
-  return db
-    .prepare(
-      'UPDATE tasks SET category_bucket = ?, updated_at = ? WHERE user_id = ? AND id = ?'
-    )
-    .run(bucket, Date.now(), userId, taskId).changes;
 }
 
 export function setComplexity(userId, taskId, complexity) {
@@ -270,44 +250,10 @@ export function setUserDurationMinutes(userId, taskId, minutes) {
     .run(m, Date.now(), userId, taskId).changes;
 }
 
-export function setTaskTags(taskId, tags) {
+export function deleteTask(userId, taskId) {
   const db = getDb();
-  db.prepare('DELETE FROM task_tags WHERE task_id = ?').run(taskId);
-  const stmt = db.prepare('INSERT INTO task_tags (task_id, tag) VALUES (?, ?)');
-  for (const tag of tags || []) stmt.run(taskId, tag);
-}
-
-export function getTagsForTask(taskId) {
-  const db = getDb();
-  return db
-    .prepare('SELECT tag FROM task_tags WHERE task_id = ? ORDER BY tag')
-    .all(taskId)
-    .map((r) => r.tag);
-}
-
-export function getTagsForTasks(taskIds) {
-  if (!taskIds.length) return {};
-  const db = getDb();
-  const placeholders = taskIds.map(() => '?').join(',');
-  const rows = db
-    .prepare(`SELECT task_id, tag FROM task_tags WHERE task_id IN (${placeholders})`)
-    .all(...taskIds);
-  const out = {};
-  for (const r of rows) (out[r.task_id] ||= []).push(r.tag);
-  return out;
-}
-
-export function listTagCounts(userId) {
-  const db = getDb();
-  return db
-    .prepare(
-      `SELECT tt.tag AS tag, COUNT(*) AS count
-       FROM task_tags tt JOIN tasks t ON t.id = tt.task_id
-       WHERE t.user_id = ?
-       GROUP BY tt.tag
-       ORDER BY count DESC, tag ASC`
-    )
-    .all(userId);
+  const info = db.prepare('DELETE FROM tasks WHERE user_id = ? AND id = ?').run(userId, taskId);
+  return info.changes > 0;
 }
 
 export function deleteAllForUser(userId) {

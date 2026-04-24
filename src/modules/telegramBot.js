@@ -101,8 +101,7 @@ function renderDashboardText(data) {
     for (const it of items) {
       const dl = it.deadline ? ` · ${it.deadline}` : '';
       const by = it.assigned_by ? ` · ${it.assigned_by}` : '';
-      const tags = it.tags?.length ? ` · #${it.tags.join(' #')}` : '';
-      lines.push(`${it.task_id}  ${it.task}${dl}${by}  [${it.priority_score}]${tags}`);
+      lines.push(`${it.task_id}  ${it.task}${dl}${by}  [${it.priority_score}]`);
     }
   };
   push('In progress', data.in_progress);
