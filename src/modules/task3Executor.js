@@ -16,13 +16,9 @@ import {
   updateTaskStatus,
   updateTaskField,
   updateTaskMissingFields,
-  setTaskTags,
-  getTagsForTasks,
-  listTagCounts,
   deleteAllForUser,
   renameTaskCategory,
   setUserPriority as repoSetUserPriority,
-  setCategoryBucket,
   setComplexity,
   setPriorityScores,
   setAiEisenhower,
@@ -40,6 +36,7 @@ import {
 import {
   toggleChecklistItem,
   getChecklist,
+  replaceChecklist,
 } from '../db/repos/checklists.js';
 import { listRecent as listRecentNotifications } from '../db/repos/notifications.js';
 import { listRecent as listRecentReplanEvents, addReplanEvent, hasEventContaining } from '../db/repos/replanEvents.js';
@@ -58,6 +55,7 @@ import {
   recordQuadrantAdjust,
   shapeWeights,
   weightsSummary,
+  reset as resetAdaptiveWeights,
 } from './adaptiveScoring.js';
 import { openThread, listOpenThreads } from './clarificationLoop.js';
 import { assignSlots, detectSlotOverlaps } from './slotter.js';
@@ -117,10 +115,8 @@ export function mergeNewTasks(userId, newTasks) {
       }
       if (!t.id || existing.has(t.id)) t.id = allocateId();
       insertTask(userId, t);
-      setTaskTags(t.id, t.tags || []);
       addTaskEvent(userId, t.id, 'created', {
         source: 'prompt_chain',
-        category_bucket: t.category_bucket || 'Others',
         ai_priority: t.ai_priority || t.priority,
         confidence: t.confidence,
       });
@@ -367,6 +363,27 @@ export function pauseTask(userId, taskId) {
   return { result: 'ok' };
 }
 
+function deadlineTextToIso(text, now = new Date()) {
+  if (!text || typeof text !== 'string') return null;
+  const hasTime = /\d:\d{2}|\b\d{1,2}\s*(am|pm)\b/i.test(text);
+  let d = null;
+  const slashM = text.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if (slashM) {
+    let day = +slashM[1], month = +slashM[2] - 1;
+    let year = slashM[3] ? +slashM[3] : now.getFullYear();
+    if (year < 100) year += 2000;
+    d = new Date(year, month, day);
+  }
+  if (!d || isNaN(d.getTime())) {
+    const nd = new Date(text);
+    if (!isNaN(nd.getTime())) d = nd;
+  }
+  if (!d || isNaN(d.getTime())) return null;
+  if (!hasTime) d = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 0, 0);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00+08:00`;
+}
+
 export function respondToClarification(userId, taskId, field, value) {
   const task = getTask(userId, taskId);
   if (!task) return false;
@@ -374,6 +391,8 @@ export function respondToClarification(userId, taskId, field, value) {
   const tx = db.transaction(() => {
     if (field === 'deadline') {
       updateTaskField(userId, taskId, 'deadline', value);
+      const iso = deadlineTextToIso(value, new Date());
+      if (iso) updateTaskField(userId, taskId, 'deadline_iso', iso);
     } else if (field === 'assigned_by') {
       updateTaskField(userId, taskId, 'assigned_by', value);
     } else if (field === 'deadline_iso') {
@@ -409,12 +428,8 @@ export function setUserPriority(userId, taskId, priority) {
   return true;
 }
 
-export function setBucket(userId, taskId, bucket) {
-  const task = getTask(userId, taskId);
-  if (!task) return false;
-  setCategoryBucket(userId, taskId, bucket);
-  addTaskEvent(userId, taskId, 'bucket_changed', { bucket });
-  return true;
+export function setBucket(_userId, _taskId, _bucket) {
+  return false;
 }
 
 export function setUserEisenhower(userId, taskId, quadrant) {
@@ -480,8 +495,7 @@ export function toggleStep(userId, taskId, stepIndex) {
   return ok;
 }
 
-function matchesFilters(task, plan, tags, filters) {
-  if (filters.bucket && task.category_bucket !== filters.bucket) return false;
+function matchesFilters(task, plan, filters) {
   if (filters.category && (task.category || 'Other').toLowerCase() !== filters.category.toLowerCase()) return false;
   if (filters.priority && task.priority !== filters.priority) return false;
   if (filters.status) {
@@ -493,12 +507,6 @@ function matchesFilters(task, plan, tags, filters) {
     const needle = filters.q.toLowerCase();
     if (!task.task.toLowerCase().includes(needle)) return false;
   }
-  if (filters.tags && filters.tags.length) {
-    const taskTags = new Set(tags);
-    for (const want of filters.tags) {
-      if (!taskTags.has(want)) return false;
-    }
-  }
   return true;
 }
 
@@ -506,7 +514,6 @@ export function getDashboard(userId, filters = {}) {
   const tasks = listTasks(userId);
   const plans = listPlans(userId);
   const planByTaskId = Object.fromEntries(plans.map((p) => [p.task_id, p]));
-  const tagsByTask = getTagsForTasks(tasks.map((t) => t.id));
   const deps = listDependencies(userId);
   const depsByTask = {};
   for (const d of deps) (depsByTask[d.task_id] ||= []).push({ depends_on: d.depends_on, reason: d.reason });
@@ -531,7 +538,6 @@ export function getDashboard(userId, filters = {}) {
     });
 
   for (const { task, plan } of ordered) {
-    const tags = tagsByTask[task.id] || [];
     const effectivePlan = plan || {
       task_id: task.id,
       priority_score: 0,
@@ -544,7 +550,7 @@ export function getDashboard(userId, filters = {}) {
       planned_end_iso: null,
       slot_origin: null,
     };
-    if (!matchesFilters(task, effectivePlan, tags, filters)) continue;
+    if (!matchesFilters(task, effectivePlan, filters)) continue;
     const taskDeps = depsByTask[task.id] || [];
     const depsRemaining = taskDeps.filter((d) => !doneIds.has(d.depends_on));
     const isWaiting = depsRemaining.length > 0 && task.status !== 'done';
@@ -585,9 +591,7 @@ export function getDashboard(userId, filters = {}) {
       status: task.status,
       confidence: task.confidence,
       category: task.category || 'Other',
-      category_bucket: task.category_bucket || 'Others',
       complexity: task.complexity,
-      tags,
       dependencies: taskDeps,
       depends_remaining: depsRemaining.map((d) => d.depends_on),
       plan_missing: !plan,
@@ -617,13 +621,21 @@ export function getDashboard(userId, filters = {}) {
     dependencies: deps,
     adaptation: weightsSummary(userId),
     total_tasks: tasks.length,
-    available_tags: listTagCounts(userId),
     filters_applied: filters,
   };
 }
 
 export function resetUser(userId) {
-  deleteAllForUser(userId);
+  const db = getDb();
+  db.transaction(() => {
+    // Tasks cascade-deletes: plans, task_tags, checklist_items, reminders,
+    // calendar_events, task_events, task_dependencies, clarification_threads
+    deleteAllForUser(userId);
+    db.prepare('DELETE FROM replan_events WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM notifications WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM user_preferences WHERE user_id = ?').run(userId);
+  })();
+  resetAdaptiveWeights(userId);
 }
 
 export function renameCategory(userId, oldName, newName) {

@@ -161,7 +161,6 @@ function buildEventBody(task, plan, now) {
     hasSlot ? `Scheduled: ${startIso} → ${endIso} (${plan.slot_origin || 'auto'})` : null,
     task.deadline_iso ? `Due: ${task.deadline_iso}` : null,
     (plan?.steps || []).length ? `Steps:\n- ${plan.steps.join('\n- ')}` : null,
-    task.category_bucket ? `Bucket: ${task.category_bucket}` : null,
   ]
     .filter(Boolean)
     .join('\n\n');

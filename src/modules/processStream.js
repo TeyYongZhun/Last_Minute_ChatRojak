@@ -33,11 +33,9 @@ export async function processWithEvents(userId, text, now, emit, timeframe = 'al
     emit('task', {
       task_id: t.id,
       task: t.task,
-      category_bucket: t.category_bucket,
       category: t.category,
       deadline: t.deadline,
       assigned_by: t.assigned_by,
-      tags: t.tags,
       complexity: t.complexity,
       confidence: t.confidence,
     });

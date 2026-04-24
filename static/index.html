@@ -10,7 +10,7 @@
   <style>
     :root {
       color-scheme: light;
-      --background:#F7F5F3; --card:#FFFFFF;
+      --background:#F7F5F3; --card:rgba(255,255,255,0.92);
       --foreground:#37322F; --heading-2:#49423D; --muted-foreground:#605A57;
       --muted:#F2EFEC; --accent:#F2EFEC;
       --primary:#37322F; --primary-foreground:#FFFFFF;
@@ -110,6 +110,7 @@
     .console-line.error { color: var(--destructive); }
     .console-line.task { color: var(--primary); font-weight: 600; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: .95; transform: none; } }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.65; } }
 
     .hidden { display: none !important; }
 
@@ -144,7 +145,21 @@
     .quad-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 2px rgba(55,50,47,0.2); }
     .quad-chip.active .quad-dot { box-shadow: 0 0 0 2px rgba(255,255,255,0.35); }
 
-    .task-tick { width: 22px; height: 22px; border-radius: 6px; cursor: pointer; accent-color: var(--primary); }
+    .task-tick {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--border); background: white;
+      cursor: pointer; appearance: none; -webkit-appearance: none;
+      flex-shrink: 0; transition: all .15s; position: relative;
+    }
+    .task-tick:hover { border-color: var(--primary); background: rgba(55,50,47,0.05); }
+    .task-tick:checked { background: var(--success); border-color: var(--success); }
+    .task-tick:checked::after {
+      content: ''; position: absolute; left: 5px; top: 2px;
+      width: 8px; height: 12px; border: 2.5px solid white;
+      border-top: none; border-left: none; transform: rotate(40deg);
+    }
+    .task-row.task-done { opacity: 0.55; }
+    .task-row.task-done .task-title-text { text-decoration: line-through; color: var(--muted-foreground); }
 
     .cat-pill {
       display: inline-flex; align-items: center;
@@ -184,6 +199,29 @@
       padding: 28px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
     }
 
+    .step-item .step-delete { opacity: 0; transition: opacity .15s; }
+    .step-item:hover .step-delete { opacity: 1; }
+
+
+    /* ---- Login background ---- */
+    #auth-gate {
+      background: linear-gradient(120deg, #4A8C7F 0%, #6BA896 25%, #C8A96E 60%, #E8A84A 100%) !important;
+      overflow: hidden;
+    }
+    .chat-bubble-bg {
+      position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 70px);
+      grid-template-rows: repeat(auto-fill, 70px);
+      gap: 0;
+      align-content: start;
+    }
+    .cb {
+      display: flex; align-items: center; justify-content: center;
+      width: 70px; height: 70px;
+    }
+    #auth-gate > .w-full { position: relative; z-index: 1; }
+
     .edge-hatch {
       background-image: repeating-linear-gradient(-45deg, rgba(55,50,47,0.08) 0 0.5px, transparent 0.5px 14px);
     }
@@ -209,10 +247,10 @@
       border-bottom: 1px solid var(--border-soft);
       background: #FBFAF8;
     }
-    .quadrant[data-quadrant="do"]    .quadrant-header { background: #FFF0ED; border-bottom-color: #F5C4B8; }
-    .quadrant[data-quadrant="plan"]  .quadrant-header { background: #E8F4FD; border-bottom-color: #B3D9F5; }
-    .quadrant[data-quadrant="quick"] .quadrant-header { background: #EDFAF3; border-bottom-color: #B2E8CD; }
-    .quadrant[data-quadrant="later"] .quadrant-header { background: #F2F0F7; border-bottom-color: #D5CFE8; }
+    .quadrant[data-quadrant="do"]    .quadrant-header { background: #EF9A9A; border-bottom-color: #E57373; }
+    .quadrant[data-quadrant="plan"]  .quadrant-header { background: #90CAF9; border-bottom-color: #64B5F6; }
+    .quadrant[data-quadrant="quick"] .quadrant-header { background: #81C784; border-bottom-color: #66BB6A; }
+    .quadrant[data-quadrant="later"] .quadrant-header { background: #CE93D8; border-bottom-color: #BA68C8; }
     .quadrant-title {
       font-family: var(--font-serif);
       font-size: 22px;
@@ -307,6 +345,26 @@
       color: var(--warn);
       border-color: rgba(180,130,42,0.35);
     }
+    .task-block-cancel {
+      position: absolute;
+      top: 5px; right: 5px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: rgba(180,60,60,0.08);
+      border: 1px solid rgba(180,60,60,0.2);
+      color: var(--destructive);
+      font-size: 12px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      opacity: 0; transition: opacity 0.15s, background 0.15s;
+      flex-shrink: 0;
+    }
+    .task-block:hover .task-block-cancel {
+      opacity: 1;
+    }
+    .task-block-cancel:hover {
+      background: rgba(180,60,60,0.18) !important;
+    }
     .task-block-resize {
       position: absolute;
       bottom: 0; left: 0; right: 0;
@@ -345,9 +403,9 @@
       border: 1px solid transparent;
     }
     .pill-quadrant.q-do     { background: var(--primary);      color: #fff; }
-    .pill-quadrant.q-plan   { background: var(--success);      color: #fff; }
+    .pill-quadrant.q-plan   { background: #7C3AED;      color: #fff; }
     .pill-quadrant.q-quick  { background: var(--warn);         color: #fff; }
-    .pill-quadrant.q-later  { background: var(--accent);       color: var(--muted-foreground); border-color: var(--border); }
+    .pill-quadrant.q-later  { background: #64748B; color: #fff; border: none; }
 
     .pill-duration {
       display: inline-flex; align-items: center;
@@ -432,8 +490,15 @@
             <div class="relative">
               <input id="auth-password" type="password" autocomplete="current-password" class="mt-1 w-full pr-10 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
               <button id="auth-password-toggle" type="button" aria-label="Show password" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]" onclick="togglePasswordVisibility()">
-                <svg id="auth-password-eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-                <svg id="auth-password-eye-closed" xmlns="http://www.w3.org/2000/svg" style="display:none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8 1.73-3.32 4.44-5.73 7.61-6.8"/><path d="M1 1l22 22"/></svg>
+                <svg id="auth-password-eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="12" cy="12" rx="10" ry="6"/>
+  <circle cx="12" cy="12" r="3" fill="currentColor"/>
+</svg>
+                <svg id="auth-password-eye-closed" xmlns="http://www.w3.org/2000/svg" style="display:none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="12" cy="12" rx="10" ry="6"/>
+  <circle cx="12" cy="12" r="3" fill="currentColor"/>
+  <line x1="3" y1="3" x2="21" y2="21"/>
+</svg>
               </button>
             </div>
             <div class="text-xs text-[color:var(--muted-foreground)] mt-1" id="auth-password-hint">At least 8 characters</div>
@@ -460,7 +525,7 @@
     </div>
   </div>
 
-  <aside id="sidebar" class="w-72 border-r border-[var(--border)] bg-white flex flex-col pb-4 px-5 flex-shrink-0 z-10 shadow-[var(--shadow-xs)]" style="padding-top:28px;">
+  <aside id="sidebar" class="w-72 border-r border-[var(--border)] flex flex-col pb-4 px-5 flex-shrink-0 z-10 shadow-[var(--shadow-xs)]" style="background:linear-gradient(180deg,rgba(74,140,127,0.15) 0%,rgba(255,255,255,0.95) 100%);backdrop-filter:blur(2px);padding-top:56px;">
 
     <!-- Avatar + user info + Upload CTA -->
     <div style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:24px;">
@@ -479,9 +544,15 @@
 
       <!-- Upload Chat CTA -->
       <button id="upload-cta-btn" onclick="setMode('upload')"
-        style="width:100%;padding:10px 14px;border-radius:999px;background:var(--primary);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-xs);font-family:var(--font-sans);transition:all .15s ease;display:flex;align-items:center;justify-content:center;gap:8px;"
+        style="width:100%;padding:10px 14px;border-radius:999px;background:linear-gradient(90deg,#2D6E5E,#D4841A);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-xs);font-family:var(--font-sans);transition:all .15s ease;display:flex;align-items:center;justify-content:center;gap:8px;"
         onmouseover="this.style.boxShadow='var(--shadow-sm)'" onmouseout="this.style.boxShadow='var(--shadow-xs)'">
         <span style="font-size:15px;line-height:1;">📁</span> Upload Chat
+      </button>
+      <!-- Try Demo CTA -->
+      <button id="demo-cta-btn" onclick="loadDemo()"
+        style="width:100%;padding:8px 14px;border-radius:999px;background:transparent;color:var(--muted-foreground);border:1.5px dashed var(--border);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-sans);transition:all .15s ease;display:flex;align-items:center;justify-content:center;gap:7px;"
+        onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted-foreground)'">
+        <span style="font-size:13px;line-height:1;">🧪</span> Try Demo
       </button>
     </div>
 
@@ -492,7 +563,7 @@
         <span class="mr-3 text-xl">🏠</span> Dashboard
       </button>
       <button data-mode="checklist" class="nav-btn" onclick="setMode('checklist')">
-        <span class="mr-3 text-xl">✓</span> Checklist
+        <span class="mr-3 text-xl">✅</span> Checklist
       </button>
       <button data-mode="calendar" class="nav-btn" onclick="setMode('calendar')">
         <span class="mr-3 text-xl">📅</span> Calendar
@@ -507,8 +578,8 @@
     </div>
   </aside>
 
-  <main class="flex-1 overflow-y-auto bg-[var(--background)] relative">
-    <div class="max-w-5xl mx-auto px-10 py-12">
+  <main class="flex-1 overflow-y-auto relative" style="background:transparent;">
+    <div class="max-w-5xl mx-auto px-10 py-12" style="min-height:100%;">
 
       <!-- Upload View -->
       <div id="view-upload" class="view-section">
@@ -599,16 +670,27 @@
         <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Power Grid</h2>
 
         <!-- Stat strip -->
-        <div id="dash-stat-cards" class="grid gap-3 mb-5" style="grid-template-columns:repeat(4,minmax(0,1fr));"></div>
+        <div id="dash-stat-cards" class="grid gap-3 mb-5" style="grid-template-columns:repeat(3,minmax(0,1fr));"></div>
 
         <!-- Overload warning banner -->
         <div id="overload-banner" class="hidden mb-5"></div>
+
+        <!-- Empty state -->
+        <div id="dashboard-empty-state" class="hidden mb-6" style="border:1.5px dashed var(--border);border-radius:var(--radius-xl);padding:32px 24px;text-align:center;background:rgba(255,255,255,0.5);">
+          <div style="font-size:36px;margin-bottom:12px;">📋</div>
+          <div style="font-size:16px;font-weight:700;color:var(--foreground);margin-bottom:6px;">No tasks yet</div>
+          <div style="font-size:13px;color:var(--muted-foreground);margin-bottom:18px;">Upload a WhatsApp chat to extract tasks, or try the demo to explore the app.</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="setMode('upload')" style="padding:9px 22px;border-radius:999px;background:var(--primary);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);">Upload Chat</button>
+            <button onclick="loadDemo()" style="padding:9px 22px;border-radius:999px;background:transparent;color:var(--primary);border:1.5px solid var(--primary);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);">Try Demo</button>
+          </div>
+        </div>
 
         <!-- 2x2 Eisenhower Grid -->
         <div class="power-grid mb-8">
           <div class="quadrant" data-quadrant="do">
             <div class="quadrant-header">
-              <div class="quadrant-title">Do Now</div>
+              <div class="quadrant-title">⚡ Do Now</div>
               <div class="quadrant-sub">Urgent &amp; Important</div>
               <div class="quadrant-tally" data-quadrant-tally="do"></div>
             </div>
@@ -616,7 +698,7 @@
           </div>
           <div class="quadrant" data-quadrant="plan">
             <div class="quadrant-header">
-              <div class="quadrant-title">Plan</div>
+              <div class="quadrant-title">📅 Plan</div>
               <div class="quadrant-sub">Important · Not Urgent</div>
               <div class="quadrant-tally" data-quadrant-tally="plan"></div>
             </div>
@@ -624,7 +706,7 @@
           </div>
           <div class="quadrant" data-quadrant="quick">
             <div class="quadrant-header">
-              <div class="quadrant-title">Quick Wins</div>
+              <div class="quadrant-title">🏆 Quick Wins</div>
               <div class="quadrant-sub">Urgent · Not Important</div>
               <div class="quadrant-tally" data-quadrant-tally="quick"></div>
             </div>
@@ -632,7 +714,7 @@
           </div>
           <div class="quadrant" data-quadrant="later">
             <div class="quadrant-header">
-              <div class="quadrant-title">Later</div>
+              <div class="quadrant-title">🕐 Later</div>
               <div class="quadrant-sub">Not Urgent · Not Important</div>
               <div class="quadrant-tally" data-quadrant-tally="later"></div>
             </div>
@@ -671,35 +753,15 @@
 
           <!-- Quadrant picker (check up to 4) -->
           <div class="mt-7 pt-6 border-t border-[var(--border-soft)]">
-            <div class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-3">Pick a quadrant to see tasks</div>
-            <div id="quadrant-picker" class="flex flex-wrap gap-2">
+            <div class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-3">Filter by quadrant <span style="font-weight:400;text-transform:none;letter-spacing:0">(all shown by default)</span></div>
+            <div id="quadrant-picker" class="flex flex-wrap items-center gap-2">
               <label class="quad-chip" data-quad="do_now"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#37322F"></span>Do now</label>
               <label class="quad-chip" data-quad="schedule"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#5B7D4E"></span>Plan</label>
               <label class="quad-chip" data-quad="quick"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#B4822A"></span>Quick wins</label>
               <label class="quad-chip" data-quad="defer"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#8A837F"></span>Later</label>
+              <input id="task-search" type="text" placeholder="Search tasks…" oninput="applyFiltersDebounced()"
+                class="ml-2 bg-white border border-[var(--input)] rounded-full px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" style="min-width:160px;" />
             </div>
-          </div>
-        </div>
-
-        <div class="flex justify-end items-center mb-4">
-          <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
-        </div>
-
-        <div id="filter-toolbar" class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-4 mb-6 space-y-3 shadow-[var(--shadow-xs)]">
-          <div class="flex flex-wrap items-center gap-3">
-            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Filters:</span>
-            <select id="filter-status" class="filter-select" onchange="applyFilters()">
-              <option value="active">Active</option>
-              <option value="done">Done</option>
-              <option value="">All</option>
-            </select>
-            <input id="filter-q" class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Search…" oninput="applyFiltersDebounced()" />
-            <button onclick="clearFilters()" class="ghost-btn">Clear</button>
-            <button onclick="regenerateSchedule(this)" class="ghost-btn ghost-btn-accent" title="Auto-slot tasks into your working hours">Regenerate schedule</button>
-          </div>
-          <div class="flex flex-wrap items-center gap-2" id="tag-chips">
-            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>
-            <span class="text-xs text-[color:var(--muted-foreground)]">none yet</span>
           </div>
         </div>
 
@@ -778,28 +840,6 @@
           </div>
         </div>
 
-        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
-          <div class="section-label">Working Hours</div>
-          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">The scheduler only places auto-slots inside this window. Deadlines and pinned slots are unaffected.</p>
-          <div class="flex flex-wrap items-end gap-4 max-w-2xl">
-            <div>
-              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Day starts</label>
-              <input id="pref-start" type="time" class="mt-1 block bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
-            </div>
-            <div>
-              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Day ends</label>
-              <input id="pref-end" type="time" class="mt-1 block bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
-            </div>
-            <div class="flex-1 min-w-[240px]">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] block mb-1">Working days</label>
-              <div id="pref-days" class="flex flex-wrap gap-1"></div>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 mt-4">
-            <button onclick="savePreferences(this)" class="ghost-btn ghost-btn-accent">Save</button>
-            <span id="pref-status" class="text-sm text-[color:var(--muted-foreground)] min-h-5"></span>
-          </div>
-        </div>
 
         <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
           <div class="section-label">AI Memory</div>
@@ -824,7 +864,11 @@
     <div class="flex items-start justify-between mb-5">
       <div class="flex-1 min-w-0 pr-3">
         <div id="modal-category" class="mb-2"></div>
-        <h3 id="modal-title" class="font-serif text-3xl font-normal text-[color:var(--foreground)] leading-tight"></h3>
+        <h3 id="modal-title" contenteditable="true" spellcheck="false"
+      class="font-serif text-3xl font-normal text-[color:var(--foreground)] leading-tight outline-none border-b-2 border-transparent focus:border-[color:var(--primary)] transition-colors cursor-text rounded-sm px-0.5 -mx-0.5"
+      onblur="modalSaveTitle(this.textContent.trim())"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+      title="Click to rename"></h3>
       </div>
       <button onclick="closeModal()" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] text-2xl leading-none flex-shrink-0 mt-1">&times;</button>
     </div>
@@ -832,7 +876,18 @@
     <div class="space-y-3 mb-6">
       <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Deadline</span>
-        <span id="modal-deadline" class="text-[color:var(--primary)] font-medium"></span>
+        <div class="flex items-center gap-2 flex-wrap flex-1">
+          <span id="modal-deadline" class="text-[color:var(--primary)] font-medium"></span>
+          <button id="modal-deadline-edit-btn" onclick="toggleDeadlineEdit()" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--primary)] transition-colors ml-1" title="Edit deadline">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div id="modal-deadline-edit" class="hidden flex items-center gap-1.5 mt-1 w-full">
+            <input id="modal-deadline-input" type="datetime-local"
+              class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-2 py-1 text-sm text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
+            <button onclick="saveModalDeadline()" class="ghost-btn ghost-btn-accent" style="padding:4px 10px;font-size:12px;">Save</button>
+            <button onclick="toggleDeadlineEdit()" class="ghost-btn" style="padding:4px 8px;font-size:12px;">✕</button>
+          </div>
+        </div>
       </div>
       <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Quadrant</span>
@@ -843,14 +898,14 @@
           <option value="quick">Quick Wins</option>
           <option value="later">Later</option>
         </select>
-        <span id="modal-eisenhower-ai" class="text-xs text-[color:var(--muted-foreground)]"></span>
+        
       </div>
       <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Duration</span>
         <input id="modal-duration" type="number" min="5" max="1440" step="5" onchange="modalSetDuration()"
                class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-2 py-1 text-sm w-20 text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
         <span class="text-xs text-[color:var(--muted-foreground)]">minutes</span>
-        <span id="modal-duration-ai" class="text-xs text-[color:var(--muted-foreground)]"></span>
+        
       </div>
       <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Assigned by</span>
@@ -859,10 +914,6 @@
       <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Status</span>
         <span id="modal-status" class="text-[color:var(--heading-2)]"></span>
-      </div>
-      <div class="flex items-start gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Depends on</span>
-        <div id="modal-deps" class="flex flex-wrap gap-2 flex-1"></div>
       </div>
       <div class="flex items-start gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Calendar</span>
@@ -877,8 +928,23 @@
     </div>
 
     <div id="modal-steps-section" class="mb-6">
-      <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-3">Action Steps</div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)]">Action Steps</div>
+        <button onclick="addModalStep()" class="flex items-center gap-1 text-xs font-semibold text-[color:var(--primary)] hover:underline transition-colors">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add step
+        </button>
+      </div>
       <ol id="modal-steps" class="space-y-2"></ol>
+      <div id="modal-add-step-row" class="hidden mt-2" style="display:none">
+        <div class="flex items-center gap-2">
+          <input id="modal-new-step-input" type="text" placeholder="New action step…" maxlength="200"
+            class="flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none"
+            onkeydown="if(event.key==='Enter')saveNewModalStep(); if(event.key==='Escape')cancelNewModalStep()" />
+          <button onclick="saveNewModalStep()" class="ghost-btn ghost-btn-accent" style="padding:5px 12px;font-size:12px;">Add</button>
+          <button onclick="cancelNewModalStep()" class="ghost-btn" style="padding:5px 8px;font-size:12px;">✕</button>
+        </div>
+      </div>
     </div>
 
     <div id="modal-clarify-section" class="mb-6 hidden">
@@ -891,9 +957,58 @@
     </div>
 
     <div class="flex gap-3 pt-4 border-t border-[var(--border-soft)]">
-      <button id="modal-start-btn" onclick="modalStartTask()" class="flex-1 py-2.5 bg-[var(--primary)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Start Task</button>
+      <button id="modal-start-btn" onclick="modalStartTask()" class="flex-1 py-2.5 hover:brightness-110 text-white rounded-full text-sm font-bold transition-all" style="background:var(--primary)">Start Task</button>
       <button id="modal-done-btn" onclick="modalMarkDone()" class="flex-1 py-2.5 bg-[var(--success)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Mark Done</button>
-      <button onclick="closeModal()" class="px-4 py-2.5 ghost-btn">Close</button>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add Task Modal -->
+<div id="add-task-modal" class="modal-backdrop hidden" onclick="if(event.target===this)closeAddTaskModal()">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="flex items-center justify-between mb-5">
+      <div class="font-serif text-2xl font-normal text-[color:var(--foreground)]">New Task</div>
+      <button onclick="closeAddTaskModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted-foreground);line-height:1;padding:2px 6px;">&times;</button>
+    </div>
+
+    <div class="flex flex-col gap-4">
+      <!-- Task name -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Task *</label>
+        <textarea id="add-task-name" rows="2" placeholder="What needs to be done?" class="w-full border border-[var(--input)] rounded-[var(--radius-md)] bg-white text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-sm transition-colors resize-none" style="padding:8px 10px;font-family:var(--font-sans);" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitAddTask();}"></textarea>
+      </div>
+
+      <!-- Quadrant -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Quadrant</label>
+        <select id="add-task-quadrant" class="filter-select w-full" style="font-size:13px;">
+          <option value="">— Unassigned —</option>
+          <option value="do">⚡ Do Now</option>
+          <option value="plan">📅 Plan</option>
+          <option value="quick">⚡ Quick Win</option>
+          <option value="later">🌿 Later</option>
+        </select>
+      </div>
+
+      <!-- Deadline + Duration row -->
+      <div class="grid gap-3" style="grid-template-columns:1fr 1fr;">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Deadline</label>
+          <input id="add-task-deadline" type="datetime-local" class="w-full border border-[var(--input)] rounded-[var(--radius-md)] bg-white text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-sm transition-colors" style="padding:7px 10px;font-family:var(--font-sans);" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Est. Duration (min)</label>
+          <input id="add-task-duration" type="number" min="5" max="1440" step="5" placeholder="e.g. 30" class="w-full border border-[var(--input)] rounded-[var(--radius-md)] bg-white text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-sm transition-colors" style="padding:7px 10px;font-family:var(--font-sans);" />
+        </div>
+      </div>
+    </div>
+
+    <div id="add-task-error" class="hidden mt-3 text-sm font-medium text-[color:var(--destructive)]"></div>
+
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeAddTaskModal()" class="ghost-btn flex-1">Cancel</button>
+      <button onclick="submitAddTask()" class="flex-1 text-white font-bold rounded-full py-2.5 text-sm transition-all hover:brightness-110" style="background:var(--primary);border:none;cursor:pointer;font-family:var(--font-sans);">Add Task</button>
     </div>
   </div>
 </div>
@@ -928,7 +1043,7 @@ async function api(method, path, body) {
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
   if (!res.ok) {
-    const err = new Error(data?.detail || `${res.status} ${res.statusText}`);
+    const err = new Error(data?.detail || (res.status + ' ' + res.statusText));
     err.status = res.status;
     err.data = data;
     throw err;
@@ -1095,6 +1210,26 @@ async function logout() {
   showAuthGate();
 }
 
+async function loadDemo() {
+  const btn = document.getElementById('demo-cta-btn');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span style="font-size:13px">⏳</span> Loading…'; }
+  try {
+    const res = await api('POST', '/api/demo-seed', { force: false });
+    if (res.seeded === false) {
+      const ok = confirm('You already have tasks. Reset and load demo data instead?');
+      if (!ok) { if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; } return; }
+      await api('POST', '/api/demo-seed', { force: true });
+    }
+    await refreshDashboard();
+    setMode('dashboard');
+  } catch (e) {
+    alert('Failed to load demo: ' + (e.message || 'unknown error'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+  }
+}
+
 async function checkAuth() {
   try {
     currentUser = await api('GET', '/api/auth/me');
@@ -1117,7 +1252,10 @@ function setMode(mode) {
   document.getElementById(`view-${mode}`).classList.remove('hidden');
   if (mode === 'account') refreshAccount();
   else if (mode === 'upload') renderChatFileList();
-  else refreshDashboard();
+  else {
+    filters.quadrants = {};
+    refreshDashboard();
+  }
 }
 
 // ---------------- State ----------------
@@ -1130,7 +1268,7 @@ let filterDebounceTimer = null;
 function loadFilters() {
   try {
     const raw = localStorage.getItem('filters');
-    if (!raw) return { status: 'active', tags: [] };
+    if (!raw) return { status: 'active', tags: [], quadrants: {} };
     const f = JSON.parse(raw);
     return {
       category: f.category || '',
@@ -1138,12 +1276,10 @@ function loadFilters() {
       status: f.status ?? 'active',
       q: f.q || '',
       tags: Array.isArray(f.tags) ? f.tags : [],
-      quadrants: (f.quadrants && typeof f.quadrants === 'object')
-        ? { do_now: !!f.quadrants.do_now, schedule: !!f.quadrants.schedule, quick: !!f.quadrants.quick, defer: !!f.quadrants.defer }
-        : { do_now: true, schedule: true, quick: true, defer: true },
+      quadrants: {},
     };
   } catch {
-    return { status: 'active', tags: [], quadrants: { do_now: true, schedule: true, quick: true, defer: true } };
+    return { status: 'active', tags: [], quadrants: {} };
   }
 }
 function saveFilters() { localStorage.setItem('filters', JSON.stringify(filters)); }
@@ -1176,10 +1312,14 @@ function setStatus(msg, type = 'info') {
 // ---------------- API actions ----------------
 const SPINNER_SVG = `<svg class="spin" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"/></svg>`;
 
+let _refreshSeq = 0;
 async function refreshDashboard() {
   if (!currentUser) return;
+  const seq = ++_refreshSeq;
   try {
-    globalDashboardData = await api('GET', '/api/dashboard' + filtersToQuery());
+    const data = await api('GET', '/api/dashboard' + filtersToQuery());
+    if (seq !== _refreshSeq) return; // a newer refresh already arrived — discard this one
+    globalDashboardData = data;
     renderViews(globalDashboardData);
   } catch (e) {
     if (e.status === 401) { showAuthGate(); return; }
@@ -1210,44 +1350,42 @@ function sortByUrgency(items, now = new Date()) {
 
 function activeTasks(data) {
   const raw = filters.quadrants || {};
-  const allOff = !raw.do_now && !raw.schedule && !raw.quick && !raw.defer;
-  const q = allOff
-    ? { do_now: true, schedule: true, quick: true, defer: true }
-    : raw;
-  const isQuick = (t) => (t.eisenhower === 'quick');
-  const keep = [];
-  const pushAll = (arr, ok) => { for (const t of (arr || [])) if (ok(t)) keep.push(t); };
-  pushAll(data.do_now,      t => (isQuick(t) ? q.quick : q.do_now));
-  pushAll(data.in_progress, t => (isQuick(t) ? q.quick : q.do_now));
-  pushAll(data.schedule,    t => q.schedule);
-  pushAll(data.defer,       t => (isQuick(t) ? q.quick : q.defer));
-  // Also surface tasks still awaiting clarification or blocked by deps so they
-  // don't vanish from the board. Route them through the `defer` chip.
-  pushAll(data.need_info,   t => (isQuick(t) ? q.quick : q.defer));
-  pushAll(data.waiting,     t => (isQuick(t) ? q.quick : q.defer));
-  return sortByUrgency(keep);
+  const anyOn = raw.do_now || raw.schedule || raw.quick || raw.defer;
+  const allOff = !anyOn;
+
+  const all = [
+    ...(data.do_now      || []),
+    ...(data.in_progress || []),
+    ...(data.schedule    || []),
+    ...(data.defer       || []),
+    ...(data.need_info   || []),
+    ...(data.waiting     || []),
+  ];
+
+  if (allOff) return sortByUrgency(all);
+
+  return sortByUrgency(all.filter(t => {
+    const eq = effectiveQuadrant(t);
+    if (raw.do_now   && eq === 'do')    return true;
+    if (raw.schedule && eq === 'plan')  return true;
+    if (raw.quick    && eq === 'quick') return true;
+    if (raw.defer    && eq === 'later') return true;
+    return false;
+  }));
 }
 
 // ---------------- Filters UI ----------------
-function renderFilterToolbar(data) {
-  const statSel = document.getElementById('filter-status');
-  const qInput = document.getElementById('filter-q');
-
-  statSel.value = filters.status ?? 'active';
-  qInput.value = filters.q || '';
-
-  const chipsEl = document.getElementById('tag-chips');
-  const tagRows = (data.available_tags || []);
-  if (!tagRows.length) {
-    chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span><span class="text-xs text-[color:var(--muted-foreground)]">none yet — process a chat to see AI-generated tags</span>`;
-    return;
-  }
-  const active = new Set(filters.tags || []);
-  const chipsHtml = tagRows.map(t => {
-    const cls = active.has(t.tag) ? 'tag-chip active' : 'tag-chip';
-    return `<button class="${cls}" onclick="toggleTag('${esc(t.tag)}')">#${esc(t.tag)} <span class="opacity-60">${t.count}</span></button>`;
-  }).join('');
-  chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>${chipsHtml}`;
+function renderFilterToolbar(_data) {
+  const searchEl = document.getElementById('task-search');
+  if (searchEl && document.activeElement !== searchEl) searchEl.value = filters.q || '';
+  const quadBoxes = document.querySelectorAll('#quadrant-picker .quad-chip');
+  quadBoxes.forEach(lbl => {
+    const name = lbl.dataset.quad;
+    const cb = lbl.querySelector('input');
+    const active = !!(filters.quadrants || {})[name];
+    cb.checked = active;
+    lbl.classList.toggle('active', active);
+  });
 }
 
 function toggleTag(tag) {
@@ -1261,8 +1399,8 @@ function toggleTag(tag) {
 function applyFilters() {
   filters.bucket = '';
   filters.priority = '';
-  filters.status = document.getElementById('filter-status').value;
-  filters.q = document.getElementById('filter-q').value;
+  filters.status = 'active';
+  filters.q = (document.getElementById('task-search')?.value || '').trim();
   const quadBoxes = document.querySelectorAll('#quadrant-picker .quad-chip');
   if (quadBoxes.length) {
     const q = {};
@@ -1284,7 +1422,7 @@ function applyFiltersDebounced() {
 }
 
 function clearFilters() {
-  filters = { status: 'active', tags: [], quadrants: { do_now: true, schedule: true, quick: true, defer: true } };
+  filters = { status: 'active', tags: [], quadrants: {} };
   saveFilters();
   refreshDashboard();
 }
@@ -1292,16 +1430,20 @@ function clearFilters() {
 // ---------------- Rendering ----------------
 function renderViews(data) {
   const summary = document.getElementById('summary-line');
+  const emptyState = document.getElementById('dashboard-empty-state');
   renderFilterToolbar(data);
   if (!data.total_tasks) {
+    if (emptyState) emptyState.classList.remove('hidden');
     summary.textContent = 'No active tasks';
     document.getElementById('dash-stat-cards').innerHTML = '';
     document.getElementById('dash-clarifications').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No data yet. Head to Upload to process a chat.</div>';
     document.getElementById('dash-upnext').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No upcoming tasks.</div>';
     document.getElementById('checklist-content').innerHTML = '<div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No tasks available.</div>';
+    renderPowerGrid([]);
     renderCalendar(data, []);
     return;
   }
+  if (emptyState) emptyState.classList.add('hidden');
 
   const active = activeTasks(data);
   const dueToday = (active || []).filter(t => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
@@ -1430,33 +1572,7 @@ function formatCustomDate(rawString) {
   return `${dayName} ${day}/${month}/${year} ${hours}:${minutes}${ampm}`;
 }
 
-function formatPlannedSlot(item) {
-  if (!item?.planned_start_iso || !item?.planned_end_iso) return null;
-  const s = new Date(item.planned_start_iso);
-  const e = new Date(item.planned_end_iso);
-  if (isNaN(s.getTime()) || isNaN(e.getTime())) return null;
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const pad = (n) => String(n).padStart(2, '0');
-  const dateBit = `${days[s.getDay()]} ${s.getDate()} ${mons[s.getMonth()]}`;
-  const sameDay = s.toDateString() === e.toDateString();
-  const timeBit = sameDay
-    ? `${pad(s.getHours())}:${pad(s.getMinutes())}–${pad(e.getHours())}:${pad(e.getMinutes())}`
-    : `${pad(s.getHours())}:${pad(s.getMinutes())} → ${days[e.getDay()]} ${e.getDate()} ${mons[e.getMonth()]} ${pad(e.getHours())}:${pad(e.getMinutes())}`;
-  return `${dateBit} · ${timeBit}`;
-}
-
-function plannedSlotChip(item) {
-  const text = formatPlannedSlot(item);
-  if (!text) return '';
-  const origin = item.slot_origin === 'user' ? 'user' : 'auto';
-  const bg = origin === 'user' ? 'rgba(124,58,237,0.12)' : 'rgba(91,125,78,0.1)';
-  const fg = origin === 'user' ? '#7C3AED' : 'var(--primary)';
-  const border = origin === 'user' ? 'rgba(124,58,237,0.3)' : 'rgba(91,125,78,0.25)';
-  const icon = origin === 'user' ? '📌' : '🗓';
-  const label = origin === 'user' ? 'Pinned' : 'Planned';
-  return `<span class="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5" style="background:${bg};color:${fg};border:1px solid ${border}" title="${label} slot">${icon} ${label}: ${esc(text)}</span>`;
-}
+function plannedSlotChip() { return ''; }
 
 async function regenerateSchedule(btn) {
   if (btn) { btn.disabled = true; const old = btn.textContent; btn.dataset.oldLabel = old; btn.textContent = 'Regenerating…'; }
@@ -1519,8 +1635,8 @@ function renderTaskRow(item) {
   const actions = item.status === 'done'
     ? ''
     : item.status === 'in_progress'
-    ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Pending</button>`
-    : `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
+    ? `<button data-tid="${tid}" onclick="event.stopPropagation();unstartTask(this.dataset.tid)" class="ghost-btn" style="background:#EA6C00;color:#fff;border-color:#EA6C008,0.3);">In Progress</button>`
+    : `<button data-tid="${tid}" onclick="event.stopPropagation();startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
 
   const tickbox = `<input type="checkbox" class="task-tick" ${item.status === 'done' ? 'checked' : ''} data-tid="${tid}" onclick="event.stopPropagation()" onchange="markDone(this.dataset.tid)" title="Mark done" />`;
 
@@ -1533,7 +1649,7 @@ function renderTaskRow(item) {
   const quadrantPill = `<span class="pill-quadrant q-${qKey}">${quadrantLabel[qKey] || 'Later'}</span>`;
   const durVal = effectiveDuration(item);
   const durationPill = durVal != null
-    ? `<span class="pill-duration">${fmtDuration(durVal)}</span>`
+    ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#2D8C6A;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;">⏱ ${fmtDuration(durVal)}</span>`
     : '';
   const plannedChip = plannedSlotChip(item);
   const metaChips = [quadrantPill, durationPill, plannedChip, tagChips].filter(Boolean).join(' ');
@@ -1541,11 +1657,11 @@ function renderTaskRow(item) {
   const statusText = `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--heading-2)] font-medium">${statusLabel(item)}</span>`;
 
   return `
-    <div class="task-row flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')||event.target.closest('input')) return; openTaskModal('${tid}')">
+    <div class="task-row ${item.status === 'done' ? 'task-done' : ''} flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')||event.target.closest('input')) return; openTaskModal('${tid}')">
       <div class="flex-shrink-0">${tickbox}</div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-0.5">
-          <div class="text-base font-semibold text-[color:var(--foreground)] truncate ${item.status === 'done' ? 'line-through opacity-60' : ''}">${esc(item.task)}</div>
+          <div class="text-base font-semibold text-[color:var(--foreground)] truncate task-title-text">${esc(item.task)}</div>
           ${overdueBadge}
         </div>
         <div class="text-xs text-[color:var(--muted-foreground)] flex items-center flex-wrap gap-1">
@@ -1560,21 +1676,20 @@ function renderTaskRow(item) {
 function renderStatCards(data, active) {
   const total = active.length;
   const dueToday = active.filter((t) => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
-  const completed = (data.done || []).length;
-  const withDur = active.filter((t) => typeof t.duration_minutes === 'number');
-  const avgDur = withDur.length
-    ? Math.round(withDur.reduce((s, t) => s + t.duration_minutes, 0) / withDur.length)
-    : 0;
   const card = (value, label, valueClass) => `
     <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)]">
       <div class="font-serif text-4xl font-normal leading-none ${valueClass}">${value}</div>
       <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2">${label}</div>
     </div>`;
+  const addCard = `
+    <button onclick="openAddTaskModal()" class="bg-white border border-dashed border-[var(--border)] rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)] flex flex-col items-start cursor-pointer transition-all hover:border-[color:var(--primary)] hover:shadow-[var(--shadow-sm)] group" style="font-family:var(--font-sans);text-align:left;">
+      <div class="font-serif text-4xl font-normal leading-none text-[color:var(--muted-foreground)] group-hover:text-[color:var(--primary)] transition-colors">+</div>
+      <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2 group-hover:text-[color:var(--primary)] transition-colors">Add Task</div>
+    </button>`;
   return [
     card(total, 'Active', 'text-[color:var(--foreground)]'),
     card(dueToday, 'Due Today', dueToday ? 'text-[color:var(--destructive)]' : 'text-[color:var(--foreground)]'),
-    card(completed, 'Completed', 'text-[color:var(--success)]'),
-    card(avgDur ? fmtDuration(avgDur) : '—', 'Avg Duration', 'text-[color:var(--heading-2)]'),
+    addCard,
   ].join('');
 }
 
@@ -1598,19 +1713,19 @@ function effectiveDuration(item) {
   return null;
 }
 function blockHeightForMinutes(min) {
-  if (min == null) return 52;
-  return Math.max(52, Math.min(320, Math.round(28 + min * 1.1)));
+  if (min == null) return 80;
+  return Math.max(80, Math.min(320, Math.round(28 + min * 1.1)));
 }
 function minutesForBlockHeight(px) {
   // Inverse of blockHeightForMinutes with 15-min snapping
-  const raw = (Math.max(52, Math.min(320, px)) - 28) / 1.1;
+  const raw = (Math.max(80, Math.min(320, px)) - 28) / 1.1;
   const snapped = Math.round(raw / 15) * 15;
-  return Math.max(5, Math.min(1440, snapped));
+  return Math.max(15, Math.min(1440, snapped));
 }
 
 function renderTaskBlock(item) {
   const dur = effectiveDuration(item);
-  const h = blockHeightForMinutes(dur);
+  const h = 82; // fixed uniform height
   const missing = Array.isArray(item.missing_fields) && item.missing_fields.length > 0;
   const now = new Date();
   const isOverdue = item.deadline_iso && new Date(item.deadline_iso) < now && item.status !== 'done';
@@ -1619,28 +1734,24 @@ function renderTaskBlock(item) {
   const badges = [];
   if (isOverdue) badges.push(`<span class="task-block-badge overdue">Overdue</span>`);
   if (missing) badges.push(`<span class="task-block-badge needs-info">Needs info</span>`);
-  const plannedText = formatPlannedSlot(item);
-  if (plannedText) {
-    const label = item.slot_origin === 'user' ? '📌' : '🗓';
-    badges.push(`<span class="task-block-badge" style="background:rgba(91,125,78,0.12);color:var(--primary);border:1px solid rgba(91,125,78,0.3)">${label} ${esc(plannedText)}</span>`);
-  }
   const classes = ['task-block'];
   if (missing) classes.push('missing-info');
   return `<div class="${classes.join(' ')}"
                draggable="true"
                data-task-id="${esc(item.task_id)}"
                data-duration="${dur ?? ''}"
-               style="height:${h}px;"
+               style="min-height:${h}px;"
                ondragstart="onBlockDragStart(event)"
                ondragend="onBlockDragEnd(event)"
-               onclick="if(event.target.closest('.task-block-resize')) return; openTaskModal('${esc(item.task_id)}')">
+               onclick="if(event.target.closest('.task-block-resize,.task-block-cancel')) return; openTaskModal('${esc(item.task_id)}')">
+    <button class="task-block-cancel" title="Cancel task" onclick="event.stopPropagation(); cancelTask('${esc(item.task_id)}')">&#x2715;</button>
     <div class="task-block-title">${esc(item.task || '')}</div>
     <div class="task-block-meta">
       ${dur != null ? `<span>${fmtDuration(dur)}</span>` : ''}
       <span>${esc(deadlineText)}</span>
       ${badges.join('')}
     </div>
-    <div class="task-block-resize" onmousedown="onBlockResizeStart(event)"></div>
+
   </div>`;
 }
 
@@ -1788,7 +1899,8 @@ function onBlockResizeStart(ev) {
 function onBlockResizeMove(ev) {
   if (!resizeState) return;
   const dy = ev.clientY - resizeState.startY;
-  const newH = Math.max(52, Math.min(320, resizeState.startHeight + dy));
+  const newH = Math.max(80, Math.min(320, resizeState.startHeight + dy));
+  resizeState.block.style.minHeight = '';
   resizeState.block.style.height = newH + 'px';
   const minutes = minutesForBlockHeight(newH);
   resizeState.block.dataset.liveDuration = minutes;
@@ -1961,19 +2073,25 @@ function openTaskModal(taskId) {
   const checklist = Array.isArray(item.checklist) ? item.checklist : [];
   if (checklist.length) {
     stepsList.innerHTML = checklist.map((step, i) => `
-      <li class="flex items-start gap-2 text-sm" data-step-index="${i}">
-        <input type="checkbox" class="mt-1" ${step.done ? 'checked' : ''} onchange="toggleModalStep(${i})" />
-        <span class="step-text flex-1 cursor-text ${step.done ? 'line-through text-[color:var(--muted-foreground)]' : 'text-[color:var(--foreground)]'}" onclick="editModalStep(${i})" title="Click to edit">${esc(step.step || '')}</span>
+      <li class="step-item" style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--border-soft);" data-step-index="${i}">
+        <input type="checkbox" style="flex-shrink:0;width:16px;height:16px;accent-color:var(--success);cursor:pointer;" ${step.done ? 'checked' : ''} onchange="toggleModalStep(${i})" />
+        <span class="step-text" style="flex:1;font-size:14px;cursor:text;${step.done ? 'text-decoration:line-through;color:var(--muted-foreground);' : 'color:var(--foreground);'}" onclick="editModalStep(${i})" title="Click to edit">${esc(step.step || '')}</span>
+        <button class="step-delete" onclick="deleteModalStep(${i})" title="Delete step"
+          style="flex-shrink:0;background:rgba(199,68,58,0.08);border:1px solid rgba(199,68,58,0.25);border-radius:50%;width:22px;height:22px;font-size:14px;line-height:1;cursor:pointer;color:var(--destructive);display:inline-flex;align-items:center;justify-content:center;font-weight:700;padding:0;">&#xD7;</button>
       </li>`).join('');
     document.getElementById('modal-steps-section').classList.remove('hidden');
   } else if (Array.isArray(item.steps) && item.steps.length) {
-    stepsList.innerHTML = item.steps.map((s) => `
-      <li class="text-sm text-[color:var(--heading-2)] flex items-start gap-2">
-        <span class="text-[color:var(--muted-foreground)] mt-0.5">•</span><span>${esc(s)}</span>
+    stepsList.innerHTML = item.steps.map((s, i) => `
+      <li class="step-item" style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--border-soft);" data-step-index="${i}">
+        <input type="checkbox" style="flex-shrink:0;width:16px;height:16px;accent-color:var(--success);cursor:pointer;" onchange="togglePlanStep(this)" />
+        <span class="step-text" style="flex:1;font-size:14px;color:var(--foreground);">${esc(s)}</span>
+        <button class="step-delete" onclick="deleteModalStep(${i})" title="Delete step"
+          style="flex-shrink:0;background:rgba(199,68,58,0.08);border:1px solid rgba(199,68,58,0.25);border-radius:50%;width:22px;height:22px;font-size:14px;line-height:1;cursor:pointer;color:var(--destructive);display:inline-flex;align-items:center;justify-content:center;font-weight:700;padding:0;">&#xD7;</button>
       </li>`).join('');
     document.getElementById('modal-steps-section').classList.remove('hidden');
   } else {
-    document.getElementById('modal-steps-section').classList.add('hidden');
+    stepsList.innerHTML = '';
+    document.getElementById('modal-steps-section').classList.remove('hidden');
   }
 
   const startBtn = document.getElementById('modal-start-btn');
@@ -1983,8 +2101,16 @@ function openTaskModal(taskId) {
     doneBtn.classList.add('hidden');
   } else {
     doneBtn.classList.remove('hidden');
-    if (item.status === 'in_progress') startBtn.classList.add('hidden');
-    else startBtn.classList.remove('hidden');
+    startBtn.classList.remove('hidden');
+    if (item.status === 'in_progress') {
+      startBtn.textContent = 'In Progress';
+      startBtn.style.background = '#EA6C00';
+      startBtn.dataset.state = 'inprogress';
+    } else {
+      startBtn.textContent = 'Start Task';
+      startBtn.style.background = 'var(--primary)';
+      startBtn.dataset.state = '';
+    }
   }
 
   document.getElementById('task-modal').classList.remove('hidden');
@@ -1997,14 +2123,39 @@ function closeModal() {
 
 async function modalStartTask() {
   if (!modalTaskId) return;
-  await startTaskAction(modalTaskId);
-  closeModal();
+  const startBtn = document.getElementById('modal-start-btn');
+  const isInProgress = startBtn?.dataset.state === 'inprogress';
+  if (isInProgress) {
+    await unstartTask(modalTaskId);
+    document.getElementById('modal-status').textContent = 'Pending';
+    startBtn.textContent = 'Start Task';
+    startBtn.style.background = 'var(--primary)';
+    startBtn.dataset.state = '';
+  } else {
+    await startTaskAction(modalTaskId);
+    document.getElementById('modal-status').textContent = 'In Progress';
+    startBtn.textContent = 'In Progress';
+    startBtn.style.background = '#EA6C00';
+    startBtn.dataset.state = 'inprogress';
+  }
 }
 
 async function modalMarkDone() {
   if (!modalTaskId) return;
   await markDone(modalTaskId);
   closeModal();
+}
+
+function togglePlanStep(checkbox) {
+  const span = checkbox.closest('li')?.querySelector('.step-text');
+  if (!span) return;
+  if (checkbox.checked) {
+    span.style.textDecoration = 'line-through';
+    span.style.color = 'var(--muted-foreground)';
+  } else {
+    span.style.textDecoration = '';
+    span.style.color = 'var(--foreground)';
+  }
 }
 
 async function toggleModalStep(index) {
@@ -2095,60 +2246,147 @@ function renderCalendar(data, activeTasksArray) {
     });
   }
 
+  // Store for day-click popup
+  window._calTasksByDate = tasksByDate;
+  window._calYear = year;
+  window._calMonth = month;
+
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   let html = daysOfWeek.map(d => `<div class="bg-white text-center text-xs font-bold text-[color:var(--muted-foreground)] py-3 border-b border-[var(--border)] uppercase tracking-wider">${d}</div>`).join('');
 
   for (let i = 0; i < firstDayIndex; i++) {
-    html += `<div class="bg-[var(--muted)] min-h-[120px] p-2"></div>`;
+    html += `<div class="bg-[var(--muted)] min-h-[80px] p-2"></div>`;
   }
 
   const today = new Date();
   for (let i = 1; i <= daysInMonth; i++) {
     const isCurrentDay = today.getDate() === i && today.getMonth() === month && today.getFullYear() === year;
     const dayClass = isCurrentDay ? 'bg-[#EDE0FF] border-t-2 border-[#7C3AED]' : 'bg-white';
-    const textClass = isCurrentDay ? 'font-serif text-[#7C3AED] font-bold text-2xl' : 'text-[color:var(--heading-2)] font-semibold';
-
-    let tasksHtml = '';
-    if (tasksByDate[i]) {
-      tasksHtml = tasksByDate[i].map(t => {
-        const dotColor = t.priority === 'high' ? 'var(--destructive)'
-          : t.priority === 'medium' ? 'var(--warn)'
-          : 'var(--muted-foreground)';
-        const anchorIso = t.planned_start_iso || t.deadline_iso;
-        const anchorD = new Date(anchorIso);
-        const pad = (n) => String(n).padStart(2, '0');
-        const hhmm = `${pad(anchorD.getHours())}:${pad(anchorD.getMinutes())}`;
-        const prefix = t.planned_start_iso ? '🗓' : '⏰';
-        return `<div onclick="openTaskModal('${esc(t.task_id)}')" class="text-xs cursor-pointer hover:bg-[var(--accent)] rounded-md px-1.5 py-1 truncate select-none flex items-center gap-1.5" title="${esc(t.task)} — ${prefix} ${hhmm}" style="color:var(--heading-2);">
-          <span style="width:6px;height:6px;border-radius:999px;background:${dotColor};flex-shrink:0;"></span>
-          <span class="text-[10px] font-semibold opacity-70 flex-shrink-0">${hhmm}</span>
-          <span class="truncate">${esc(t.task)}</span>
-        </div>`;
-      }).join('');
-    }
-
-    html += `
-      <div class="${dayClass} min-h-[120px] p-3 hover:bg-[var(--accent)] transition-colors flex flex-col gap-2 relative group">
-        <div class="text-sm ${textClass} text-right w-full">${i}</div>
-        <div class="flex-1 overflow-y-auto">${tasksHtml}</div>
-      </div>
-    `;
+    const numClass = isCurrentDay ? 'font-serif text-[#7C3AED] font-bold' : 'text-[color:var(--heading-2)] font-semibold';
+    const tasks = tasksByDate[i] || [];
+    const dots = tasks.slice(0, 6).map(t => {
+      const c = t.priority === 'high' ? 'var(--destructive)' : t.priority === 'medium' ? 'var(--warn)' : 'var(--success)';
+      return `<span style="width:7px;height:7px;border-radius:50%;background:${c};display:inline-block;"></span>`;
+    }).join('');
+    const extra = tasks.length > 6 ? `<span style="font-size:9px;color:var(--muted-foreground);font-weight:700;">+${tasks.length-6}</span>` : '';
+    html += `<div onclick="openCalendarDay(${i})" class="${dayClass} min-h-[80px] px-2 py-2 ${tasks.length?'cursor-pointer':'cursor-default'} transition-colors flex flex-col justify-between" style="hover:background:var(--accent)">
+      <div class="text-sm ${numClass} text-right w-full">${i}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;padding-top:4px;">${dots}${extra}</div>
+    </div>`;
   }
 
   const totalCells = firstDayIndex + daysInMonth;
   const trailingEmpty = (7 - (totalCells % 7)) % 7;
   for (let i = 0; i < trailingEmpty; i++) {
-    html += `<div class="bg-[var(--muted)] min-h-[120px] p-2"></div>`;
+    html += `<div class="bg-[var(--muted)] min-h-[80px] p-2"></div>`;
   }
-
   grid.innerHTML = html;
 }
 
+function openCalendarDay(day) {
+  const tasks = (window._calTasksByDate || {})[day] || [];
+  const year = window._calYear, month = window._calMonth;
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const dateLabel = day + ' ' + monthNames[month] + ' ' + year;
+  const existing = document.getElementById('cal-day-popup');
+  if (existing) existing.remove();
+  const taskRows = tasks.length ? tasks.map(t => {
+    const c = t.priority==='high'?'var(--destructive)':t.priority==='medium'?'var(--warn)':'var(--success)';
+    const anchor = t.planned_start_iso || t.deadline_iso;
+    const timeStr = anchor ? (formatCustomDate(anchor)||'') : 'No deadline';
+    const qLabel = {do:'Do Now',plan:'Plan',quick:'Quick Wins',later:'Later'}[effectiveQuadrant(t)]||'';
+    return `<div onclick="document.getElementById('cal-day-popup').remove();openTaskModal('${esc(t.task_id)}')"
+      style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background:#fff;margin-bottom:8px;transition:background .15s;"
+      onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background='#fff'">
+      <span style="width:10px;height:10px;border-radius:50%;background:${c};flex-shrink:0;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.task)}</div>
+        <div style="font-size:11px;color:var(--muted-foreground);margin-top:2px;">${esc(timeStr)}${qLabel?' · '+qLabel:''}</div>
+      </div>
+    </div>`;
+  }).join('') : `<div style="text-align:center;padding:20px;font-size:14px;color:var(--muted-foreground);">No tasks for this day 🎉</div>`;
+  const popup = document.createElement('div');
+  popup.id = 'cal-day-popup';
+  popup.style.cssText = 'position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(55,50,47,0.4);backdrop-filter:blur(4px);';
+  popup.innerHTML = `<div style="background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 20px 40px rgba(55,50,47,0.12);padding:24px;width:100%;max-width:420px;max-height:80vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-family:var(--font-serif);font-size:22px;color:var(--foreground);">${dateLabel}</div>
+      <button onclick="document.getElementById('cal-day-popup').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted-foreground);">×</button>
+    </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted-foreground);margin-bottom:10px;">${tasks.length} task${tasks.length===1?'':'s'}</div>
+    ${taskRows}
+  </div>`;
+  popup.addEventListener('click', e => { if(e.target===popup) popup.remove(); });
+  document.body.appendChild(popup);
+}
+
 // ---------------- Actions ----------------
-async function markDone(taskId) { try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/complete`); refreshDashboard(); } catch (e) { console.error(e); } }
+const _pendingDone = new Set();
+async function markDone(taskId) {
+  const row = document.querySelector(`.task-row[data-tid="${taskId}"]`);
+  const tick = row ? row.querySelector('.task-tick') : null;
+  const alreadyDone = _pendingDone.has(taskId);
+
+  if (alreadyDone) {
+    // Untick: restore to active
+    _pendingDone.delete(taskId);
+    if (row) {
+      row.classList.remove('task-done');
+      if (tick) tick.checked = false;
+      const btns = row.querySelectorAll('button:not(.task-tick)');
+      btns.forEach(b => b.style.visibility = '');
+    }
+    try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/pause`); } catch (e) { console.error(e); }
+  } else {
+    // Tick: mark done visually, stay in list
+    _pendingDone.add(taskId);
+    if (row) {
+      row.classList.add('task-done');
+      if (tick) tick.checked = true;
+      const btns = row.querySelectorAll('button:not(.task-tick)');
+      btns.forEach(b => b.style.visibility = 'hidden');
+    }
+    try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/complete`); } catch (e) { console.error(e); }
+  }
+}
+async function cancelTask(taskId) {
+  if (!confirm('Cancel and remove this task? This cannot be undone.')) return;
+  try {
+    await api('DELETE', `/api/tasks/${encodeURIComponent(taskId)}`);
+    await refreshDashboard();
+  } catch (e) {
+    console.error(e);
+  }
+}
+function patchTaskRowButton(taskId, isInProgress) {
+  const eid = String(taskId).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const row = document.querySelector(`.task-row[data-tid="${eid}"]`);
+  if (!row) return;
+  // Swap the action button in place (no re-sort)
+  const actionsEl = row.querySelector('.flex.shrink-0.items-center');
+  if (actionsEl) {
+    if (isInProgress) {
+      actionsEl.innerHTML = `<button data-tid="${taskId}" onclick="event.stopPropagation();unstartTask(this.dataset.tid)" class="ghost-btn" style="background:#EA6C00;color:#fff;border-color:rgba(234,108,0,0.3);">In Progress</button>`;
+    } else {
+      actionsEl.innerHTML = `<button data-tid="${taskId}" onclick="event.stopPropagation();startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
+    }
+  }
+  // Patch the status label text inside the row
+  const statusSpan = row.querySelector('.text-\\[color\\:var\\(--heading-2\\)\\]');
+  if (statusSpan) statusSpan.textContent = isInProgress ? 'In progress' : 'Pending';
+}
+
+async function unstartTask(taskId) {
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/pause`);
+    patchTaskRowButton(taskId, false);
+    refreshDashboard();
+  } catch (e) { console.error(e); }
+}
 async function startTaskAction(taskId) {
   try {
     await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/start`);
+    patchTaskRowButton(taskId, true);
     refreshDashboard();
   } catch (e) {
     console.error(e);
@@ -3042,12 +3280,322 @@ function handleAvatarUpload(input) {
   reader.readAsDataURL(file);
 }
 
+
+
+// ---------------- Modal: rename title ----------------
+async function modalSaveTitle(newTitle) {
+  if (!modalTaskId || !newTitle) return;
+  const task = findTaskInDashboard(modalTaskId);
+  if (task && newTitle !== task.task) {
+    task.task = newTitle;
+    try { await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/rename`, { title: newTitle }); } catch {}
+    refreshDashboard();
+  }
+}
+
+// ---------------- Modal: deadline edit ----------------
+function toggleDeadlineEdit() {
+  const row = document.getElementById('modal-deadline-edit');
+  const btn = document.getElementById('modal-deadline-edit-btn');
+  if (!row) return;
+  const isHidden = row.classList.contains('hidden');
+  row.classList.toggle('hidden', !isHidden);
+  if (isHidden) {
+    // pre-fill with current deadline
+    const task = findTaskInDashboard(modalTaskId);
+    const input = document.getElementById('modal-deadline-input');
+    if (task?.deadline_iso && input) {
+      // datetime-local needs format: YYYY-MM-DDTHH:MM
+      const d = new Date(task.deadline_iso);
+      const pad = n => String(n).padStart(2,'0');
+      input.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    setTimeout(() => document.getElementById('modal-deadline-input')?.focus(), 50);
+  }
+}
+
+async function saveModalDeadline() {
+  const input = document.getElementById('modal-deadline-input');
+  if (!input?.value || !modalTaskId) return;
+  const iso = new Date(input.value).toISOString();
+  const task = findTaskInDashboard(modalTaskId);
+  if (task) { task.deadline_iso = iso; task.deadline = input.value; }
+  try { await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/deadline`, { deadline_iso: iso }); } catch {}
+  toggleDeadlineEdit();
+  // Refresh deadline display in modal
+  const deadlineEl = document.getElementById('modal-deadline');
+  if (deadlineEl) deadlineEl.textContent = formatCustomDate(iso) || iso;
+  refreshDashboard();
+}
+
+// ---------------- Modal: add action step ----------------
+function addModalStep() {
+  const row = document.getElementById('modal-add-step-row');
+  if (!row) return;
+  row.classList.remove('hidden');
+  row.style.display = 'block';
+  setTimeout(() => { const i = document.getElementById('modal-new-step-input'); if(i){i.value='';i.focus();} }, 50);
+}
+
+function cancelNewModalStep() {
+  const row = document.getElementById('modal-add-step-row');
+  if (row) { row.style.display = 'none'; }
+  const input = document.getElementById('modal-new-step-input');
+  if (input) input.value = '';
+}
+
+
+async function deleteModalStep(index) {
+  if (!modalTaskId) return;
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/step-delete`, { index });
+  } catch (e) {
+    console.error('delete step failed:', e);
+    return;
+  }
+  await refreshDashboard();
+  openTaskModal(modalTaskId);
+}
+
+async function saveNewModalStep() {
+  const input = document.getElementById('modal-new-step-input');
+  const text = input?.value.trim();
+  if (!text || !modalTaskId) return;
+  try { await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/steps`, { text }); } catch {}
+  cancelNewModalStep();
+  document.getElementById('modal-steps-section')?.classList.remove('hidden');
+  await refreshDashboard();
+  openTaskModal(modalTaskId);
+}
+
+
+// ---------------- Add Task Modal ----------------
+function openAddTaskModal() {
+  document.getElementById('add-task-name').value = '';
+  document.getElementById('add-task-quadrant').value = '';
+  document.getElementById('add-task-deadline').value = '';
+  document.getElementById('add-task-duration').value = '';
+  document.getElementById('add-task-error').classList.add('hidden');
+  document.getElementById('add-task-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('add-task-name').focus(), 50);
+}
+
+function closeAddTaskModal() {
+  document.getElementById('add-task-modal').classList.add('hidden');
+}
+
+async function submitAddTask() {
+  const name = document.getElementById('add-task-name').value.trim();
+  const errEl = document.getElementById('add-task-error');
+  errEl.classList.add('hidden');
+  if (!name) { errEl.textContent = 'Task name is required.'; errEl.classList.remove('hidden'); return; }
+
+  const quadrant = document.getElementById('add-task-quadrant').value || null;
+  const deadlineRaw = document.getElementById('add-task-deadline').value;
+  const durationRaw = document.getElementById('add-task-duration').value;
+
+  const deadline_iso = deadlineRaw ? new Date(deadlineRaw).toISOString() : null;
+  const deadline = deadlineRaw ? new Date(deadlineRaw).toLocaleString('en-SG', { dateStyle: 'medium', timeStyle: 'short' }) : null;
+  const duration = durationRaw ? Math.max(5, Math.min(1440, parseInt(durationRaw, 10))) : null;
+
+  const btn = document.querySelector('#add-task-modal button[onclick="submitAddTask()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  try {
+    await api('POST', '/api/tasks/manual', { task: name, quadrant, deadline, deadline_iso, estimated_duration_minutes: duration });
+    closeAddTaskModal();
+    await refreshDashboard();
+  } catch (e) {
+    errEl.textContent = e.message || 'Failed to add task.';
+    errEl.classList.remove('hidden');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Add Task'; }
+  }
+}
+
+// ---------------- Login background bubbles ----------------
+(function() {
+  const container = document.getElementById('chat-bubble-bg');
+  if (!container) return;
+
+  const dark = '#2D5C54', orange = '#D4841A', brown = '#7A4F2D';
+
+  // Chat bubble SVGs
+  function chatBubble(color, style, s) {
+    s = s || 32;
+    if (style === 0) return `<svg width="${s}" height="${s}" viewBox="0 0 40 36"><rect x="2" y="2" width="34" height="24" rx="7" fill="${color}"/><path d="M8 26L5 35L20 27" fill="${color}"/><rect x="9" y="10" width="20" height="3" rx="1.5" fill="white" opacity=".5"/><rect x="9" y="16" width="14" height="3" rx="1.5" fill="white" opacity=".5"/></svg>`;
+    if (style === 1) return `<svg width="${s}" height="${Math.round(s*0.88)}" viewBox="0 0 40 32"><rect x="2" y="2" width="34" height="22" rx="7" fill="${color}"/><path d="M10 24L7 32L22 25" fill="${color}"/><circle cx="13" cy="13" r="3" fill="white" opacity=".55"/><circle cx="22" cy="13" r="3" fill="white" opacity=".55"/><circle cx="31" cy="13" r="3" fill="white" opacity=".55"/></svg>`;
+    return `<svg width="${s}" height="${s}" viewBox="0 0 40 36"><rect x="4" y="2" width="34" height="24" rx="7" fill="${color}"/><path d="M32 26L35 35L20 27" fill="${color}"/><rect x="9" y="10" width="20" height="3" rx="1.5" fill="white" opacity=".5"/><rect x="9" y="16" width="14" height="3" rx="1.5" fill="white" opacity=".5"/></svg>`;
+  }
+
+  // Orange slice SVG
+  function orangeSlice(s) {
+    s = s || 32;
+    return `<svg width="${s}" height="${s}" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="17" fill="#E8901A" stroke="#C26A10" stroke-width="1.5"/>
+      <circle cx="20" cy="20" r="13" fill="#F5B84A"/>
+      <path d="M20 7 L20 33 M7 20 L33 20 M10 10 L30 30 M30 10 L10 30" stroke="#E8901A" stroke-width="1.2" opacity=".6"/>
+      <circle cx="20" cy="20" r="4" fill="#E8901A" opacity=".7"/>
+    </svg>`;
+  }
+
+  // Food/snack item (looks like cookie/bread)
+  function snackItem(s) {
+    s = s || 28;
+    return `<svg width="${s}" height="${Math.round(s*0.85)}" viewBox="0 0 40 34">
+      <ellipse cx="20" cy="17" rx="16" ry="12" fill="${brown}" opacity=".85"/>
+      <ellipse cx="14" cy="13" rx="4" ry="3" fill="${brown}" opacity=".6"/>
+      <ellipse cx="26" cy="13" rx="3.5" ry="2.5" fill="${brown}" opacity=".5"/>
+      <ellipse cx="20" cy="20" rx="3" ry="2" fill="${brown}" opacity=".5"/>
+      <circle cx="13" cy="14" r="1.2" fill="#F0C070" opacity=".7"/>
+      <circle cx="25" cy="13" r="1" fill="#F0C070" opacity=".7"/>
+      <circle cx="20" cy="20" r="1" fill="#F0C070" opacity=".7"/>
+    </svg>`;
+  }
+
+  const cols = Math.ceil(window.innerWidth / 70) + 2;
+  const rows = Math.ceil(window.innerHeight / 70) + 2;
+
+  // Pattern sequence per cell: 0=dark bubble, 1=dark bubble dots, 2=dark bubble r, 3=orange bubble, 4=orange dots, 5=orange bubble r, 6=orange slice, 7=snack
+  const seq = [0, 3, 1, 4, 6, 2, 3, 5, 7, 0, 4, 6, 1, 3, 7, 2, 4, 0, 6, 5];
+  const sizes = [30, 26, 32, 28, 34, 24, 30, 28, 26, 32, 28, 36, 24, 30, 28, 32, 26, 30, 34, 28];
+  const opacs = [0.22, 0.18, 0.20, 0.24, 0.16, 0.22, 0.19, 0.21, 0.17, 0.23];
+  const rots  = [-12, 8, -5, 15, -18, 6, -10, 12, -3, 18, -8, 5, -15, 10, -6];
+
+  let idx = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const t = seq[idx % seq.length];
+      const s = sizes[idx % sizes.length];
+      const rot = rots[idx % rots.length];
+      const op = opacs[idx % opacs.length];
+      const div = document.createElement('div');
+      div.className = 'cb';
+      div.style.opacity = op;
+      div.style.transform = `rotate(${rot}deg)`;
+      if (t === 0) div.innerHTML = chatBubble(dark, 0, s);
+      else if (t === 1) div.innerHTML = chatBubble(dark, 1, s);
+      else if (t === 2) div.innerHTML = chatBubble(dark, 2, s);
+      else if (t === 3) div.innerHTML = chatBubble(orange, 0, s);
+      else if (t === 4) div.innerHTML = chatBubble(orange, 1, s);
+      else if (t === 5) div.innerHTML = chatBubble(orange, 2, s);
+      else if (t === 6) div.innerHTML = orangeSlice(s);
+      else              div.innerHTML = snackItem(s);
+      container.appendChild(div);
+      idx++;
+    }
+  }
+})();
+
+// ---------------- Weather (Open-Meteo) ----------------
+const WMO_ICONS = {
+  0:'☀️',1:'🌤️',2:'⛅',3:'☁️',
+  45:'🌫️',48:'🌫️',
+  51:'🌦️',53:'🌦️',55:'🌧️',
+  61:'🌧️',63:'🌧️',65:'🌧️',
+  71:'🌨️',73:'🌨️',75:'🌨️',
+  80:'🌦️',81:'🌧️',82:'🌧️',
+  95:'⛈️',96:'⛈️',99:'⛈️',
+};
+const WMO_LABELS = {
+  0:'Sunny',1:'Mostly sunny',2:'Partly cloudy',3:'Overcast',
+  45:'Foggy',48:'Foggy',
+  51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',
+  71:'Light snow',73:'Snow',75:'Heavy snow',
+  80:'Showers',81:'Showers',82:'Heavy showers',
+  95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm',
+};
+
+let _weatherCity = localStorage.getItem('weatherCity') || 'Singapore';
+
+async function fetchWeatherForCity(city) {
+  city = (city || '').trim();
+  if (!city) return;
+  const iconEl = document.getElementById('hero-weather-icon');
+  const tempEl = document.getElementById('hero-temp');
+  const labelEl = document.getElementById('hero-weather-label');
+  const cityBtn = document.getElementById('hero-city-btn');
+  if (tempEl) tempEl.textContent = '…°';
+  closeCityPicker();
+  try {
+    // Geocode
+    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`);
+    const geoData = await geoRes.json();
+    const loc = geoData?.results?.[0];
+    if (!loc) { if (labelEl) labelEl.textContent = 'City not found'; return; }
+    const { latitude, longitude, name, country_code } = loc;
+    // Weather
+    const wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode&temperature_unit=celsius&timezone=auto`);
+    const wxData = await wxRes.json();
+    const curr = wxData?.current;
+    const code = curr?.weathercode ?? 0;
+    const temp = curr?.temperature_2m;
+    if (iconEl) iconEl.textContent = WMO_ICONS[code] ?? '🌡️';
+    if (tempEl) tempEl.textContent = `${Math.round(temp)}°`;
+    if (labelEl) labelEl.textContent = WMO_LABELS[code] ?? 'Clear';
+    const cityNameEl = document.getElementById('hero-city-name');
+    if (cityNameEl) cityNameEl.textContent = name + (country_code ? ', ' + country_code.toUpperCase() : '');
+    _weatherCity = city;
+    localStorage.setItem('weatherCity', city);
+  } catch(e) {
+    console.warn('Weather fetch failed', e);
+    if (labelEl) labelEl.textContent = 'Unavailable';
+  }
+}
+
+const CITY_SUGGESTIONS = ['Singapore','Kuala Lumpur','Tokyo','Seoul','London','New York','Sydney','Paris','Bangkok','Jakarta','Hong Kong','Dubai'];
+
+function renderCitySuggestions(list) {
+  const el = document.getElementById('city-suggestions');
+  if (!el) return;
+  el.innerHTML = list.map(c =>
+    `<button onclick="fetchWeatherForCity('${c}')"
+       class="text-xs px-2.5 py-1 rounded-full border border-[var(--border)] bg-white hover:bg-[var(--accent)] text-[color:var(--foreground)] transition-colors cursor-pointer font-medium">${c}</button>`
+  ).join('');
+}
+
+function filterCitySuggestions(q) {
+  const filtered = q.trim()
+    ? CITY_SUGGESTIONS.filter(c => c.toLowerCase().includes(q.toLowerCase()))
+    : CITY_SUGGESTIONS;
+  renderCitySuggestions(filtered);
+}
+
+function openCityPicker() {
+  const picker = document.getElementById('hero-city-picker');
+  const input = document.getElementById('hero-city-input');
+  if (!picker) return;
+  picker.classList.remove('hidden');
+  renderCitySuggestions(CITY_SUGGESTIONS);
+  if (input) { input.value = ''; input.focus(); }
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', _closeCityOnOutside, { once: true });
+  }, 50);
+}
+function _closeCityOnOutside(e) {
+  const picker = document.getElementById('hero-city-picker');
+  const btn = document.getElementById('hero-city-btn');
+  if (picker && !picker.contains(e.target) && e.target !== btn && !btn?.contains(e.target)) {
+    closeCityPicker();
+  } else if (picker && !picker.classList.contains('hidden')) {
+    document.addEventListener('click', _closeCityOnOutside, { once: true });
+  }
+}
+function closeCityPicker() {
+  const picker = document.getElementById('hero-city-picker');
+  if (picker) picker.classList.add('hidden');
+}
+
 // ---------------- Init ----------------
 (async () => {
   const ok = await checkAuth();
   if (ok) refreshDashboard();
   startHeroClock();
 })();
+
+// fetch weather on load
+(function(){ fetchWeatherForCity(_weatherCity); })();
 
 function startHeroClock() {
   const timeEl = document.getElementById('hero-time');
