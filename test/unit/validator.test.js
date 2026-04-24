@@ -50,25 +50,6 @@ describe('validator.validateRun (local fallback)', () => {
     expect(codes).toContain('bad_bucket');
   });
 
-  it('flags empty steps for do_now tasks', async () => {
-    const out = await validateRun({
-      tasks: [
-        {
-          id: 't1',
-          task: 'x',
-          confidence: 0.9,
-          category_bucket: 'Academic',
-          deadline_iso: '2030-01-01T00:00:00Z',
-          missing_fields: [],
-        },
-      ],
-      plans: [{ task_id: 't1', decision: 'do_now', steps: [] }],
-      dependencies: [],
-    });
-    const codes = out.issues.map((i) => i.code);
-    expect(codes).toContain('empty_do_now_steps');
-  });
-
   it('accepts a clean task', async () => {
     const out = await validateRun({
       tasks: [

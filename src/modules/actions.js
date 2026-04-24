@@ -22,7 +22,10 @@ function reminderId(taskId, fireAtIso) {
 }
 
 export function generateActionsForPlan(userId, plan, task, now) {
-  replaceChecklist(task.id, plan.steps || []);
+  const seed = Array.isArray(plan.steps) ? plan.steps : [];
+  if (seed.length && !getChecklist(task.id).length) {
+    replaceChecklist(task.id, seed);
+  }
 
   const shouldSyncCalendar = task.calendar_sync_enabled && getGoogleTokens(userId);
 

@@ -127,7 +127,7 @@ export function detectConflicts(tasks) {
 }
 
 async function generatePlanAI(tasks, context = {}) {
-  if (!tasks.length) return { steps_by_id: {}, complexity_by_id: {}, dependencies: [] };
+  if (!tasks.length) return { complexity_by_id: {}, dependencies: [] };
   const client = getClient();
 
   const taskList = tasks.map((t) => ({
@@ -139,13 +139,11 @@ async function generatePlanAI(tasks, context = {}) {
   }));
 
   const systemPrompt = `You are a task planner. For each task given, produce:
-- steps: 3-5 concrete actionable steps (array of strings)
 - complexity: one of "simple" | "moderate" | "complex"
 Also propose inter-task dependencies ONLY when one task clearly gates another (e.g. "submit report" depends on "finish analysis"). Never create cycles. Use exact task ids.
 
 Output ONLY valid JSON, no markdown, no commentary:
 {
-  "steps_by_id": {"<id>": ["step 1", ...]},
   "complexity_by_id": {"<id>": "simple" | "moderate" | "complex"},
   "dependencies": [{"task_id": "<id>", "depends_on": "<id>", "reason": "<short>"}]
 }`;
@@ -170,12 +168,11 @@ Output ONLY valid JSON, no markdown, no commentary:
     const content = response.choices?.[0]?.message?.content || '';
     const data = extractJson(content);
     return {
-      steps_by_id: data.steps_by_id && typeof data.steps_by_id === 'object' ? data.steps_by_id : {},
       complexity_by_id: data.complexity_by_id && typeof data.complexity_by_id === 'object' ? data.complexity_by_id : {},
       dependencies: Array.isArray(data.dependencies) ? data.dependencies : [],
     };
   } catch (err) {
-    return { steps_by_id: {}, complexity_by_id: {}, dependencies: [], degraded: true, error: err.message };
+    return { complexity_by_id: {}, dependencies: [], degraded: true, error: err.message };
   }
 }
 
@@ -251,18 +248,16 @@ export async function planTasks(tasks, now, onProgress, options = {}) {
   onProgress?.(`Detecting conflicts across ${tasks.length} task(s)…`);
   const { plans, conflicts } = scorePlan(tasks, now, options);
 
-  onProgress?.(`Generating step-by-step plans and dependency hints…`);
+  onProgress?.(`Assessing complexity and dependency hints…`);
   const ai = await generatePlanAI(tasks, { weightsSummary: options.weightsSummary });
   if (ai.degraded) {
-    onProgress?.(`AI plan step degraded: ${ai.error}. Using deterministic scoring only.`);
+    onProgress?.(`AI plan degraded: ${ai.error}. Using deterministic scoring only.`);
   }
 
   const planMap = Object.fromEntries(plans.map((p) => [p.task_id, p]));
   for (const t of tasks) {
     const p = planMap[t.id];
     if (!p) continue;
-    const steps = Array.isArray(ai.steps_by_id[t.id]) ? ai.steps_by_id[t.id] : [];
-    p.steps = steps.filter((s) => typeof s === 'string' && s.trim()).slice(0, 7);
     const comp = ai.complexity_by_id[t.id];
     if (['simple', 'moderate', 'complex'].includes(comp)) p.complexity = comp;
   }

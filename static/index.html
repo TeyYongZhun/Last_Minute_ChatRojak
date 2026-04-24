@@ -940,25 +940,26 @@
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Status</span>
         <span id="modal-status" class="text-[color:var(--heading-2)]"></span>
       </div>
-      <div class="flex items-start gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Calendar</span>
-        <div class="flex-1">
-          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-            <input id="modal-calendar-sync" type="checkbox" onchange="modalToggleCalendarSync()" class="h-4 w-4" />
-            <span class="text-[color:var(--heading-2)]">Sync this task to Google Calendar</span>
-          </label>
-          <div id="modal-calendar-sync-subtext" class="text-xs text-[color:var(--muted-foreground)] mt-1"></div>
-        </div>
-      </div>
     </div>
 
     <div id="modal-steps-section" class="mb-6">
       <div class="flex items-center justify-between mb-3">
         <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)]">Action Steps</div>
-        <button onclick="addModalStep()" class="flex items-center gap-1 text-xs font-semibold text-[color:var(--primary)] hover:underline transition-colors">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add step
-        </button>
+        <div class="flex items-center gap-3">
+          <span id="modal-generate-status" class="text-xs italic text-[color:var(--muted-foreground)]" style="min-width:0;"></span>
+          <button id="modal-generate-steps-btn" onclick="generateModalStepsWithAI()" title="Generate steps with AI" aria-label="Generate steps with AI"
+            class="inline-flex items-center justify-center rounded-[5px] transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
+            style="width:22px;height:22px;background:#1f1f1f;color:#fff;flex-shrink:0;padding:0;border:none;cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+              <polyline points="6 6 18 6 6 18 18 18" />
+            </svg>
+          </button>
+          <button onclick="addModalStep()" class="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--primary)] transition-colors hover:brightness-95"
+            style="background:rgba(55,50,47,0.08);padding:4px 10px;border-radius:999px;border:1px solid rgba(55,50,47,0.20);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add step
+          </button>
+        </div>
       </div>
       <ol id="modal-steps" class="space-y-2"></ol>
       <div id="modal-add-step-row" class="hidden mt-2" style="display:none">
@@ -1506,47 +1507,36 @@ function renderTasks(data, active) {
   if (!active.length) {
     return `<div class="text-base text-[color:var(--muted-foreground)] py-8">No active tasks match your filters.</div>`;
   }
-  // Group tasks by source chat (client-side mapping from savedChats)
-  const groups = new Map(); // chatId -> { chat, items }
-  const ungrouped = [];
+  const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const groups = new Map(); // YYYY-MM-DD -> { sortKey, label, items }
+  const undated = [];
   for (const item of active) {
-    const chat = chatForTaskId(item.task_id);
-    if (chat) {
-      if (!groups.has(chat.id)) groups.set(chat.id, { chat, items: [] });
-      groups.get(chat.id).items.push(item);
-    } else {
-      ungrouped.push(item);
+    const iso = item.deadline_iso;
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d.getTime())) { undated.push(item); continue; }
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        sortKey: key,
+        label: `${DAY_NAMES[d.getDay()]}, ${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`,
+        items: [],
+      });
     }
+    groups.get(key).items.push(item);
   }
-  // If nothing is grouped (user hasn't imported via the new flow), render flat
-  if (!groups.size) {
-    return `<div class="space-y-4">${active.map(renderTaskRow).join('')}</div>`;
+  const sortedGroups = Array.from(groups.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  for (const g of sortedGroups) {
+    g.items.sort((x, y) => new Date(x.deadline_iso) - new Date(y.deadline_iso));
   }
-  const renderGroup = (chat, items) => `
-    <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] overflow-hidden">
-      <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-soft)]" style="background:#FBFAF8;">
-        <div class="rounded-full flex items-center justify-center text-[11px] font-bold text-[color:var(--muted-foreground)] flex-shrink-0" style="width:28px;height:28px;background:var(--accent);">${esc(avatarInitials(chat.name))}</div>
-        <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold text-[color:var(--foreground)] truncate">${esc(chat.name)}</div>
-          <div class="text-[11px] text-[color:var(--muted-foreground)]">${items.length} task${items.length === 1 ? '' : 's'} from this chat</div>
-        </div>
-        <button onclick="setMode('upload'); setTimeout(() => selectChat('${esc(chat.id)}'), 50)" class="ghost-btn" style="padding:4px 10px;font-size:11px;">Open chat</button>
-      </div>
-      <div class="p-3 space-y-3">${items.map(renderTaskRow).join('')}</div>
-    </div>`;
-  const groupsHtml = Array.from(groups.values()).map(g => renderGroup(g.chat, g.items)).join('');
-  const ungroupedHtml = ungrouped.length ? `
-    <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] overflow-hidden">
-      <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-soft)]" style="background:#FBFAF8;">
-        <div class="rounded-full flex items-center justify-center text-[11px] font-bold text-[color:var(--muted-foreground)] flex-shrink-0" style="width:28px;height:28px;background:var(--accent);">—</div>
-        <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold text-[color:var(--foreground)]">Other tasks</div>
-          <div class="text-[11px] text-[color:var(--muted-foreground)]">${ungrouped.length} task${ungrouped.length === 1 ? '' : 's'} not linked to an uploaded chat</div>
-        </div>
-      </div>
-      <div class="p-3 space-y-3">${ungrouped.map(renderTaskRow).join('')}</div>
-    </div>` : '';
-  return `<div class="space-y-5">${groupsHtml}${ungroupedHtml}</div>`;
+  const renderGroup = (label, items, muted = false) => `
+    <section class="mb-2">
+      <h3 class="text-lg font-bold ${muted ? 'text-[color:var(--muted-foreground)]' : 'text-[color:var(--foreground)]'} pt-6 pb-3 border-b border-[var(--border-soft)] mb-3">${esc(label)}</h3>
+      <div class="space-y-3">${items.map(renderTaskRow).join('')}</div>
+    </section>`;
+  const groupsHtml = sortedGroups.map(g => renderGroup(g.label, g.items)).join('');
+  const undatedHtml = undated.length ? renderGroup('No deadline', undated, true) : '';
+  return `<div>${groupsHtml}${undatedHtml}</div>`;
 }
 
 function parseAnyDate(str) {
@@ -1678,20 +1668,26 @@ function renderTaskRow(item) {
     : '';
   const plannedChip = plannedSlotChip(item);
   const metaChips = [quadrantPill, durationPill, plannedChip, tagChips].filter(Boolean).join(' ');
-  const assignedBy = item.assigned_by ? `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--muted-foreground)]">by ${esc(item.assigned_by)}</span>` : '';
-  const statusText = `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--heading-2)] font-medium">${statusLabel(item)}</span>`;
+  const assignedBy = item.assigned_by ? `<span class="text-[color:var(--muted-foreground)]">by ${esc(item.assigned_by)}</span>` : '';
+
+  let deadlineTime = '';
+  if (item.deadline_iso) {
+    const d = new Date(item.deadline_iso);
+    if (!isNaN(d.getTime())) {
+      deadlineTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+  }
 
   return `
     <div class="task-row ${item.status === 'done' ? 'task-done' : ''} flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')||event.target.closest('input')) return; openTaskModal('${tid}')">
+      <div class="flex-shrink-0 tabular-nums text-sm font-medium text-[color:var(--muted-foreground)]" style="width:48px;text-align:left;">${deadlineTime || '—'}</div>
       <div class="flex-shrink-0">${tickbox}</div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-0.5">
           <div class="text-base font-semibold text-[color:var(--foreground)] truncate task-title-text">${esc(item.task)}</div>
           ${overdueBadge}
         </div>
-        <div class="text-xs text-[color:var(--muted-foreground)] flex items-center flex-wrap gap-1">
-          <span class="text-base">⏰</span> ${displayDeadline}${statusText}${assignedBy}
-        </div>
+        ${assignedBy ? `<div class="text-xs mb-0.5">${assignedBy}</div>` : ''}
         <div class="flex flex-wrap items-center gap-2 mt-3">${metaChips}</div>
       </div>
       <div class="flex shrink-0 items-center">${actions}</div>
@@ -2091,7 +2087,6 @@ function openTaskModal(taskId) {
 
   document.getElementById('modal-assignee').textContent = item.assigned_by || '—';
   document.getElementById('modal-status').textContent = statusLabel(item);
-  renderCalendarSyncRow(item);
 
   // Dependencies
   const depsEl = document.getElementById('modal-deps');
@@ -2127,20 +2122,10 @@ function openTaskModal(taskId) {
         <button class="step-delete" onclick="deleteModalStep(${i})" title="Delete step"
           style="flex-shrink:0;background:rgba(199,68,58,0.08);border:1px solid rgba(199,68,58,0.25);border-radius:50%;width:22px;height:22px;font-size:14px;line-height:1;cursor:pointer;color:var(--destructive);display:inline-flex;align-items:center;justify-content:center;font-weight:700;padding:0;">&#xD7;</button>
       </li>`).join('');
-    document.getElementById('modal-steps-section').classList.remove('hidden');
-  } else if (Array.isArray(item.steps) && item.steps.length) {
-    stepsList.innerHTML = item.steps.map((s, i) => `
-      <li class="step-item" style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--border-soft);" data-step-index="${i}">
-        <input type="checkbox" style="flex-shrink:0;width:16px;height:16px;accent-color:var(--success);cursor:pointer;" onchange="togglePlanStep(this)" />
-        <span class="step-text" style="flex:1;font-size:14px;color:var(--foreground);">${esc(s)}</span>
-        <button class="step-delete" onclick="deleteModalStep(${i})" title="Delete step"
-          style="flex-shrink:0;background:rgba(199,68,58,0.08);border:1px solid rgba(199,68,58,0.25);border-radius:50%;width:22px;height:22px;font-size:14px;line-height:1;cursor:pointer;color:var(--destructive);display:inline-flex;align-items:center;justify-content:center;font-weight:700;padding:0;">&#xD7;</button>
-      </li>`).join('');
-    document.getElementById('modal-steps-section').classList.remove('hidden');
   } else {
     stepsList.innerHTML = '';
-    document.getElementById('modal-steps-section').classList.remove('hidden');
   }
+  document.getElementById('modal-steps-section').classList.remove('hidden');
 
   const startBtn = document.getElementById('modal-start-btn');
   const doneBtn = document.getElementById('modal-done-btn');
@@ -3198,63 +3183,6 @@ async function getGoogleLinked(force = false) {
   return googleLinkedCache;
 }
 
-function renderCalendarSyncRow(item) {
-  const cb = document.getElementById('modal-calendar-sync');
-  const sub = document.getElementById('modal-calendar-sync-subtext');
-  if (!cb || !sub) return;
-  cb.checked = !!item.calendar_sync_enabled;
-  cb.disabled = true;
-  sub.textContent = 'Checking…';
-
-  const effective = item.user_duration_minutes != null
-    ? { mins: item.user_duration_minutes, src: 'your override' }
-    : (item.ai_duration_minutes != null
-      ? { mins: item.ai_duration_minutes, src: 'AI estimate' }
-      : { mins: 30, src: 'default — set a duration to override' });
-
-  const deadlineOk = !!item.deadline_iso;
-
-  getGoogleLinked().then((linked) => {
-    if (!linked) {
-      cb.checked = false;
-      cb.disabled = true;
-      sub.textContent = 'Link Google Calendar in Account to enable sync.';
-      return;
-    }
-    if (!deadlineOk) {
-      cb.disabled = true;
-      sub.textContent = 'Set a deadline to sync this task.';
-      return;
-    }
-    cb.disabled = false;
-    sub.textContent = `Duration: ${effective.mins} min (${effective.src}).`;
-  });
-}
-
-async function modalToggleCalendarSync() {
-  if (!modalTaskId) return;
-  const cb = document.getElementById('modal-calendar-sync');
-  const sub = document.getElementById('modal-calendar-sync-subtext');
-  const desired = cb.checked;
-  cb.disabled = true;
-  const prev = sub.textContent;
-  sub.textContent = 'Saving…';
-  try {
-    const res = await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/calendar-sync`, { enabled: desired });
-    if (res.skipped && res.reason) {
-      sub.textContent = `Saved, but not synced yet (${res.reason.replace('_', ' ')}).`;
-    } else {
-      sub.textContent = desired ? 'Synced to Google Calendar.' : 'Removed from Google Calendar.';
-    }
-    await refreshDashboard();
-  } catch (e) {
-    cb.checked = !desired;
-    sub.textContent = e.message;
-  } finally {
-    cb.disabled = false;
-  }
-}
-
 async function modalSubmitClarification() {
   if (!modalTaskId) return;
   const item = findTaskInDashboard(modalTaskId);
@@ -3435,6 +3363,37 @@ async function saveNewModalStep() {
   document.getElementById('modal-steps-section')?.classList.remove('hidden');
   await refreshDashboard();
   openTaskModal(modalTaskId);
+}
+
+async function generateModalStepsWithAI() {
+  if (!modalTaskId) return;
+  const btn = document.getElementById('modal-generate-steps-btn');
+  const status = document.getElementById('modal-generate-status');
+  if (btn?.disabled) return;
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+
+  const messages = ['Thinking…', 'Cooking…', 'Brewing ideas…', 'Planning…', 'Almost there…'];
+  let idx = 0;
+  if (status) status.textContent = messages[0];
+  const tick = setInterval(() => {
+    idx = Math.min(idx + 1, messages.length - 1);
+    if (status) status.textContent = messages[idx];
+  }, 1200);
+
+  try {
+    const res = await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/steps/generate`, {});
+    if (!res?.added) {
+      alert('AI returned no new steps. Try adding a step manually, or add more detail to the task.');
+    }
+    await refreshDashboard();
+    openTaskModal(modalTaskId);
+  } catch (e) {
+    alert('Failed to generate steps: ' + (e?.message || 'unknown error'));
+  } finally {
+    clearInterval(tick);
+    if (status) status.textContent = '';
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
 }
 
 
