@@ -68,16 +68,12 @@ app.use('/api/google', googleOAuthRouter);
 
 function parseFilters(query) {
   const filters = {};
-  if (typeof query.bucket === 'string' && query.bucket.trim()) filters.bucket = query.bucket.trim();
   if (typeof query.category === 'string' && query.category.trim()) filters.category = query.category.trim();
   if (typeof query.priority === 'string' && ['high', 'medium', 'low'].includes(query.priority)) {
     filters.priority = query.priority;
   }
   if (typeof query.status === 'string' && query.status.trim()) filters.status = query.status.trim();
   if (typeof query.q === 'string' && query.q.trim()) filters.q = query.q.trim();
-  if (typeof query.tags === 'string' && query.tags.trim()) {
-    filters.tags = query.tags.split(',').map((s) => s.trim()).filter(Boolean);
-  }
   return filters;
 }
 
@@ -157,7 +153,6 @@ app.post('/api/demo-seed', requireUser, (req, res) => {
       category: 'Academic',
       missing_fields: [],
       status: 'pending',
-      tags: ['urgent', 'solo'],
     },
     {
       id: 't2',
@@ -170,7 +165,6 @@ app.post('/api/demo-seed', requireUser, (req, res) => {
       category: 'Academic',
       missing_fields: [],
       status: 'pending',
-      tags: ['group-work', 'short'],
     },
     {
       id: 't3',
@@ -183,7 +177,6 @@ app.post('/api/demo-seed', requireUser, (req, res) => {
       category: 'Errand',
       missing_fields: [],
       status: 'pending',
-      tags: ['short', 'solo'],
     },
   ];
 

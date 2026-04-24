@@ -691,7 +691,7 @@
 
           <!-- Quadrant picker (check up to 4) -->
           <div class="mt-7 pt-6 border-t border-[var(--border-soft)]">
-            <div class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-3">Pick a quadrant to see tasks</div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-3">Filter by quadrant <span style="font-weight:400;text-transform:none;letter-spacing:0">(all shown by default)</span></div>
             <div id="quadrant-picker" class="flex flex-wrap items-center gap-2">
               <label class="quad-chip" data-quad="do_now"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#37322F"></span>Do now</label>
               <label class="quad-chip" data-quad="schedule"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#5B7D4E"></span>Plan</label>
@@ -1117,7 +1117,10 @@ function setMode(mode) {
   document.getElementById(`view-${mode}`).classList.remove('hidden');
   if (mode === 'account') refreshAccount();
   else if (mode === 'upload') renderChatFileList();
-  else refreshDashboard();
+  else {
+    filters.quadrants = {};
+    refreshDashboard();
+  }
 }
 
 // ---------------- State ----------------
@@ -1130,7 +1133,7 @@ let filterDebounceTimer = null;
 function loadFilters() {
   try {
     const raw = localStorage.getItem('filters');
-    if (!raw) return { status: 'active', tags: [] };
+    if (!raw) return { status: 'active', tags: [], quadrants: {} };
     const f = JSON.parse(raw);
     return {
       category: f.category || '',
@@ -1138,12 +1141,10 @@ function loadFilters() {
       status: f.status ?? 'active',
       q: f.q || '',
       tags: Array.isArray(f.tags) ? f.tags : [],
-      quadrants: (f.quadrants && typeof f.quadrants === 'object')
-        ? { do_now: !!f.quadrants.do_now, schedule: !!f.quadrants.schedule, quick: !!f.quadrants.quick, defer: !!f.quadrants.defer }
-        : { do_now: true, schedule: true, quick: true, defer: true },
+      quadrants: {},
     };
   } catch {
-    return { status: 'active', tags: [], quadrants: { do_now: true, schedule: true, quick: true, defer: true } };
+    return { status: 'active', tags: [], quadrants: {} };
   }
 }
 function saveFilters() { localStorage.setItem('filters', JSON.stringify(filters)); }
@@ -1210,7 +1211,8 @@ function sortByUrgency(items, now = new Date()) {
 
 function activeTasks(data) {
   const raw = filters.quadrants || {};
-  const allOff = !raw.do_now && !raw.schedule && !raw.quick && !raw.defer;
+  const anyOn = raw.do_now || raw.schedule || raw.quick || raw.defer;
+  const allOff = !anyOn;
 
   const all = [
     ...(data.do_now      || []),
@@ -1237,6 +1239,14 @@ function activeTasks(data) {
 function renderFilterToolbar(_data) {
   const searchEl = document.getElementById('task-search');
   if (searchEl && document.activeElement !== searchEl) searchEl.value = filters.q || '';
+  const quadBoxes = document.querySelectorAll('#quadrant-picker .quad-chip');
+  quadBoxes.forEach(lbl => {
+    const name = lbl.dataset.quad;
+    const cb = lbl.querySelector('input');
+    const active = !!(filters.quadrants || {})[name];
+    cb.checked = active;
+    lbl.classList.toggle('active', active);
+  });
 }
 
 function toggleTag(tag) {
@@ -1273,7 +1283,7 @@ function applyFiltersDebounced() {
 }
 
 function clearFilters() {
-  filters = { status: 'active', tags: [], quadrants: { do_now: true, schedule: true, quick: true, defer: true } };
+  filters = { status: 'active', tags: [], quadrants: {} };
   saveFilters();
   refreshDashboard();
 }
@@ -1588,14 +1598,14 @@ function effectiveDuration(item) {
   return null;
 }
 function blockHeightForMinutes(min) {
-  if (min == null) return 52;
-  return Math.max(52, Math.min(320, Math.round(28 + min * 1.1)));
+  if (min == null) return 80;
+  return Math.max(80, Math.min(320, Math.round(28 + min * 1.1)));
 }
 function minutesForBlockHeight(px) {
   // Inverse of blockHeightForMinutes with 15-min snapping
-  const raw = (Math.max(52, Math.min(320, px)) - 28) / 1.1;
+  const raw = (Math.max(80, Math.min(320, px)) - 28) / 1.1;
   const snapped = Math.round(raw / 15) * 15;
-  return Math.max(5, Math.min(1440, snapped));
+  return Math.max(15, Math.min(1440, snapped));
 }
 
 function renderTaskBlock(item) {
@@ -1620,7 +1630,7 @@ function renderTaskBlock(item) {
                draggable="true"
                data-task-id="${esc(item.task_id)}"
                data-duration="${dur ?? ''}"
-               style="height:${h}px;"
+               style="min-height:${h}px;"
                ondragstart="onBlockDragStart(event)"
                ondragend="onBlockDragEnd(event)"
                onclick="if(event.target.closest('.task-block-resize,.task-block-cancel')) return; openTaskModal('${esc(item.task_id)}')">
@@ -1779,7 +1789,8 @@ function onBlockResizeStart(ev) {
 function onBlockResizeMove(ev) {
   if (!resizeState) return;
   const dy = ev.clientY - resizeState.startY;
-  const newH = Math.max(52, Math.min(320, resizeState.startHeight + dy));
+  const newH = Math.max(80, Math.min(320, resizeState.startHeight + dy));
+  resizeState.block.style.minHeight = '';
   resizeState.block.style.height = newH + 'px';
   const minutes = minutesForBlockHeight(newH);
   resizeState.block.dataset.liveDuration = minutes;

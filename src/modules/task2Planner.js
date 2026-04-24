@@ -51,7 +51,6 @@ export function applyAdaptiveWeights({ urgency, importance, effort }, weights = 
 }
 
 // Quadrant keys: 'do' (urgent+important), 'plan' (important), 'quick' (urgent), 'later'.
-// User drags feed quadrant_urgent / quadrant_important biases via adaptiveScoring.
 export function scoreEisenhower(urgency, importance, weights = null) {
   const active = weights && weights.active;
   const uBias = active ? (weights.quadrant_urgent || 0) : 0;
@@ -105,7 +104,6 @@ export function detectConflicts(tasks) {
     }
   }
 
-  // Overload: more than 4 "do now" candidates sharing the same calendar day
   const byDay = new Map();
   for (const t of tasks) {
     if (!t.deadline_iso) continue;
@@ -137,9 +135,7 @@ async function generatePlanAI(tasks, context = {}) {
     task: t.task,
     deadline: t.deadline,
     deadline_iso: t.deadline_iso,
-    category_bucket: t.category_bucket || 'Others',
     priority: t.priority,
-    tags: t.tags || [],
   }));
 
   const systemPrompt = `You are a task planner. For each task given, produce:
