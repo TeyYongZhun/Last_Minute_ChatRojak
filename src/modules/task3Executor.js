@@ -30,6 +30,7 @@ import {
   setAiDurationMinutes,
   setUserDurationMinutes as repoSetUserDurationMinutes,
   markCompleted,
+  setCalendarSyncEnabled,
 } from '../db/repos/tasks.js';
 import {
   listPlans,
@@ -59,6 +60,8 @@ import {
   weightsSummary,
 } from './adaptiveScoring.js';
 import { openThread, listOpenThreads } from './clarificationLoop.js';
+import { assignSlots, detectSlotOverlaps } from './slotter.js';
+import { getPreferences } from '../db/repos/userPreferences.js';
 
 function ts(d = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -79,6 +82,8 @@ function semanticKey(task) {
 export function mergeNewTasks(userId, newTasks) {
   const db = getDb();
   const idMap = {};
+  const insertedIds = [];
+  const matchedIds = [];
 
   const tx = db.transaction(() => {
     const allTasks = listTasks(userId);
@@ -105,7 +110,9 @@ export function mergeNewTasks(userId, newTasks) {
       if (key.startsWith('|')) {
         // empty text — let it through
       } else if (openSemanticKeys.has(key)) {
-        idMap[originalId] = openSemanticKeys.get(key);
+        const matchedId = openSemanticKeys.get(key);
+        idMap[originalId] = matchedId;
+        matchedIds.push(matchedId);
         continue;
       }
       if (!t.id || existing.has(t.id)) t.id = allocateId();
@@ -120,11 +127,12 @@ export function mergeNewTasks(userId, newTasks) {
       existing.add(t.id);
       openSemanticKeys.set(key, t.id);
       idMap[originalId] = t.id;
+      insertedIds.push(t.id);
     }
   });
   tx();
 
-  return idMap;
+  return { idMap, insertedIds, matchedIds };
 }
 
 function remapDependencies(deps, idMap) {
@@ -173,6 +181,48 @@ export async function replanAll(userId, now = new Date(), onProgress) {
     weightsSummary: weightsSummaryText,
     blockedIds: blocked,
   });
+
+  // Seed each plan with the existing slot (esp. user-pinned) so assignSlots can honour pins.
+  for (const p of plans) {
+    const prior = prevById[p.task_id];
+    if (prior?.slot_origin === 'user' && prior.planned_start_iso && prior.planned_end_iso) {
+      p.planned_start_iso = prior.planned_start_iso;
+      p.planned_end_iso = prior.planned_end_iso;
+      p.slot_origin = 'user';
+    }
+  }
+
+  const prefs = getPreferences(userId);
+  const deps = listDependencies(userId);
+  const { slots, unplaceable } = assignSlots({ tasks: openTasks, plans, dependencies: deps, prefs, now });
+  const slotByTaskId = Object.fromEntries(slots.map((s) => [s.task_id, s]));
+  for (const p of plans) {
+    const s = slotByTaskId[p.task_id];
+    if (s) {
+      p.planned_start_iso = s.planned_start_iso;
+      p.planned_end_iso = s.planned_end_iso;
+      p.slot_origin = s.origin;
+    } else if (p.slot_origin !== 'user') {
+      p.planned_start_iso = null;
+      p.planned_end_iso = null;
+      p.slot_origin = null;
+    }
+  }
+
+  const taskById = Object.fromEntries(openTasks.map((t) => [t.id, t]));
+  for (const u of unplaceable) {
+    const task = taskById[u.task_id];
+    const label = task?.task || u.task_id;
+    const reason = u.reason === 'deadline_too_close'
+      ? `won't fit inside working hours before its deadline`
+      : `couldn't be scheduled in the planning horizon`;
+    conflicts.push({
+      kind: 'unplaceable',
+      ids: [u.task_id],
+      message: `'${label}' ${reason}.`,
+    });
+  }
+  for (const c of detectSlotOverlaps(plans)) conflicts.push(c);
 
   const db = getDb();
   const tx = db.transaction(() => {
@@ -290,6 +340,7 @@ export function completeTask(userId, taskId) {
   const db = getDb();
   const tx = db.transaction(() => {
     markCompleted(userId, taskId);
+    setCalendarSyncEnabled(userId, taskId, 0);
     updatePlanStatus(userId, taskId, 'done');
     pruneActionsForTask(taskId);
     addReplanEvent(userId, `[${ts()}] Task ${taskId} marked done.`);
@@ -489,6 +540,9 @@ export function getDashboard(userId, filters = {}) {
       conflicts: [],
       missing_info_questions: [],
       status: task.status,
+      planned_start_iso: null,
+      planned_end_iso: null,
+      slot_origin: null,
     };
     if (!matchesFilters(task, effectivePlan, tags, filters)) continue;
     const taskDeps = depsByTask[task.id] || [];
@@ -525,6 +579,9 @@ export function getDashboard(userId, filters = {}) {
       checklist: getChecklist(task.id),
       conflicts: effectivePlan.conflicts,
       missing_info_questions: effectivePlan.missing_info_questions,
+      planned_start_iso: effectivePlan.planned_start_iso || null,
+      planned_end_iso: effectivePlan.planned_end_iso || null,
+      slot_origin: effectivePlan.slot_origin || null,
       status: task.status,
       confidence: task.confidence,
       category: task.category || 'Other',

@@ -24,8 +24,10 @@ function reminderId(taskId, fireAtIso) {
 export function generateActionsForPlan(userId, plan, task, now) {
   replaceChecklist(task.id, plan.steps || []);
 
+  const shouldSyncCalendar = task.calendar_sync_enabled && getGoogleTokens(userId);
+
   if (plan.decision === 'waiting') {
-    if (getGoogleTokens(userId)) {
+    if (shouldSyncCalendar) {
       upsertCalendarEvent(userId, task, plan, now)
         .catch((err) => console.error('[actions] calendar sync error:', err.message));
     }
@@ -47,7 +49,7 @@ export function generateActionsForPlan(userId, plan, task, now) {
     deleteRemindersForTask(task.id);
   }
 
-  if (getGoogleTokens(userId)) {
+  if (shouldSyncCalendar) {
     upsertCalendarEvent(userId, task, plan, now)
       .catch((err) => console.error('[actions] calendar sync error:', err.message));
   }

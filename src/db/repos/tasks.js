@@ -31,7 +31,17 @@ function normaliseRow(row) {
     created_at: row.created_at,
     updated_at: row.updated_at ?? row.created_at,
     completed_at: row.completed_at ?? null,
+    calendar_sync_enabled: row.calendar_sync_enabled ? 1 : 0,
   };
+}
+
+export function setCalendarSyncEnabled(userId, taskId, enabled) {
+  const db = getDb();
+  return db
+    .prepare(
+      'UPDATE tasks SET calendar_sync_enabled = ?, updated_at = ? WHERE user_id = ? AND id = ?'
+    )
+    .run(enabled ? 1 : 0, Date.now(), userId, taskId).changes;
 }
 
 export function listTasks(userId) {

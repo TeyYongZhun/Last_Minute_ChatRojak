@@ -105,4 +105,32 @@ describe('buildEventBody — strict consistency', () => {
     expect(() => buildEventBody(makeTask({ deadline_iso: '2026-05-01T10:00:00' }), {}, new Date()))
       .toThrow(/valid RFC-3339/);
   });
+
+  it('end - start equals duration_minutes * 60000 ms for representative durations', () => {
+    for (const mins of [5, 60, 75, 1440]) {
+      const body = buildEventBody(
+        makeTask({ user_duration_minutes: mins, deadline_iso: '2026-05-01T10:00:00+08:00' }),
+        {},
+        new Date()
+      );
+      const deltaMs = new Date(body.end.dateTime).getTime() - new Date(body.start.dateTime).getTime();
+      expect(deltaMs).toBe(mins * 60 * 1000);
+    }
+  });
+
+  it('falls back to ai_duration_minutes when user override is null', () => {
+    const body = buildEventBody(
+      makeTask({ user_duration_minutes: null, ai_duration_minutes: 45 }),
+      {},
+      new Date()
+    );
+    const deltaMs = new Date(body.end.dateTime).getTime() - new Date(body.start.dateTime).getTime();
+    expect(deltaMs).toBe(45 * 60 * 1000);
+  });
+
+  it('falls back to 30 min only when both durations are null', () => {
+    const body = buildEventBody(makeTask({}), {}, new Date());
+    const deltaMs = new Date(body.end.dateTime).getTime() - new Date(body.start.dateTime).getTime();
+    expect(deltaMs).toBe(30 * 60 * 1000);
+  });
 });
