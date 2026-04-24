@@ -43,8 +43,8 @@
     }
     .ghost-btn:hover { border-color: rgba(55,50,47,0.2); background: var(--accent); }
     .ghost-btn:active { transform: translateY(0); scale: 0.98; }
-    .ghost-btn.danger { color: var(--destructive); border-color: rgba(199,68,58,0.3); }
-    .ghost-btn.danger:hover { background: rgba(199,68,58,0.06); border-color: var(--destructive); }
+    .ghost-btn.danger { color: #fff; background: var(--destructive); border-color: var(--destructive); }
+    .ghost-btn.danger:hover { background: #b03a31; border-color: #b03a31; }
 
     .ghost-btn-accent {
       background: var(--primary); color: var(--primary-foreground);
@@ -113,6 +113,12 @@
     @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.65; } }
 
     .hidden { display: none !important; }
+
+    @keyframes demo-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(45,110,94,0); }
+      50% { box-shadow: 0 0 0 4px rgba(45,110,94,0.14); }
+    }
+    #demo-cta-btn { animation: demo-pulse 2.8s ease-in-out infinite; }
 
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -345,6 +351,24 @@
       color: var(--warn);
       border-color: rgba(180,130,42,0.35);
     }
+    .task-block-badge.duration {
+      background: rgba(45,110,94,0.1);
+      color: #2D6E5E;
+      border-color: rgba(45,110,94,0.28);
+      text-transform: none; letter-spacing: 0;
+    }
+    .task-block-badge.deadline-day {
+      background: rgba(55,50,47,0.07);
+      color: var(--heading-2);
+      border-color: var(--border);
+      text-transform: none; letter-spacing: 0;
+    }
+    .task-block-badge.deadline-time {
+      background: rgba(180,130,42,0.1);
+      color: var(--warn);
+      border-color: rgba(180,130,42,0.3);
+      text-transform: none; letter-spacing: 0;
+    }
     .task-block-cancel {
       position: absolute;
       top: 5px; right: 5px;
@@ -550,9 +574,10 @@
       </button>
       <!-- Try Demo CTA -->
       <button id="demo-cta-btn" onclick="loadDemo()"
-        style="width:100%;padding:8px 14px;border-radius:999px;background:transparent;color:var(--muted-foreground);border:1.5px dashed var(--border);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-sans);transition:all .15s ease;display:flex;align-items:center;justify-content:center;gap:7px;"
-        onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted-foreground)'">
-        <span style="font-size:13px;line-height:1;">🧪</span> Try Demo
+        style="width:100%;padding:10px 14px;border-radius:999px;background:rgba(45,110,94,0.07);color:#2D6E5E;border:2px dashed #2D6E5E;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-sans);transition:all .2s ease;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:0.02em;"
+        onmouseover="this.style.background='rgba(45,110,94,0.14)';this.style.borderStyle='solid';this.style.boxShadow='0 2px 8px rgba(45,110,94,0.18)';this.style.animation='none'"
+        onmouseout="this.style.background='rgba(45,110,94,0.07)';this.style.borderStyle='dashed';this.style.boxShadow='';this.style.animation='demo-pulse 2.8s ease-in-out infinite'">
+        <span style="font-size:15px;line-height:1;">🧪</span> Try Demo
       </button>
     </div>
 
@@ -850,7 +875,7 @@
 
         <div class="bg-white border border-[rgba(199,68,58,0.3)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
           <div class="section-label" style="color:var(--destructive)">Danger Zone</div>
-          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">Permanently delete all your tasks, plans, and history. This cannot be undone.</p>
+          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">Permanently delete all your tasks, plans, history, and uploaded chats. This cannot be undone.</p>
           <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
         </div>
       </div>
@@ -1736,6 +1761,30 @@ function renderTaskBlock(item) {
   if (missing) badges.push(`<span class="task-block-badge needs-info">Needs info</span>`);
   const classes = ['task-block'];
   if (missing) classes.push('missing-info');
+
+  let durationBubble = '';
+  if (dur != null) {
+    durationBubble = `<span class="task-block-badge duration">⏱ ${fmtDuration(dur)}</span>`;
+  }
+
+  let dayBubble = '';
+  let timeBubble = '';
+  const parsedD = rawDeadline ? parseAnyDate(rawDeadline) : null;
+  if (parsedD) {
+    const _days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const _day = parsedD.getDate();
+    const _month = parsedD.getMonth() + 1;
+    const _year = parsedD.getFullYear().toString().slice(-2);
+    let _h = parsedD.getHours();
+    const _ampm = _h >= 12 ? 'PM' : 'AM';
+    _h = _h % 12 || 12;
+    const _min = String(parsedD.getMinutes()).padStart(2, '0');
+    dayBubble  = `<span class="task-block-badge deadline-day">📅 ${_days[parsedD.getDay()]} ${_day}/${_month}/${_year}</span>`;
+    timeBubble = `<span class="task-block-badge deadline-time">🕐 ${_h}:${_min}${_ampm}</span>`;
+  } else if (rawDeadline) {
+    dayBubble = `<span class="task-block-badge deadline-day">${esc(item.deadline || deadlineText)}</span>`;
+  }
+
   return `<div class="${classes.join(' ')}"
                draggable="true"
                data-task-id="${esc(item.task_id)}"
@@ -1747,8 +1796,7 @@ function renderTaskBlock(item) {
     <button class="task-block-cancel" title="Cancel task" onclick="event.stopPropagation(); cancelTask('${esc(item.task_id)}')">&#x2715;</button>
     <div class="task-block-title">${esc(item.task || '')}</div>
     <div class="task-block-meta">
-      ${dur != null ? `<span>${fmtDuration(dur)}</span>` : ''}
-      <span>${esc(deadlineText)}</span>
+      ${durationBubble}${dayBubble}${timeBubble}
       ${badges.join('')}
     </div>
 
@@ -2430,7 +2478,28 @@ async function answerQuestion(btn) {
     console.error(e); btn.disabled = false; btn.textContent = 'Submit'; answeredQuestions.delete(`${tid}-${idx}`);
   }
 }
-async function resetAll() { if (!confirm('Are you sure you want to delete all your tasks? This cannot be undone.')) return; try { await api('POST', '/api/reset'); refreshDashboard(); } catch (e) { console.error(e); } }
+async function resetAll() {
+  if (!confirm('Are you sure you want to delete all your tasks and uploaded chats? This cannot be undone.')) return;
+  try {
+    await api('POST', '/api/reset');
+    // Clear saved chats from localStorage and memory
+    localStorage.removeItem(savedChatsKey());
+    savedChats = [];
+    activeChatId = null;
+    chatSelf = '';
+    // Reset upload panel UI
+    const chatPlaceholder = document.getElementById('chat-placeholder');
+    const chatActive = document.getElementById('chat-active');
+    if (chatPlaceholder) chatPlaceholder.classList.remove('hidden');
+    if (chatActive) { chatActive.classList.add('hidden'); chatActive.style.display = ''; }
+    renderChatFileList();
+    // Clear console
+    resetUpload();
+    // Clear filters
+    localStorage.removeItem('filters');
+    refreshDashboard();
+  } catch (e) { console.error(e); }
+}
 
 async function removeDep(taskId, dep) {
   try {
