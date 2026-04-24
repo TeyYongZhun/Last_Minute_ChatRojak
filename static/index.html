@@ -10,7 +10,7 @@
   <style>
     :root {
       color-scheme: light;
-      --background:#F7F5F3; --card:#FFFFFF;
+      --background:#F7F5F3; --card:rgba(255,255,255,0.92);
       --foreground:#37322F; --heading-2:#49423D; --muted-foreground:#605A57;
       --muted:#F2EFEC; --accent:#F2EFEC;
       --primary:#37322F; --primary-foreground:#FFFFFF;
@@ -43,8 +43,8 @@
     }
     .ghost-btn:hover { border-color: rgba(55,50,47,0.2); background: var(--accent); }
     .ghost-btn:active { transform: translateY(0); scale: 0.98; }
-    .ghost-btn.danger { color: var(--destructive); border-color: rgba(199,68,58,0.3); }
-    .ghost-btn.danger:hover { background: rgba(199,68,58,0.06); border-color: var(--destructive); }
+    .ghost-btn.danger { color: #fff; background: var(--destructive); border-color: var(--destructive); }
+    .ghost-btn.danger:hover { background: #b03a31; border-color: #b03a31; }
 
     .ghost-btn-accent {
       background: var(--primary); color: var(--primary-foreground);
@@ -110,8 +110,15 @@
     .console-line.error { color: var(--destructive); }
     .console-line.task { color: var(--primary); font-weight: 600; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: .95; transform: none; } }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.65; } }
 
     .hidden { display: none !important; }
+
+    @keyframes demo-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(45,110,94,0); }
+      50% { box-shadow: 0 0 0 4px rgba(45,110,94,0.14); }
+    }
+    #demo-cta-btn { animation: demo-pulse 2.8s ease-in-out infinite; }
 
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -128,6 +135,37 @@
     }
     .tag-chip:hover { background: var(--accent); }
     .tag-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 2px rgba(55,50,47,0.2); }
+
+    .quad-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 14px; border-radius: 999px;
+      font-size: 13px; font-weight: 600; letter-spacing: .01em;
+      background: #FFFFFF; color: var(--foreground);
+      border: 1px solid var(--border);
+      cursor: pointer; transition: all .15s;
+      user-select: none;
+    }
+    .quad-chip:hover { background: var(--accent); border-color: rgba(55,50,47,0.2); }
+    .quad-chip input { margin: 0; width: 16px; height: 16px; cursor: pointer; }
+    .quad-chip .quad-dot { width: 10px; height: 10px; border-radius: 999px; display:inline-block; }
+    .quad-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 2px rgba(55,50,47,0.2); }
+    .quad-chip.active .quad-dot { box-shadow: 0 0 0 2px rgba(255,255,255,0.35); }
+
+    .task-tick {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--border); background: white;
+      cursor: pointer; appearance: none; -webkit-appearance: none;
+      flex-shrink: 0; transition: all .15s; position: relative;
+    }
+    .task-tick:hover { border-color: var(--primary); background: rgba(55,50,47,0.05); }
+    .task-tick:checked { background: var(--success); border-color: var(--success); }
+    .task-tick:checked::after {
+      content: ''; position: absolute; left: 5px; top: 2px;
+      width: 8px; height: 12px; border: 2.5px solid white;
+      border-top: none; border-left: none; transform: rotate(40deg);
+    }
+    .task-row.task-done { opacity: 0.55; }
+    .task-row.task-done .task-title-text { text-decoration: line-through; color: var(--muted-foreground); }
 
     .cat-pill {
       display: inline-flex; align-items: center;
@@ -167,9 +205,295 @@
       padding: 28px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
     }
 
+    .step-item .step-delete { opacity: 0; transition: opacity .15s; }
+    .step-item:hover .step-delete { opacity: 1; }
+
+
+    /* ---- Login background ---- */
+    #auth-gate {
+      background: linear-gradient(120deg, #4A8C7F 0%, #6BA896 25%, #C8A96E 60%, #E8A84A 100%) !important;
+      overflow: hidden;
+    }
+    .chat-bubble-bg {
+      position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 70px);
+      grid-template-rows: repeat(auto-fill, 70px);
+      gap: 0;
+      align-content: start;
+    }
+    .cb {
+      display: flex; align-items: center; justify-content: center;
+      width: 70px; height: 70px;
+    }
+    #auth-gate > .w-full { position: relative; z-index: 1; }
+
     .edge-hatch {
       background-image: repeating-linear-gradient(-45deg, rgba(55,50,47,0.08) 0 0.5px, transparent 0.5px 14px);
     }
+
+    /* Power Grid (Eisenhower 2x2) */
+    .power-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .quadrant {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-xs);
+      display: flex; flex-direction: column;
+      min-height: 260px;
+      overflow: hidden;
+    }
+    .quadrant-header {
+      position: relative;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border-soft);
+      background: #FBFAF8;
+    }
+    .quadrant[data-quadrant="do"]    .quadrant-header { background: #EF9A9A; border-bottom-color: #E57373; }
+    .quadrant[data-quadrant="plan"]  .quadrant-header { background: #90CAF9; border-bottom-color: #64B5F6; }
+    .quadrant[data-quadrant="quick"] .quadrant-header { background: #81C784; border-bottom-color: #66BB6A; }
+    .quadrant[data-quadrant="later"] .quadrant-header { background: #CE93D8; border-bottom-color: #BA68C8; }
+    .quadrant-title {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      line-height: 1.1;
+      color: var(--foreground);
+    }
+    .quadrant-sub {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted-foreground);
+      margin-top: 2px;
+    }
+    .quadrant-tally {
+      position: absolute;
+      right: 14px; top: 12px;
+      font-size: 11px; font-weight: 600;
+      color: var(--muted-foreground);
+    }
+    .quadrant-body {
+      flex: 1;
+      padding: 10px;
+      display: flex; flex-direction: column; gap: 8px;
+      min-height: 120px;
+      transition: background 0.15s;
+    }
+    .quadrant-body.drag-over {
+      background: var(--accent);
+    }
+    .quadrant-body .empty {
+      color: var(--muted-foreground);
+      font-size: 12px;
+      font-style: italic;
+      padding: 16px 8px;
+      text-align: center;
+    }
+    .task-block {
+      position: relative;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-xs);
+      padding: 10px 12px 14px;
+      cursor: grab;
+      user-select: none;
+      transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s;
+      display: flex; flex-direction: column; gap: 4px;
+      overflow: hidden;
+    }
+    .task-block:hover {
+      box-shadow: var(--shadow-sm);
+      border-color: rgba(55,50,47,0.2);
+    }
+    .task-block.dragging {
+      opacity: 0.45;
+      cursor: grabbing;
+    }
+    .task-block.pending {
+      opacity: 0.7;
+    }
+    .task-block.missing-info {
+      opacity: 0.6;
+      border-style: dashed;
+      background: repeating-linear-gradient(-45deg, #FBFAF8 0 6px, #fff 6px 12px);
+    }
+    .task-block-title {
+      font-size: 13px; font-weight: 600;
+      color: var(--foreground);
+      line-height: 1.25;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .task-block-meta {
+      font-size: 11px;
+      color: var(--muted-foreground);
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: auto;
+    }
+    .task-block-badge {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 1px 6px; border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .task-block-badge.overdue {
+      background: var(--destructive); color: #fff;
+    }
+    .task-block-badge.needs-info {
+      background: rgba(180,130,42,0.12);
+      color: var(--warn);
+      border-color: rgba(180,130,42,0.35);
+    }
+    .task-block-badge.duration {
+      background: rgba(45,110,94,0.1);
+      color: #2D6E5E;
+      border-color: rgba(45,110,94,0.28);
+      text-transform: none; letter-spacing: 0;
+    }
+    .task-block-badge.deadline-day {
+      background: rgba(55,50,47,0.07);
+      color: var(--heading-2);
+      border-color: var(--border);
+      text-transform: none; letter-spacing: 0;
+    }
+    .task-block-badge.deadline-time {
+      background: rgba(180,130,42,0.1);
+      color: var(--warn);
+      border-color: rgba(180,130,42,0.3);
+      text-transform: none; letter-spacing: 0;
+    }
+    .task-block-cancel {
+      position: absolute;
+      top: 5px; right: 5px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: rgba(180,60,60,0.08);
+      border: 1px solid rgba(180,60,60,0.2);
+      color: var(--destructive);
+      font-size: 12px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      opacity: 0; transition: opacity 0.15s, background 0.15s;
+      flex-shrink: 0;
+    }
+    .task-block:hover .task-block-cancel {
+      opacity: 1;
+    }
+    .task-block-cancel:hover {
+      background: rgba(180,60,60,0.18) !important;
+    }
+    .task-block-resize {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 8px;
+      cursor: ns-resize;
+      background: linear-gradient(to bottom, transparent 0, rgba(55,50,47,0.08) 100%);
+      display: flex; justify-content: center; align-items: flex-end; padding-bottom: 1px;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .task-block:hover .task-block-resize,
+    .task-block.resizing .task-block-resize {
+      opacity: 1;
+    }
+    .task-block-resize::after {
+      content: '';
+      width: 28px; height: 2px;
+      border-radius: 2px;
+      background: rgba(55,50,47,0.3);
+    }
+    .task-block.resizing {
+      box-shadow: var(--shadow-sm);
+      border-color: var(--primary);
+    }
+    .task-block.resizing .task-block-meta::after {
+      content: attr(data-live-duration);
+      font-size: 11px; font-weight: 700;
+      color: var(--primary);
+      margin-left: auto;
+    }
+
+    .pill-quadrant {
+      display: inline-flex; align-items: center;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 2px 8px; border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .pill-quadrant.q-do     { background: var(--primary);      color: #fff; }
+    .pill-quadrant.q-plan   { background: #7C3AED;      color: #fff; }
+    .pill-quadrant.q-quick  { background: var(--warn);         color: #fff; }
+    .pill-quadrant.q-later  { background: #64748B; color: #fff; border: none; }
+
+    .pill-duration {
+      display: inline-flex; align-items: center;
+      font-size: 11px; font-weight: 600;
+      color: var(--heading-2);
+      padding: 2px 8px; border-radius: 999px;
+      background: #fff; border: 1px solid var(--border);
+    }
+
+    /* Hide legacy Up Next mount (kept in DOM for back-compat with renderViews) */
+    #dash-upnext { display: none !important; }
+
+    /* ---- Avatar frame ---- */
+    .avatar-frame {
+      width: 110px; height: 110px; border-radius: 50%;
+      background: #FBFAF8; border: 3px solid #fff;
+      box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: transform .15s ease, box-shadow .15s ease;
+      flex-shrink: 0; padding: 0;
+    }
+    .avatar-frame:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 0 1px var(--primary), var(--shadow-sm);
+    }
+    .avatar-badge {
+      position: absolute; bottom: 4px; right: 4px;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--primary); color: #fff; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 0 2px #fff;
+    }
+    .avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+
+    /* ---- Avatar picker modal ---- */
+    .avatar-picker-backdrop {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(55,50,47,0.45);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .avatar-picker-box {
+      background: #fff; border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 40px rgba(55,50,47,0.12);
+      width: 100%; max-width: 440px; padding: 24px;
+    }
+    .avatar-emoji-grid {
+      display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 18px;
+    }
+    .avatar-emoji-btn {
+      aspect-ratio: 1 / 1; border-radius: 10px;
+      background: #FBFAF8; border: 1px solid var(--border);
+      font-size: 20px; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; width: 100%; box-sizing: border-box;
+      transition: all .15s; padding: 0;
+    }
+    .avatar-emoji-btn span {
+      display: block; width: 1.4em; height: 1.4em; line-height: 1.4;
+      text-align: center; overflow: hidden;
+    }
+    .avatar-emoji-btn:hover { background: var(--accent); }
+    .avatar-emoji-btn.active { background: var(--primary); border-color: var(--primary); }
   </style>
 </head>
 <body>
@@ -187,35 +511,84 @@
           </div>
           <div>
             <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Password</label>
-            <input id="auth-password" type="password" autocomplete="current-password" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+            <div class="relative">
+              <input id="auth-password" type="password" autocomplete="current-password" class="mt-1 w-full pr-10 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+              <button id="auth-password-toggle" type="button" aria-label="Show password" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]" onclick="togglePasswordVisibility()">
+                <svg id="auth-password-eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="12" cy="12" rx="10" ry="6"/>
+  <circle cx="12" cy="12" r="3" fill="currentColor"/>
+</svg>
+                <svg id="auth-password-eye-closed" xmlns="http://www.w3.org/2000/svg" style="display:none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="12" cy="12" rx="10" ry="6"/>
+  <circle cx="12" cy="12" r="3" fill="currentColor"/>
+  <line x1="3" y1="3" x2="21" y2="21"/>
+</svg>
+              </button>
+            </div>
             <div class="text-xs text-[color:var(--muted-foreground)] mt-1" id="auth-password-hint">At least 8 characters</div>
+          </div>
+          <div id="auth-new-password-row" class="hidden">
+            <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">New password</label>
+            <input id="auth-new-password" type="password" autocomplete="new-password" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+            <div class="text-xs text-[color:var(--muted-foreground)] mt-1">At least 8 characters</div>
           </div>
           <div id="auth-error" class="text-sm text-[color:var(--destructive)] min-h-5"></div>
           <button id="auth-submit" onclick="submitAuth()" class="w-full py-2.5 bg-[var(--primary)] hover:brightness-110 text-white rounded-full text-sm font-bold shadow-[var(--shadow-xs)] transition-all">Log in</button>
-          <div class="text-center text-sm text-[color:var(--muted-foreground)]">
+          <div id="auth-forgot-row" class="text-center text-sm">
+            <button onclick="enterForgotMode()" class="text-[color:var(--primary)] hover:underline font-semibold">Forgot password?</button>
+          </div>
+          <div id="auth-switch-row" class="text-center text-sm text-[color:var(--muted-foreground)]">
             <span id="auth-switch-label">Don't have an account?</span>
             <button onclick="toggleAuthMode()" class="ml-2 text-[color:var(--primary)] hover:underline font-semibold" id="auth-switch-btn">Sign up</button>
+          </div>
+          <div id="auth-back-row" class="hidden text-center text-sm">
+            <button onclick="exitSecondaryMode()" class="text-[color:var(--primary)] hover:underline font-semibold">Back to login</button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <aside id="sidebar" class="w-72 border-r border-[var(--border)] bg-white flex flex-col pt-8 pb-4 px-5 flex-shrink-0 z-10 shadow-[var(--shadow-xs)]">
-    <div class="mb-10 px-2">
-      <h1 class="font-serif text-3xl font-normal tracking-tight text-[color:var(--foreground)] leading-tight">Last Minute ChatRojak</h1>
-      <div id="summary-line" class="text-sm font-medium text-[color:var(--muted-foreground)] mt-2 h-5">Loading...</div>
+  <aside id="sidebar" class="w-72 border-r border-[var(--border)] flex flex-col pb-4 px-5 flex-shrink-0 z-10 shadow-[var(--shadow-xs)]" style="background:linear-gradient(180deg,rgba(74,140,127,0.15) 0%,rgba(255,255,255,0.95) 100%);backdrop-filter:blur(2px);padding-top:56px;">
+
+    <!-- Avatar + user info + Upload CTA -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:24px;">
+
+      <!-- Circular avatar frame -->
+      <button class="avatar-frame" onclick="openAvatarPicker()" title="Change avatar" id="avatar-frame-btn">
+        <span id="avatar-display" style="font-size:55px;line-height:1;">❓</span>
+      </button>
+
+      <!-- user: label + email + stats -->
+      <div style="text-align:center;width:100%;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted-foreground);margin-bottom:4px;">user:</div>
+        <div id="user-email" style="font-size:14px;color:var(--foreground);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px;" title=""></div>
+        <div id="summary-line" style="font-size:12px;font-weight:500;color:var(--muted-foreground);margin-top:8px;min-height:18px;"></div>
+      </div>
+
+      <!-- Upload Chat CTA -->
+      <button id="upload-cta-btn" onclick="setMode('upload')"
+        style="width:100%;padding:10px 14px;border-radius:999px;background:linear-gradient(90deg,#2D6E5E,#D4841A);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-xs);font-family:var(--font-sans);transition:all .15s ease;display:flex;align-items:center;justify-content:center;gap:8px;"
+        onmouseover="this.style.boxShadow='var(--shadow-sm)'" onmouseout="this.style.boxShadow='var(--shadow-xs)'">
+        <span style="font-size:15px;line-height:1;">📁</span> Upload Chat
+      </button>
+      <!-- Try Demo CTA -->
+      <button id="demo-cta-btn" onclick="loadDemo()"
+        style="width:100%;padding:10px 14px;border-radius:999px;background:rgba(45,110,94,0.07);color:#2D6E5E;border:2px dashed #2D6E5E;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-sans);transition:all .2s ease;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:0.02em;"
+        onmouseover="this.style.background='rgba(45,110,94,0.14)';this.style.borderStyle='solid';this.style.boxShadow='0 2px 8px rgba(45,110,94,0.18)';this.style.animation='none'"
+        onmouseout="this.style.background='rgba(45,110,94,0.07)';this.style.borderStyle='dashed';this.style.boxShadow='';this.style.animation='demo-pulse 2.8s ease-in-out infinite'">
+        <span style="font-size:15px;line-height:1;">🧪</span> Try Demo
+      </button>
     </div>
 
-    <nav class="flex-1 space-y-2" id="sidebar-nav">
-      <button data-mode="upload" class="nav-btn active" onclick="setMode('upload')">
-        <span class="mr-3 text-xl">📁</span> Upload Chat
-      </button>
+    <!-- Workspace nav -->
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted-foreground);padding-left:12px;margin-bottom:8px;">Workspace</div>
+    <nav class="flex-1" id="sidebar-nav" style="display:flex;flex-direction:column;gap:4px;">
       <button data-mode="dashboard" class="nav-btn" onclick="setMode('dashboard')">
         <span class="mr-3 text-xl">🏠</span> Dashboard
       </button>
       <button data-mode="checklist" class="nav-btn" onclick="setMode('checklist')">
-        <span class="mr-3 text-xl">✓</span> Checklist
+        <span class="mr-3 text-xl">✅</span> Checklist
       </button>
       <button data-mode="calendar" class="nav-btn" onclick="setMode('calendar')">
         <span class="mr-3 text-xl">📅</span> Calendar
@@ -225,14 +598,13 @@
       </button>
     </nav>
 
-    <div class="border-t border-[var(--border)] pt-4 px-2 text-xs text-[color:var(--muted-foreground)]">
-      <div id="user-email" class="truncate mb-2"></div>
-      <button onclick="logout()" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] transition">Log out</button>
+    <div class="border-t border-[var(--border)] pt-3 px-2 text-xs text-[color:var(--muted-foreground)]">
+      <button onclick="logout()" style="width:100%;padding:10px 0;border-radius:8px;background:#DC2626;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);transition:background .15s;" onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">Log out</button>
     </div>
   </aside>
 
-  <main class="flex-1 overflow-y-auto bg-[var(--background)] relative">
-    <div class="max-w-5xl mx-auto px-10 py-12">
+  <main class="flex-1 overflow-y-auto relative" style="background:transparent;">
+    <div class="max-w-5xl mx-auto px-10 py-12" style="min-height:100%;">
 
       <!-- Upload View -->
       <div id="view-upload" class="view-section">
@@ -320,66 +692,106 @@
 
       <!-- Dashboard View -->
       <div id="view-dashboard" class="view-section hidden">
-        <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Dashboard Overview</h2>
-        <div id="dash-stat-cards" class="grid grid-cols-3 gap-4 mb-6"></div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <div class="section-label">Needs Clarification</div>
-            <div id="dash-clarifications"></div>
+        <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Power Grid</h2>
+
+        <!-- Stat strip -->
+        <div id="dash-stat-cards" class="grid gap-3 mb-5" style="grid-template-columns:repeat(3,minmax(0,1fr));"></div>
+
+        <!-- Overload warning banner -->
+        <div id="overload-banner" class="hidden mb-5"></div>
+
+        <!-- Empty state -->
+        <div id="dashboard-empty-state" class="hidden mb-6" style="border:1.5px dashed var(--border);border-radius:var(--radius-xl);padding:32px 24px;text-align:center;background:rgba(255,255,255,0.5);">
+          <div style="font-size:36px;margin-bottom:12px;">📋</div>
+          <div style="font-size:16px;font-weight:700;color:var(--foreground);margin-bottom:6px;">No tasks yet</div>
+          <div style="font-size:13px;color:var(--muted-foreground);margin-bottom:18px;">Upload a WhatsApp chat to extract tasks, or try the demo to explore the app.</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="setMode('upload')" style="padding:9px 22px;border-radius:999px;background:var(--primary);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);">Upload Chat</button>
+            <button onclick="loadDemo()" style="padding:9px 22px;border-radius:999px;background:transparent;color:var(--primary);border:1.5px solid var(--primary);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);">Try Demo</button>
           </div>
-          <div>
-            <div class="section-label">Up Next</div>
-            <div id="dash-upnext"></div>
+        </div>
+
+        <!-- 2x2 Eisenhower Grid -->
+        <div class="power-grid mb-8">
+          <div class="quadrant" data-quadrant="do">
+            <div class="quadrant-header">
+              <div class="quadrant-title">⚡ Do Now</div>
+              <div class="quadrant-sub">Urgent &amp; Important</div>
+              <div class="quadrant-tally" data-quadrant-tally="do"></div>
+            </div>
+            <div class="quadrant-body" data-dropzone="do"></div>
+          </div>
+          <div class="quadrant" data-quadrant="plan">
+            <div class="quadrant-header">
+              <div class="quadrant-title">📅 Plan</div>
+              <div class="quadrant-sub">Important · Not Urgent</div>
+              <div class="quadrant-tally" data-quadrant-tally="plan"></div>
+            </div>
+            <div class="quadrant-body" data-dropzone="plan"></div>
+          </div>
+          <div class="quadrant" data-quadrant="quick">
+            <div class="quadrant-header">
+              <div class="quadrant-title">🏆 Quick Wins</div>
+              <div class="quadrant-sub">Urgent · Not Important</div>
+              <div class="quadrant-tally" data-quadrant-tally="quick"></div>
+            </div>
+            <div class="quadrant-body" data-dropzone="quick"></div>
+          </div>
+          <div class="quadrant" data-quadrant="later">
+            <div class="quadrant-header">
+              <div class="quadrant-title">🕐 Later</div>
+              <div class="quadrant-sub">Not Urgent · Not Important</div>
+              <div class="quadrant-tally" data-quadrant-tally="later"></div>
+            </div>
+            <div class="quadrant-body" data-dropzone="later"></div>
           </div>
         </div>
-        <div class="mt-6">
-          <div class="section-label">Clarification Inbox (AI is waiting for your answer)</div>
-          <div id="dash-clarification-threads"></div>
+
+        <div>
+          <div class="section-label">Needs Clarification</div>
+          <div id="dash-clarifications"></div>
         </div>
-        <div class="mt-6">
-          <div class="section-label">Dependency Graph</div>
-          <div id="dash-dependencies" class="text-sm text-[color:var(--muted-foreground)]"></div>
-        </div>
+        <!-- Legacy mount point kept so renderViews still has a target; hidden via CSS -->
+        <div id="dash-upnext" class="hidden"></div>
       </div>
 
       <!-- Checklist View -->
       <div id="view-checklist" class="view-section hidden">
-        <div class="flex justify-between items-end mb-6 border-b border-[var(--border-soft)] pb-5">
-          <h2 class="font-serif text-5xl font-normal text-[color:var(--foreground)] leading-none">Task Checklist</h2>
-          <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
-        </div>
-
-        <div id="filter-toolbar" class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-4 mb-6 space-y-3 shadow-[var(--shadow-xs)]">
-          <div class="flex flex-wrap items-center gap-3">
-            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Filters:</span>
-            <select id="filter-bucket" class="filter-select" onchange="applyFilters()">
-              <option value="">All categories</option>
-              <option value="Academic">Academic</option>
-              <option value="Co-curricular">Co-curricular</option>
-              <option value="Others">Others</option>
-            </select>
-            <select id="filter-priority" class="filter-select" onchange="applyFilters()">
-              <option value="">All priorities</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-            <select id="filter-status" class="filter-select" onchange="applyFilters()">
-              <option value="active">Active</option>
-              <option value="done">Done</option>
-              <option value="">All</option>
-            </select>
-            <input id="filter-q" class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Search…" oninput="applyFiltersDebounced()" />
-            <button onclick="clearFilters()" class="ghost-btn">Clear</button>
+        <!-- Today hero -->
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] p-8 mb-6">
+          <div class="flex items-start justify-between gap-6 flex-wrap">
+            <div>
+              <div class="font-serif leading-none text-[color:var(--foreground)]" style="font-size:96px;letter-spacing:-0.03em;">Today</div>
+              <div class="flex items-baseline gap-4 mt-3">
+                <div id="hero-time" class="font-serif leading-none text-[color:var(--foreground)]" style="font-size:56px;letter-spacing:-0.02em;">—</div>
+                <div id="hero-day" class="text-2xl font-medium text-[color:var(--muted-foreground)]">—</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 bg-[var(--accent)] rounded-[var(--radius-xl)] px-6 py-4 border border-[var(--border-soft)]">
+              <div id="hero-weather-icon" style="font-size:56px;line-height:1;">☀️</div>
+              <div>
+                <div id="hero-temp" class="font-serif leading-none text-[color:var(--foreground)]" style="font-size:48px;letter-spacing:-0.02em;">31°</div>
+                <div id="hero-weather-label" class="text-sm text-[color:var(--muted-foreground)] mt-1">Sunny · Singapore</div>
+              </div>
+            </div>
           </div>
-          <div class="flex flex-wrap items-center gap-2" id="tag-chips">
-            <span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>
-            <span class="text-xs text-[color:var(--muted-foreground)]">none yet</span>
+
+          <!-- Quadrant picker (check up to 4) -->
+          <div class="mt-7 pt-6 border-t border-[var(--border-soft)]">
+            <div class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-3">Filter by quadrant <span style="font-weight:400;text-transform:none;letter-spacing:0">(all shown by default)</span></div>
+            <div id="quadrant-picker" class="flex flex-wrap items-center gap-2">
+              <label class="quad-chip" data-quad="do_now"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#37322F"></span>Do now</label>
+              <label class="quad-chip" data-quad="schedule"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#5B7D4E"></span>Plan</label>
+              <label class="quad-chip" data-quad="quick"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#B4822A"></span>Quick wins</label>
+              <label class="quad-chip" data-quad="defer"><input type="checkbox" onchange="applyFilters()"/><span class="quad-dot" style="background:#8A837F"></span>Later</label>
+              <input id="task-search" type="text" placeholder="Search tasks…" oninput="applyFiltersDebounced()"
+                class="ml-2 bg-white border border-[var(--input)] rounded-full px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" style="min-width:160px;" />
+            </div>
           </div>
         </div>
 
         <div id="checklist-content">
-           <div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No actionable tasks found.</div>
+           <div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">Pick a quadrant above to see tasks.</div>
         </div>
       </div>
 
@@ -424,6 +836,24 @@
           <div class="font-serif text-2xl text-[color:var(--foreground)]" id="account-email">—</div>
         </div>
 
+        <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mb-6 shadow-[var(--shadow-xs)]">
+          <div class="section-label">Password</div>
+          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">Update the password for this account. Other devices will be signed out.</p>
+          <div class="space-y-3 max-w-sm">
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">Current password</label>
+              <input id="cp-current" type="password" autocomplete="current-password" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">New password</label>
+              <input id="cp-new" type="password" autocomplete="new-password" class="mt-1 w-full bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-2 text-base text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:ring-1 focus:ring-[var(--ring)] focus:outline-none" />
+              <div class="text-xs text-[color:var(--muted-foreground)] mt-1">At least 8 characters</div>
+            </div>
+            <div id="cp-status" class="text-sm min-h-5"></div>
+            <button id="cp-submit" onclick="submitChangePassword()" class="ghost-btn ghost-btn-accent">Change password</button>
+          </div>
+        </div>
+
         <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 shadow-[var(--shadow-xs)]">
           <div class="section-label">Telegram</div>
           <div id="telegram-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">Checking…</div>
@@ -435,16 +865,17 @@
           </div>
         </div>
 
+
         <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
-          <div class="section-label">Adaptive Priority Learning</div>
+          <div class="section-label">AI Memory</div>
           <div id="adaptation-status" class="text-sm text-[color:var(--muted-foreground)] mb-4">—</div>
-          <button onclick="resetAdaptation()" class="ghost-btn">Reset adaptation</button>
-          <div class="text-xs text-[color:var(--muted-foreground)] mt-3">The system learns from your priority overrides to better rank future tasks.</div>
+          <button onclick="resetAdaptation()" class="ghost-btn">Reset AI memory</button>
+          <div class="text-xs text-[color:var(--muted-foreground)] mt-3">The AI learns from every priority change, duration resize, and quadrant drag. These memories shape future extractions.</div>
         </div>
 
         <div class="bg-white border border-[rgba(199,68,58,0.3)] rounded-[var(--radius-xl)] p-6 mt-6 shadow-[var(--shadow-xs)]">
           <div class="section-label" style="color:var(--destructive)">Danger Zone</div>
-          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">Permanently delete all your tasks, plans, and history. This cannot be undone.</p>
+          <p class="text-sm text-[color:var(--muted-foreground)] mb-4">Permanently delete all your tasks, plans, history, and uploaded chats. This cannot be undone.</p>
           <button onclick="resetAll()" class="ghost-btn danger">Reset All Data</button>
         </div>
       </div>
@@ -458,7 +889,11 @@
     <div class="flex items-start justify-between mb-5">
       <div class="flex-1 min-w-0 pr-3">
         <div id="modal-category" class="mb-2"></div>
-        <h3 id="modal-title" class="font-serif text-3xl font-normal text-[color:var(--foreground)] leading-tight"></h3>
+        <h3 id="modal-title" contenteditable="true" spellcheck="false"
+      class="font-serif text-3xl font-normal text-[color:var(--foreground)] leading-tight outline-none border-b-2 border-transparent focus:border-[color:var(--primary)] transition-colors cursor-text rounded-sm px-0.5 -mx-0.5"
+      onblur="modalSaveTitle(this.textContent.trim())"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+      title="Click to rename"></h3>
       </div>
       <button onclick="closeModal()" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] text-2xl leading-none flex-shrink-0 mt-1">&times;</button>
     </div>
@@ -466,29 +901,36 @@
     <div class="space-y-3 mb-6">
       <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Deadline</span>
-        <span id="modal-deadline" class="text-[color:var(--primary)] font-medium"></span>
+        <div class="flex items-center gap-2 flex-wrap flex-1">
+          <span id="modal-deadline" class="text-[color:var(--primary)] font-medium"></span>
+          <button id="modal-deadline-edit-btn" onclick="toggleDeadlineEdit()" class="text-[color:var(--muted-foreground)] hover:text-[color:var(--primary)] transition-colors ml-1" title="Edit deadline">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div id="modal-deadline-edit" class="hidden flex items-center gap-1.5 mt-1 w-full">
+            <input id="modal-deadline-input" type="datetime-local"
+              class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-2 py-1 text-sm text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
+            <button onclick="saveModalDeadline()" class="ghost-btn ghost-btn-accent" style="padding:4px 10px;font-size:12px;">Save</button>
+            <button onclick="toggleDeadlineEdit()" class="ghost-btn" style="padding:4px 8px;font-size:12px;">✕</button>
+          </div>
+        </div>
       </div>
       <div class="flex items-center gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">AI priority</span>
-        <span id="modal-priority" class="category-tag"></span>
-        <span id="modal-score" class="text-xs text-[color:var(--muted-foreground)]"></span>
-      </div>
-      <div class="flex items-center gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Override</span>
-        <select id="modal-priority-override" onchange="modalSetPriority()" class="filter-select">
-          <option value="">Use AI priority</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Quadrant</span>
+        <select id="modal-eisenhower" onchange="modalSetEisenhower()" class="filter-select">
+          <option value="">Use AI quadrant</option>
+          <option value="do">Do Now</option>
+          <option value="plan">Plan</option>
+          <option value="quick">Quick Wins</option>
+          <option value="later">Later</option>
         </select>
+        
       </div>
       <div class="flex items-center gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Bucket</span>
-        <select id="modal-bucket" onchange="modalSetBucket()" class="filter-select">
-          <option value="Academic">Academic</option>
-          <option value="Co-curricular">Co-curricular</option>
-          <option value="Others">Others</option>
-        </select>
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Duration</span>
+        <input id="modal-duration" type="number" min="5" max="1440" step="5" onchange="modalSetDuration()"
+               class="bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-2 py-1 text-sm w-20 text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none" />
+        <span class="text-xs text-[color:var(--muted-foreground)]">minutes</span>
+        
       </div>
       <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Assigned by</span>
@@ -499,14 +941,35 @@
         <span id="modal-status" class="text-[color:var(--heading-2)]"></span>
       </div>
       <div class="flex items-start gap-3 text-sm">
-        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Depends on</span>
-        <div id="modal-deps" class="flex flex-wrap gap-2 flex-1"></div>
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Calendar</span>
+        <div class="flex-1">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input id="modal-calendar-sync" type="checkbox" onchange="modalToggleCalendarSync()" class="h-4 w-4" />
+            <span class="text-[color:var(--heading-2)]">Sync this task to Google Calendar</span>
+          </label>
+          <div id="modal-calendar-sync-subtext" class="text-xs text-[color:var(--muted-foreground)] mt-1"></div>
+        </div>
       </div>
     </div>
 
     <div id="modal-steps-section" class="mb-6">
-      <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-3">Action Steps</div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)]">Action Steps</div>
+        <button onclick="addModalStep()" class="flex items-center gap-1 text-xs font-semibold text-[color:var(--primary)] hover:underline transition-colors">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add step
+        </button>
+      </div>
       <ol id="modal-steps" class="space-y-2"></ol>
+      <div id="modal-add-step-row" class="hidden mt-2" style="display:none">
+        <div class="flex items-center gap-2">
+          <input id="modal-new-step-input" type="text" placeholder="New action step…" maxlength="200"
+            class="flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none"
+            onkeydown="if(event.key==='Enter')saveNewModalStep(); if(event.key==='Escape')cancelNewModalStep()" />
+          <button onclick="saveNewModalStep()" class="ghost-btn ghost-btn-accent" style="padding:5px 12px;font-size:12px;">Add</button>
+          <button onclick="cancelNewModalStep()" class="ghost-btn" style="padding:5px 8px;font-size:12px;">✕</button>
+        </div>
+      </div>
     </div>
 
     <div id="modal-clarify-section" class="mb-6 hidden">
@@ -518,17 +981,73 @@
       </div>
     </div>
 
-    <div id="modal-timeline-section" class="mb-6">
-      <details>
-        <summary class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-3 cursor-pointer">Timeline</summary>
-        <div id="modal-timeline" class="mt-3 text-xs space-y-1 text-[color:var(--muted-foreground)]"></div>
-      </details>
+    <div class="flex gap-3 pt-4 border-t border-[var(--border-soft)]">
+      <button id="modal-start-btn" onclick="modalStartTask()" class="flex-1 py-2.5 hover:brightness-110 text-white rounded-full text-sm font-bold transition-all" style="background:var(--primary)">Start Task</button>
+      <button id="modal-done-btn" onclick="modalMarkDone()" class="flex-1 py-2.5 bg-[var(--success)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Mark Done</button>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add Task Modal -->
+<div id="add-task-modal" class="modal-backdrop hidden" onclick="if(event.target===this)closeAddTaskModal()">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="flex items-center justify-between mb-5">
+      <div class="font-serif text-2xl font-normal text-[color:var(--foreground)]">New Task</div>
+      <button onclick="closeAddTaskModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted-foreground);line-height:1;padding:2px 6px;">&times;</button>
     </div>
 
-    <div class="flex gap-3 pt-4 border-t border-[var(--border-soft)]">
-      <button id="modal-start-btn" onclick="modalStartTask()" class="flex-1 py-2.5 bg-[var(--primary)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Start Task</button>
-      <button id="modal-done-btn" onclick="modalMarkDone()" class="flex-1 py-2.5 bg-[var(--success)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Mark Done</button>
-      <button onclick="closeModal()" class="px-4 py-2.5 ghost-btn">Close</button>
+    <div class="flex flex-col gap-4">
+      <!-- Task name -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Task *</label>
+        <textarea id="add-task-name" rows="2" placeholder="What needs to be done?" class="w-full border border-[var(--input)] rounded-[var(--radius-md)] bg-white text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-sm transition-colors resize-none" style="padding:8px 10px;font-family:var(--font-sans);" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitAddTask();}"></textarea>
+      </div>
+
+      <!-- Quadrant -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Quadrant</label>
+        <select id="add-task-quadrant" class="filter-select w-full" style="font-size:13px;">
+          <option value="">— Unassigned —</option>
+          <option value="do">⚡ Do Now</option>
+          <option value="plan">📅 Plan</option>
+          <option value="quick">⚡ Quick Win</option>
+          <option value="later">🌿 Later</option>
+        </select>
+      </div>
+
+      <!-- Deadline + Duration row -->
+      <div class="grid gap-3" style="grid-template-columns:1fr 1fr;">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Deadline</label>
+          <input id="add-task-deadline" type="datetime-local" class="w-full border border-[var(--input)] rounded-[var(--radius-md)] bg-white text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-sm transition-colors" style="padding:7px 10px;font-family:var(--font-sans);" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-1">Est. Duration (min)</label>
+          <input id="add-task-duration" type="number" min="5" max="1440" step="5" placeholder="e.g. 30" class="w-full border border-[var(--input)] rounded-[var(--radius-md)] bg-white text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-sm transition-colors" style="padding:7px 10px;font-family:var(--font-sans);" />
+        </div>
+      </div>
+    </div>
+
+    <div id="add-task-error" class="hidden mt-3 text-sm font-medium text-[color:var(--destructive)]"></div>
+
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeAddTaskModal()" class="ghost-btn flex-1">Cancel</button>
+      <button onclick="submitAddTask()" class="flex-1 text-white font-bold rounded-full py-2.5 text-sm transition-all hover:brightness-110" style="background:var(--primary);border:none;cursor:pointer;font-family:var(--font-sans);">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- Avatar Picker Modal -->
+<div id="avatar-picker" class="avatar-picker-backdrop hidden" onclick="if(event.target===this)closeAvatarPicker()">
+  <div class="avatar-picker-box" onclick="event.stopPropagation()">
+    <div class="font-serif" style="font-size:24px;color:var(--foreground);line-height:1.1;margin-bottom:4px;">Choose your avatar</div>
+    <div style="font-size:12px;color:var(--muted-foreground);margin-bottom:18px;">Pick an emoji or upload a picture.</div>
+    <div class="avatar-emoji-grid" id="avatar-emoji-grid"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid var(--border-soft);">
+      <input type="file" id="avatar-upload-input" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+      <button type="button" class="ghost-btn" onclick="document.getElementById('avatar-upload-input').click()">📷 Upload photo</button>
+      <button class="ghost-btn" onclick="closeAvatarPicker()">Cancel</button>
     </div>
   </div>
 </div>
@@ -549,7 +1068,7 @@ async function api(method, path, body) {
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
   if (!res.ok) {
-    const err = new Error(data?.detail || `${res.status} ${res.statusText}`);
+    const err = new Error(data?.detail || (res.status + ' ' + res.statusText));
     err.status = res.status;
     err.data = data;
     throw err;
@@ -569,35 +1088,142 @@ function hideAuthGate() {
   document.querySelector('main').classList.remove('hidden');
 }
 
+function togglePasswordVisibility() {
+  const pwd = document.getElementById('auth-password');
+  const open = document.getElementById('auth-password-eye-open');
+  const closed = document.getElementById('auth-password-eye-closed');
+  if (!pwd) return;
+  const isHidden = pwd.type === 'password';
+  pwd.type = isHidden ? 'text' : 'password';
+  if (open && closed) {
+    open.style.display = isHidden ? 'block' : 'none';
+    closed.style.display = isHidden ? 'none' : 'block';
+  }
+}
+
+function renderAuthMode() {
+  const subtitle = document.getElementById('auth-subtitle');
+  const submit = document.getElementById('auth-submit');
+  const switchRow = document.getElementById('auth-switch-row');
+  const forgotRow = document.getElementById('auth-forgot-row');
+  const backRow = document.getElementById('auth-back-row');
+  const emailInput = document.getElementById('auth-email');
+  const emailRow = emailInput.parentElement;
+  const passwordRow = document.getElementById('auth-password').parentElement.parentElement;
+  const newPasswordRow = document.getElementById('auth-new-password-row');
+
+  document.getElementById('auth-error').textContent = '';
+
+  const show = (el, cond) => el.classList.toggle('hidden', !cond);
+
+  if (authMode === 'login' || authMode === 'signup') {
+    subtitle.textContent = authMode === 'login' ? 'Sign in to continue' : 'Create a new account';
+    submit.textContent = authMode === 'login' ? 'Log in' : 'Sign up';
+    document.getElementById('auth-switch-label').textContent = authMode === 'login' ? "Don't have an account?" : 'Already have one?';
+    document.getElementById('auth-switch-btn').textContent = authMode === 'login' ? 'Sign up' : 'Log in';
+    document.getElementById('auth-password').autocomplete = authMode === 'login' ? 'current-password' : 'new-password';
+    show(emailRow, true);
+    show(passwordRow, true);
+    show(newPasswordRow, false);
+    show(switchRow, true);
+    show(forgotRow, authMode === 'login');
+    show(backRow, false);
+  } else if (authMode === 'forgot') {
+    subtitle.textContent = 'Enter your email and a new password';
+    submit.textContent = 'Reset password';
+    show(emailRow, true);
+    show(passwordRow, false);
+    show(newPasswordRow, true);
+    show(switchRow, false);
+    show(forgotRow, false);
+    show(backRow, true);
+  }
+}
+
 function toggleAuthMode() {
   authMode = authMode === 'login' ? 'signup' : 'login';
-  document.getElementById('auth-subtitle').textContent = authMode === 'login' ? 'Sign in to continue' : 'Create a new account';
-  document.getElementById('auth-submit').textContent = authMode === 'login' ? 'Log in' : 'Sign up';
-  document.getElementById('auth-switch-label').textContent = authMode === 'login' ? "Don't have an account?" : 'Already have one?';
-  document.getElementById('auth-switch-btn').textContent = authMode === 'login' ? 'Sign up' : 'Log in';
-  document.getElementById('auth-password').autocomplete = authMode === 'login' ? 'current-password' : 'new-password';
-  document.getElementById('auth-error').textContent = '';
+  renderAuthMode();
+}
+
+function enterForgotMode() {
+  authMode = 'forgot';
+  renderAuthMode();
+}
+
+function exitSecondaryMode() {
+  authMode = 'login';
+  const np = document.getElementById('auth-new-password');
+  if (np) np.value = '';
+  renderAuthMode();
 }
 
 async function submitAuth() {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
   const errEl = document.getElementById('auth-error');
   errEl.textContent = '';
-  if (!email || !password) { errEl.textContent = 'Fill in both fields.'; return; }
   const btn = document.getElementById('auth-submit');
+  const restoreLabel = btn.textContent;
   btn.disabled = true; btn.textContent = '…';
   try {
-    const data = await api('POST', `/api/auth/${authMode}`, { email, password });
-    currentUser = data;
-    hideAuthGate();
-    document.getElementById('user-email').textContent = data.email;
-    await refreshDashboard();
+    if (authMode === 'login' || authMode === 'signup') {
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      if (!email || !password) throw new Error('Fill in both fields.');
+      const data = await api('POST', `/api/auth/${authMode}`, { email, password });
+      currentUser = data;
+      hideAuthGate();
+      document.getElementById('user-email').textContent = data.email;
+      loadAvatarFromStorage();
+      await refreshDashboard();
+    } else if (authMode === 'forgot') {
+      const email = document.getElementById('auth-email').value.trim();
+      const newPassword = document.getElementById('auth-new-password').value;
+      if (!email || !newPassword) throw new Error('Fill in both fields.');
+      await api('POST', '/api/auth/reset-password', { email, new_password: newPassword });
+      currentUser = await api('GET', '/api/auth/me');
+      hideAuthGate();
+      document.getElementById('user-email').textContent = currentUser.email;
+      document.getElementById('auth-new-password').value = '';
+      loadAvatarFromStorage();
+      await refreshDashboard();
+    }
   } catch (e) {
     errEl.textContent = e.message;
   } finally {
     btn.disabled = false;
-    btn.textContent = authMode === 'login' ? 'Log in' : 'Sign up';
+    btn.textContent = restoreLabel;
+  }
+}
+
+async function submitChangePassword() {
+  const cur = document.getElementById('cp-current');
+  const next = document.getElementById('cp-new');
+  const status = document.getElementById('cp-status');
+  const btn = document.getElementById('cp-submit');
+  status.textContent = '';
+  status.className = 'text-sm min-h-5';
+  if (!cur.value || !next.value) {
+    status.textContent = 'Fill in both fields.';
+    status.className = 'text-sm min-h-5 text-[color:var(--destructive)]';
+    return;
+  }
+  btn.disabled = true;
+  const restore = btn.textContent;
+  btn.textContent = 'Saving…';
+  try {
+    await api('POST', '/api/auth/change-password', {
+      current_password: cur.value,
+      new_password: next.value,
+    });
+    cur.value = '';
+    next.value = '';
+    status.textContent = 'Password changed. Other devices have been signed out.';
+    status.className = 'text-sm min-h-5 text-[color:var(--primary)]';
+  } catch (e) {
+    status.textContent = e.message;
+    status.className = 'text-sm min-h-5 text-[color:var(--destructive)]';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = restore;
   }
 }
 
@@ -605,7 +1231,28 @@ async function logout() {
   try { await api('POST', '/api/auth/logout'); } catch {}
   currentUser = null;
   localStorage.removeItem('filters');
+  applyAvatar(null);
   showAuthGate();
+}
+
+async function loadDemo() {
+  const btn = document.getElementById('demo-cta-btn');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span style="font-size:13px">⏳</span> Loading…'; }
+  try {
+    const res = await api('POST', '/api/demo-seed', { force: false });
+    if (res.seeded === false) {
+      const ok = confirm('You already have tasks. Reset and load demo data instead?');
+      if (!ok) { if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; } return; }
+      await api('POST', '/api/demo-seed', { force: true });
+    }
+    await refreshDashboard();
+    setMode('dashboard');
+  } catch (e) {
+    alert('Failed to load demo: ' + (e.message || 'unknown error'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+  }
 }
 
 async function checkAuth() {
@@ -613,6 +1260,7 @@ async function checkAuth() {
     currentUser = await api('GET', '/api/auth/me');
     hideAuthGate();
     document.getElementById('user-email').textContent = currentUser.email;
+    loadAvatarFromStorage();
     savedChats = loadSavedChats();
     renderChatFileList();
     return true;
@@ -629,7 +1277,10 @@ function setMode(mode) {
   document.getElementById(`view-${mode}`).classList.remove('hidden');
   if (mode === 'account') refreshAccount();
   else if (mode === 'upload') renderChatFileList();
-  else refreshDashboard();
+  else {
+    filters.quadrants = {};
+    refreshDashboard();
+  }
 }
 
 // ---------------- State ----------------
@@ -642,7 +1293,7 @@ let filterDebounceTimer = null;
 function loadFilters() {
   try {
     const raw = localStorage.getItem('filters');
-    if (!raw) return { status: 'active', tags: [] };
+    if (!raw) return { status: 'active', tags: [], quadrants: {} };
     const f = JSON.parse(raw);
     return {
       category: f.category || '',
@@ -650,9 +1301,10 @@ function loadFilters() {
       status: f.status ?? 'active',
       q: f.q || '',
       tags: Array.isArray(f.tags) ? f.tags : [],
+      quadrants: {},
     };
   } catch {
-    return { status: 'active', tags: [] };
+    return { status: 'active', tags: [], quadrants: {} };
   }
 }
 function saveFilters() { localStorage.setItem('filters', JSON.stringify(filters)); }
@@ -685,10 +1337,14 @@ function setStatus(msg, type = 'info') {
 // ---------------- API actions ----------------
 const SPINNER_SVG = `<svg class="spin" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"/></svg>`;
 
+let _refreshSeq = 0;
 async function refreshDashboard() {
   if (!currentUser) return;
+  const seq = ++_refreshSeq;
   try {
-    globalDashboardData = await api('GET', '/api/dashboard' + filtersToQuery());
+    const data = await api('GET', '/api/dashboard' + filtersToQuery());
+    if (seq !== _refreshSeq) return; // a newer refresh already arrived — discard this one
+    globalDashboardData = data;
     renderViews(globalDashboardData);
   } catch (e) {
     if (e.status === 401) { showAuthGate(); return; }
@@ -718,40 +1374,43 @@ function sortByUrgency(items, now = new Date()) {
 }
 
 function activeTasks(data) {
-  const combined = [
-    ...(data.do_now || []),
+  const raw = filters.quadrants || {};
+  const anyOn = raw.do_now || raw.schedule || raw.quick || raw.defer;
+  const allOff = !anyOn;
+
+  const all = [
+    ...(data.do_now      || []),
     ...(data.in_progress || []),
-    ...(data.need_info || []),
-    ...(data.schedule || []),
-    ...(data.defer || []),
+    ...(data.schedule    || []),
+    ...(data.defer       || []),
+    ...(data.need_info   || []),
+    ...(data.waiting     || []),
   ];
-  return sortByUrgency(combined);
+
+  if (allOff) return sortByUrgency(all);
+
+  return sortByUrgency(all.filter(t => {
+    const eq = effectiveQuadrant(t);
+    if (raw.do_now   && eq === 'do')    return true;
+    if (raw.schedule && eq === 'plan')  return true;
+    if (raw.quick    && eq === 'quick') return true;
+    if (raw.defer    && eq === 'later') return true;
+    return false;
+  }));
 }
 
 // ---------------- Filters UI ----------------
-function renderFilterToolbar(data) {
-  const bucketSel = document.getElementById('filter-bucket');
-  const prioSel = document.getElementById('filter-priority');
-  const statSel = document.getElementById('filter-status');
-  const qInput = document.getElementById('filter-q');
-
-  if (bucketSel) bucketSel.value = filters.bucket || '';
-  prioSel.value = filters.priority || '';
-  statSel.value = filters.status ?? 'active';
-  qInput.value = filters.q || '';
-
-  const chipsEl = document.getElementById('tag-chips');
-  const tagRows = (data.available_tags || []);
-  if (!tagRows.length) {
-    chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span><span class="text-xs text-[color:var(--muted-foreground)]">none yet — process a chat to see AI-generated tags</span>`;
-    return;
-  }
-  const active = new Set(filters.tags || []);
-  const chipsHtml = tagRows.map(t => {
-    const cls = active.has(t.tag) ? 'tag-chip active' : 'tag-chip';
-    return `<button class="${cls}" onclick="toggleTag('${esc(t.tag)}')">#${esc(t.tag)} <span class="opacity-60">${t.count}</span></button>`;
-  }).join('');
-  chipsEl.innerHTML = `<span class="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mr-1">AI tags:</span>${chipsHtml}`;
+function renderFilterToolbar(_data) {
+  const searchEl = document.getElementById('task-search');
+  if (searchEl && document.activeElement !== searchEl) searchEl.value = filters.q || '';
+  const quadBoxes = document.querySelectorAll('#quadrant-picker .quad-chip');
+  quadBoxes.forEach(lbl => {
+    const name = lbl.dataset.quad;
+    const cb = lbl.querySelector('input');
+    const active = !!(filters.quadrants || {})[name];
+    cb.checked = active;
+    lbl.classList.toggle('active', active);
+  });
 }
 
 function toggleTag(tag) {
@@ -763,11 +1422,21 @@ function toggleTag(tag) {
 }
 
 function applyFilters() {
-  const bucketEl = document.getElementById('filter-bucket');
-  filters.bucket = bucketEl ? bucketEl.value : '';
-  filters.priority = document.getElementById('filter-priority').value;
-  filters.status = document.getElementById('filter-status').value;
-  filters.q = document.getElementById('filter-q').value;
+  filters.bucket = '';
+  filters.priority = '';
+  filters.status = 'active';
+  filters.q = (document.getElementById('task-search')?.value || '').trim();
+  const quadBoxes = document.querySelectorAll('#quadrant-picker .quad-chip');
+  if (quadBoxes.length) {
+    const q = {};
+    quadBoxes.forEach(lbl => {
+      const name = lbl.dataset.quad;
+      const cb = lbl.querySelector('input');
+      q[name] = !!cb.checked;
+      lbl.classList.toggle('active', !!cb.checked);
+    });
+    filters.quadrants = q;
+  }
   saveFilters();
   refreshDashboard();
 }
@@ -778,7 +1447,7 @@ function applyFiltersDebounced() {
 }
 
 function clearFilters() {
-  filters = { status: 'active', tags: [] };
+  filters = { status: 'active', tags: [], quadrants: {} };
   saveFilters();
   refreshDashboard();
 }
@@ -786,16 +1455,20 @@ function clearFilters() {
 // ---------------- Rendering ----------------
 function renderViews(data) {
   const summary = document.getElementById('summary-line');
+  const emptyState = document.getElementById('dashboard-empty-state');
   renderFilterToolbar(data);
   if (!data.total_tasks) {
+    if (emptyState) emptyState.classList.remove('hidden');
     summary.textContent = 'No active tasks';
     document.getElementById('dash-stat-cards').innerHTML = '';
     document.getElementById('dash-clarifications').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No data yet. Head to Upload to process a chat.</div>';
     document.getElementById('dash-upnext').innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No upcoming tasks.</div>';
     document.getElementById('checklist-content').innerHTML = '<div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No tasks available.</div>';
+    renderPowerGrid([]);
     renderCalendar(data, []);
     return;
   }
+  if (emptyState) emptyState.classList.add('hidden');
 
   const active = activeTasks(data);
   const dueToday = (active || []).filter(t => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
@@ -805,11 +1478,10 @@ function renderViews(data) {
   summary.innerHTML = parts.join(' <span class="mx-1 text-[color:var(--muted-foreground)]">•</span> ');
 
   safeRender('dash-stat-cards', () => renderStatCards(data, active));
+  try { renderPowerGrid(active); } catch (e) { console.error('renderPowerGrid failed:', e); }
+  try { renderOverloadBanner(active); } catch (e) { console.error('renderOverloadBanner failed:', e); }
   safeRender('dash-clarifications', () => renderImportantInfo(data, active));
-  safeRender('dash-upnext', () => renderUpNext(data, active));
   safeRender('checklist-content', () => renderTasks(data, active));
-  try { renderClarificationThreads(data); } catch (e) { console.error('renderClarificationThreads failed:', e); }
-  try { renderDependencyGraph(data); } catch (e) { console.error('renderDependencyGraph failed:', e); }
   try { renderCalendar(data, active); } catch (e) { console.error('renderCalendar failed:', e); }
 }
 
@@ -925,6 +1597,20 @@ function formatCustomDate(rawString) {
   return `${dayName} ${day}/${month}/${year} ${hours}:${minutes}${ampm}`;
 }
 
+function plannedSlotChip() { return ''; }
+
+async function regenerateSchedule(btn) {
+  if (btn) { btn.disabled = true; const old = btn.textContent; btn.dataset.oldLabel = old; btn.textContent = 'Regenerating…'; }
+  try {
+    await api('POST', '/api/replan');
+    await refreshDashboard();
+  } catch (e) {
+    alert('Regenerate failed: ' + (e.message || 'unknown error'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.oldLabel || 'Regenerate schedule'; }
+  }
+}
+
 // Category tag color mapping — light theme (subtle tinted pills)
 function getCategoryStyle(category) {
   if (!category) return 'bg-[var(--accent)] text-[color:var(--heading-2)]';
@@ -974,27 +1660,33 @@ function renderTaskRow(item) {
   const actions = item.status === 'done'
     ? ''
     : item.status === 'in_progress'
-    ? `<button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`
-    : `<button data-tid="${tid}" onclick="startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent mr-3">Start Task</button><button data-tid="${tid}" onclick="markDone(this.dataset.tid)" class="ghost-btn">Mark Done</button>`;
+    ? `<button data-tid="${tid}" onclick="event.stopPropagation();unstartTask(this.dataset.tid)" class="ghost-btn" style="background:#EA6C00;color:#fff;border-color:#EA6C008,0.3);">In Progress</button>`
+    : `<button data-tid="${tid}" onclick="event.stopPropagation();startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
+
+  const tickbox = `<input type="checkbox" class="task-tick" ${item.status === 'done' ? 'checked' : ''} data-tid="${tid}" onclick="event.stopPropagation()" onchange="markDone(this.dataset.tid)" title="Mark done" />`;
 
   const tagChips = (item.tags || []).map(t =>
     `<button class="tag-chip" onclick="toggleTag('${esc(t)}')">#${esc(t)}</button>`
   ).join(' ');
 
-  const bucketPill = item.category_bucket ? `<span class="cat-pill">${esc(item.category_bucket)}</span>` : '';
-  const scoreChip = typeof item.user_adjusted_score === 'number'
-    ? `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-[var(--accent)] text-[color:var(--heading-2)] border border-[var(--border)]" title="AI ${item.ai_priority_score ?? '—'} / adjusted ${item.user_adjusted_score}">score ${item.user_adjusted_score}</span>`
+  const quadrantLabel = { do: 'Do Now', plan: 'Plan', quick: 'Quick Wins', later: 'Later' };
+  const qKey = effectiveQuadrant(item);
+  const quadrantPill = `<span class="pill-quadrant q-${qKey}">${quadrantLabel[qKey] || 'Later'}</span>`;
+  const durVal = effectiveDuration(item);
+  const durationPill = durVal != null
+    ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#2D8C6A;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;">⏱ ${fmtDuration(durVal)}</span>`
     : '';
-  const metaChips = [bucketPill, priorityPill(item.user_priority || item.priority), scoreChip, tagChips].filter(Boolean).join(' ');
+  const plannedChip = plannedSlotChip(item);
+  const metaChips = [quadrantPill, durationPill, plannedChip, tagChips].filter(Boolean).join(' ');
   const assignedBy = item.assigned_by ? `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--muted-foreground)]">by ${esc(item.assigned_by)}</span>` : '';
   const statusText = `<span class="mx-2 text-[color:var(--muted-foreground)]">·</span><span class="text-[color:var(--heading-2)] font-medium">${statusLabel(item)}</span>`;
 
   return `
-    <div class="task-row flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')) return; openTaskModal('${tid}')">
-      <div class="flex-shrink-0">${statusDot(item)}</div>
+    <div class="task-row ${item.status === 'done' ? 'task-done' : ''} flex items-center gap-3 cursor-pointer" data-tid="${tid}" onclick="if(event.target.closest('button')||event.target.closest('input')) return; openTaskModal('${tid}')">
+      <div class="flex-shrink-0">${tickbox}</div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-0.5">
-          <div class="text-base font-semibold text-[color:var(--foreground)] truncate">${esc(item.task)}</div>
+          <div class="text-base font-semibold text-[color:var(--foreground)] truncate task-title-text">${esc(item.task)}</div>
           ${overdueBadge}
         </div>
         <div class="text-xs text-[color:var(--muted-foreground)] flex items-center flex-wrap gap-1">
@@ -1009,17 +1701,278 @@ function renderTaskRow(item) {
 function renderStatCards(data, active) {
   const total = active.length;
   const dueToday = active.filter((t) => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
-  const completed = (data.done || []).length;
   const card = (value, label, valueClass) => `
     <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)]">
       <div class="font-serif text-4xl font-normal leading-none ${valueClass}">${value}</div>
       <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2">${label}</div>
     </div>`;
+  const addCard = `
+    <button onclick="openAddTaskModal()" class="bg-white border border-dashed border-[var(--border)] rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)] flex flex-col items-start cursor-pointer transition-all hover:border-[color:var(--primary)] hover:shadow-[var(--shadow-sm)] group" style="font-family:var(--font-sans);text-align:left;">
+      <div class="font-serif text-4xl font-normal leading-none text-[color:var(--muted-foreground)] group-hover:text-[color:var(--primary)] transition-colors">+</div>
+      <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2 group-hover:text-[color:var(--primary)] transition-colors">Add Task</div>
+    </button>`;
   return [
     card(total, 'Active', 'text-[color:var(--foreground)]'),
     card(dueToday, 'Due Today', dueToday ? 'text-[color:var(--destructive)]' : 'text-[color:var(--foreground)]'),
-    card(completed, 'Completed', 'text-[color:var(--success)]'),
+    addCard,
   ].join('');
+}
+
+// ---------------- Power Grid ----------------
+function fmtDuration(min) {
+  if (min == null || !isFinite(min)) return '—';
+  const m = Math.max(0, Math.round(min));
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  return rem ? `${h}h ${rem}m` : `${h}h`;
+}
+
+function effectiveQuadrant(item) {
+  return item.eisenhower || item.user_eisenhower || item.ai_eisenhower || 'later';
+}
+function effectiveDuration(item) {
+  if (typeof item.duration_minutes === 'number') return item.duration_minutes;
+  if (typeof item.user_duration_minutes === 'number') return item.user_duration_minutes;
+  if (typeof item.ai_duration_minutes === 'number') return item.ai_duration_minutes;
+  return null;
+}
+function blockHeightForMinutes(min) {
+  if (min == null) return 80;
+  return Math.max(80, Math.min(320, Math.round(28 + min * 1.1)));
+}
+function minutesForBlockHeight(px) {
+  // Inverse of blockHeightForMinutes with 15-min snapping
+  const raw = (Math.max(80, Math.min(320, px)) - 28) / 1.1;
+  const snapped = Math.round(raw / 15) * 15;
+  return Math.max(15, Math.min(1440, snapped));
+}
+
+function renderTaskBlock(item) {
+  const dur = effectiveDuration(item);
+  const h = 82; // fixed uniform height
+  const missing = Array.isArray(item.missing_fields) && item.missing_fields.length > 0;
+  const now = new Date();
+  const isOverdue = item.deadline_iso && new Date(item.deadline_iso) < now && item.status !== 'done';
+  const rawDeadline = item.deadline_iso || item.deadline;
+  const deadlineText = rawDeadline ? (formatCustomDate(rawDeadline) || esc(item.deadline || '')) : 'No deadline';
+  const badges = [];
+  if (isOverdue) badges.push(`<span class="task-block-badge overdue">Overdue</span>`);
+  if (missing) badges.push(`<span class="task-block-badge needs-info">Needs info</span>`);
+  const classes = ['task-block'];
+  if (missing) classes.push('missing-info');
+
+  let durationBubble = '';
+  if (dur != null) {
+    durationBubble = `<span class="task-block-badge duration">⏱ ${fmtDuration(dur)}</span>`;
+  }
+
+  let dayBubble = '';
+  let timeBubble = '';
+  const parsedD = rawDeadline ? parseAnyDate(rawDeadline) : null;
+  if (parsedD) {
+    const _days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const _day = parsedD.getDate();
+    const _month = parsedD.getMonth() + 1;
+    const _year = parsedD.getFullYear().toString().slice(-2);
+    let _h = parsedD.getHours();
+    const _ampm = _h >= 12 ? 'PM' : 'AM';
+    _h = _h % 12 || 12;
+    const _min = String(parsedD.getMinutes()).padStart(2, '0');
+    dayBubble  = `<span class="task-block-badge deadline-day">📅 ${_days[parsedD.getDay()]} ${_day}/${_month}/${_year}</span>`;
+    timeBubble = `<span class="task-block-badge deadline-time">🕐 ${_h}:${_min}${_ampm}</span>`;
+  } else if (rawDeadline) {
+    dayBubble = `<span class="task-block-badge deadline-day">${esc(item.deadline || deadlineText)}</span>`;
+  }
+
+  return `<div class="${classes.join(' ')}"
+               draggable="true"
+               data-task-id="${esc(item.task_id)}"
+               data-duration="${dur ?? ''}"
+               style="min-height:${h}px;"
+               ondragstart="onBlockDragStart(event)"
+               ondragend="onBlockDragEnd(event)"
+               onclick="if(event.target.closest('.task-block-resize,.task-block-cancel')) return; openTaskModal('${esc(item.task_id)}')">
+    <button class="task-block-cancel" title="Cancel task" onclick="event.stopPropagation(); cancelTask('${esc(item.task_id)}')">&#x2715;</button>
+    <div class="task-block-title">${esc(item.task || '')}</div>
+    <div class="task-block-meta">
+      ${durationBubble}${dayBubble}${timeBubble}
+      ${badges.join('')}
+    </div>
+
+  </div>`;
+}
+
+function renderPowerGrid(active) {
+  const buckets = { do: [], plan: [], quick: [], later: [] };
+  for (const item of (active || [])) {
+    if (item.status === 'done') continue;
+    const q = effectiveQuadrant(item);
+    (buckets[q] || buckets.later).push(item);
+  }
+  // Within each quadrant, sort: overdue > nearest deadline > largest duration
+  const now = Date.now();
+  const rank = (t) => {
+    const d = t.deadline_iso ? new Date(t.deadline_iso).getTime() : Infinity;
+    const overdue = d < now && t.status !== 'done' ? 0 : 1;
+    return [overdue, d, -(effectiveDuration(t) || 0)];
+  };
+  const cmp = (a, b) => {
+    const ra = rank(a), rb = rank(b);
+    for (let i = 0; i < ra.length; i++) { if (ra[i] !== rb[i]) return ra[i] - rb[i]; }
+    return 0;
+  };
+  for (const q of Object.keys(buckets)) buckets[q].sort(cmp);
+
+  for (const q of ['do', 'plan', 'quick', 'later']) {
+    const zone = document.querySelector(`[data-dropzone="${q}"]`);
+    const tally = document.querySelector(`[data-quadrant-tally="${q}"]`);
+    if (!zone) continue;
+    const items = buckets[q];
+    if (!items.length) {
+      zone.innerHTML = `<div class="empty">Drop tasks here</div>`;
+    } else {
+      zone.innerHTML = items.map(renderTaskBlock).join('');
+    }
+    if (tally) {
+      const totalMin = items.reduce((s, t) => s + (effectiveDuration(t) || 0), 0);
+      tally.textContent = items.length ? `${items.length} · ${fmtDuration(totalMin)}` : '';
+    }
+    zone.ondragover = onQuadrantDragOver;
+    zone.ondragleave = onQuadrantDragLeave;
+    zone.ondrop = onQuadrantDrop;
+  }
+}
+
+function renderOverloadBanner(active) {
+  const el = document.getElementById('overload-banner');
+  if (!el) return;
+  const now = Date.now();
+  const horizonMs = 24 * 3600 * 1000;
+  const soon = (active || []).filter((t) =>
+    effectiveQuadrant(t) === 'do' &&
+    t.deadline_iso &&
+    new Date(t.deadline_iso).getTime() - now < horizonMs &&
+    t.status !== 'done'
+  );
+  const totalMin = soon.reduce((s, t) => s + (effectiveDuration(t) || 0), 0);
+  const capacityMin = 360; // ~6 productive hours/day
+  if (totalMin > capacityMin && soon.length > 0) {
+    el.className = 'mb-5';
+    el.innerHTML = `<div class="flex items-center gap-3 bg-[rgba(199,68,58,0.08)] border border-[rgba(199,68,58,0.3)] rounded-[var(--radius-xl)] px-4 py-3">
+      <span style="font-size:18px;">⚠</span>
+      <div class="flex-1 text-sm text-[color:var(--heading-2)]">
+        <strong class="text-[color:var(--destructive)]">${fmtDuration(totalMin)} of Do Now work</strong> is due in the next 24 hours — typical capacity is about <strong>6h</strong>. Consider moving some to Plan or trimming scope.
+      </div>
+    </div>`;
+  } else {
+    el.className = 'hidden';
+    el.innerHTML = '';
+  }
+}
+
+// ---------------- Drag & Drop ----------------
+let dragState = null;
+
+function onBlockDragStart(ev) {
+  const block = ev.target.closest('.task-block');
+  if (!block) return;
+  block.classList.add('dragging');
+  const tid = block.dataset.taskId;
+  const srcZone = block.closest('[data-dropzone]');
+  const srcQuadrant = srcZone?.dataset.dropzone || 'later';
+  dragState = { taskId: tid, fromQuadrant: srcQuadrant, element: block };
+  try {
+    ev.dataTransfer.setData('text/plain', tid);
+    ev.dataTransfer.effectAllowed = 'move';
+  } catch {}
+}
+function onBlockDragEnd(ev) {
+  const block = ev.target.closest('.task-block');
+  if (block) block.classList.remove('dragging');
+  dragState = null;
+  document.querySelectorAll('.quadrant-body.drag-over').forEach((el) => el.classList.remove('drag-over'));
+}
+function onQuadrantDragOver(ev) {
+  if (!dragState) return;
+  ev.preventDefault();
+  this.classList.add('drag-over');
+  ev.dataTransfer.dropEffect = 'move';
+}
+function onQuadrantDragLeave(ev) {
+  if (ev.target === this) this.classList.remove('drag-over');
+}
+async function onQuadrantDrop(ev) {
+  ev.preventDefault();
+  this.classList.remove('drag-over');
+  if (!dragState) return;
+  const toQuadrant = this.dataset.dropzone;
+  const { taskId, fromQuadrant, element } = dragState;
+  if (fromQuadrant === toQuadrant) return;
+  // Optimistic move
+  element.classList.add('pending');
+  this.appendChild(element);
+  // Remove any empty-state placeholder in this zone now that we have a task
+  const emptyEl = this.querySelector('.empty');
+  if (emptyEl) emptyEl.remove();
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/eisenhower`, { quadrant: toQuadrant });
+    await refreshDashboard();
+  } catch (e) {
+    console.error('drop failed:', e);
+    element.classList.remove('pending');
+    alert('Failed to move task: ' + (e.message || 'unknown error'));
+    refreshDashboard();
+  }
+}
+
+// ---------------- Block Resize ----------------
+let resizeState = null;
+
+function onBlockResizeStart(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  const block = ev.currentTarget.closest('.task-block');
+  if (!block) return;
+  block.classList.add('resizing');
+  resizeState = {
+    block,
+    startY: ev.clientY,
+    startHeight: block.offsetHeight,
+    taskId: block.dataset.taskId,
+  };
+  document.addEventListener('mousemove', onBlockResizeMove);
+  document.addEventListener('mouseup', onBlockResizeEnd, { once: true });
+}
+function onBlockResizeMove(ev) {
+  if (!resizeState) return;
+  const dy = ev.clientY - resizeState.startY;
+  const newH = Math.max(80, Math.min(320, resizeState.startHeight + dy));
+  resizeState.block.style.minHeight = '';
+  resizeState.block.style.height = newH + 'px';
+  const minutes = minutesForBlockHeight(newH);
+  resizeState.block.dataset.liveDuration = minutes;
+  resizeState.block.setAttribute('data-live-duration', fmtDuration(minutes));
+}
+async function onBlockResizeEnd() {
+  document.removeEventListener('mousemove', onBlockResizeMove);
+  if (!resizeState) return;
+  const { block, taskId } = resizeState;
+  const finalMinutes = minutesForBlockHeight(block.offsetHeight);
+  const previous = Number(block.dataset.duration) || null;
+  block.classList.remove('resizing');
+  block.removeAttribute('data-live-duration');
+  resizeState = null;
+  if (previous === finalMinutes) return;
+  block.classList.add('pending');
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/duration`, { minutes: finalMinutes });
+    await refreshDashboard();
+  } catch (e) {
+    console.error('resize failed:', e);
+    alert('Failed to set duration: ' + (e.message || 'unknown error'));
+    refreshDashboard();
+  }
 }
 
 function renderUpNext(data, active) {
@@ -1027,12 +1980,6 @@ function renderUpNext(data, active) {
   if (!items.length) {
     return `<div class="text-sm text-[color:var(--muted-foreground)] py-8 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No upcoming tasks.</div>`;
   }
-  const priorityPill = (p) => {
-    const cls = p === 'high' ? 'bg-[rgba(199,68,58,0.1)] text-[color:var(--destructive)]'
-      : p === 'medium' ? 'bg-[rgba(180,130,42,0.1)] text-[color:var(--warn)]'
-      : 'bg-[var(--accent)] text-[color:var(--muted-foreground)]';
-    return `<span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${cls}">${esc(p || 'medium')}</span>`;
-  };
   const rows = items.map((item) => {
     const raw = item.deadline_iso || item.deadline;
     const formatted = raw ? formatCustomDate(raw) : null;
@@ -1043,7 +1990,7 @@ function renderUpNext(data, active) {
       <div class="flex items-center gap-3 bg-white border border-[var(--border)] rounded-[var(--radius-lg)] px-4 py-3 shadow-[var(--shadow-xs)]">
         <div class="flex-1 min-w-0">
           <div class="text-sm font-semibold text-[color:var(--foreground)] truncate">${esc(item.task)}</div>
-          <div class="mt-1 flex items-center gap-2">${deadlinePill}${priorityPill(item.priority)}</div>
+          <div class="mt-1 flex items-center gap-2">${deadlinePill}</div>
         </div>
       </div>`;
   }).join('');
@@ -1113,11 +2060,8 @@ function openTaskModal(taskId) {
   if (!item) return;
   modalTaskId = taskId;
 
-  const bucketPill = item.category_bucket
-    ? `<span class="cat-pill">${esc(item.category_bucket)}</span>`
-    : (item.category ? `<span class="cat-pill">${esc(item.category)}</span>` : '');
   const tagChips = (item.tags || []).map((t) => `<span class="tag-chip">#${esc(t)}</span>`).join(' ');
-  document.getElementById('modal-category').innerHTML = [bucketPill, tagChips].filter(Boolean).join(' ');
+  document.getElementById('modal-category').innerHTML = tagChips;
   document.getElementById('modal-title').textContent = item.task || '';
 
   const deadlineRaw = item.deadline_iso || item.deadline;
@@ -1128,21 +2072,26 @@ function openTaskModal(taskId) {
     ? `${esc(deadlineTxt)} <span class="ml-2 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[var(--destructive)] text-white">Overdue</span>`
     : esc(deadlineTxt);
 
-  const prioEl = document.getElementById('modal-priority');
-  prioEl.outerHTML = priorityPill(item.ai_priority || item.priority).replace('<span', '<span id="modal-priority"');
-  const scoreEl = document.getElementById('modal-score');
-  if (scoreEl) {
-    const ai = item.ai_priority_score;
-    const user = item.user_adjusted_score;
-    scoreEl.textContent = (ai != null || user != null) ? `AI score ${ai ?? '—'} · adjusted ${user ?? '—'}` : '';
+  const quadrantSel = document.getElementById('modal-eisenhower');
+  if (quadrantSel) quadrantSel.value = item.user_eisenhower || '';
+  const quadrantAiEl = document.getElementById('modal-eisenhower-ai');
+  if (quadrantAiEl) {
+    const aiLabel = { do: 'Do Now', plan: 'Plan', quick: 'Quick Wins', later: 'Later' }[item.ai_eisenhower] || '—';
+    quadrantAiEl.textContent = `AI: ${aiLabel}`;
   }
-  const overrideSel = document.getElementById('modal-priority-override');
-  if (overrideSel) overrideSel.value = item.user_priority || '';
-  const bucketSel = document.getElementById('modal-bucket');
-  if (bucketSel) bucketSel.value = item.category_bucket || 'Others';
+  const durInput = document.getElementById('modal-duration');
+  if (durInput) {
+    const eff = item.user_duration_minutes != null ? item.user_duration_minutes : item.duration_minutes;
+    durInput.value = eff != null ? eff : '';
+  }
+  const durAiEl = document.getElementById('modal-duration-ai');
+  if (durAiEl) {
+    durAiEl.textContent = item.ai_duration_minutes != null ? `AI: ${fmtDuration(item.ai_duration_minutes)}` : '';
+  }
 
   document.getElementById('modal-assignee').textContent = item.assigned_by || '—';
   document.getElementById('modal-status').textContent = statusLabel(item);
+  renderCalendarSyncRow(item);
 
   // Dependencies
   const depsEl = document.getElementById('modal-deps');
@@ -1168,26 +2117,29 @@ function openTaskModal(taskId) {
     clarifySection.classList.add('hidden');
   }
 
-  // Kick off timeline load
-  loadModalTimeline();
-
   const stepsList = document.getElementById('modal-steps');
   const checklist = Array.isArray(item.checklist) ? item.checklist : [];
   if (checklist.length) {
     stepsList.innerHTML = checklist.map((step, i) => `
-      <li class="flex items-start gap-2 text-sm">
-        <input type="checkbox" ${step.done ? 'checked' : ''} onchange="toggleModalStep(${i})" />
-        <span class="${step.done ? 'line-through text-[color:var(--muted-foreground)]' : 'text-[color:var(--foreground)]'}">${esc(step.step || '')}</span>
+      <li class="step-item" style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--border-soft);" data-step-index="${i}">
+        <input type="checkbox" style="flex-shrink:0;width:16px;height:16px;accent-color:var(--success);cursor:pointer;" ${step.done ? 'checked' : ''} onchange="toggleModalStep(${i})" />
+        <span class="step-text" style="flex:1;font-size:14px;cursor:text;${step.done ? 'text-decoration:line-through;color:var(--muted-foreground);' : 'color:var(--foreground);'}" onclick="editModalStep(${i})" title="Click to edit">${esc(step.step || '')}</span>
+        <button class="step-delete" onclick="deleteModalStep(${i})" title="Delete step"
+          style="flex-shrink:0;background:rgba(199,68,58,0.08);border:1px solid rgba(199,68,58,0.25);border-radius:50%;width:22px;height:22px;font-size:14px;line-height:1;cursor:pointer;color:var(--destructive);display:inline-flex;align-items:center;justify-content:center;font-weight:700;padding:0;">&#xD7;</button>
       </li>`).join('');
     document.getElementById('modal-steps-section').classList.remove('hidden');
   } else if (Array.isArray(item.steps) && item.steps.length) {
-    stepsList.innerHTML = item.steps.map((s) => `
-      <li class="text-sm text-[color:var(--heading-2)] flex items-start gap-2">
-        <span class="text-[color:var(--muted-foreground)] mt-0.5">•</span><span>${esc(s)}</span>
+    stepsList.innerHTML = item.steps.map((s, i) => `
+      <li class="step-item" style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--border-soft);" data-step-index="${i}">
+        <input type="checkbox" style="flex-shrink:0;width:16px;height:16px;accent-color:var(--success);cursor:pointer;" onchange="togglePlanStep(this)" />
+        <span class="step-text" style="flex:1;font-size:14px;color:var(--foreground);">${esc(s)}</span>
+        <button class="step-delete" onclick="deleteModalStep(${i})" title="Delete step"
+          style="flex-shrink:0;background:rgba(199,68,58,0.08);border:1px solid rgba(199,68,58,0.25);border-radius:50%;width:22px;height:22px;font-size:14px;line-height:1;cursor:pointer;color:var(--destructive);display:inline-flex;align-items:center;justify-content:center;font-weight:700;padding:0;">&#xD7;</button>
       </li>`).join('');
     document.getElementById('modal-steps-section').classList.remove('hidden');
   } else {
-    document.getElementById('modal-steps-section').classList.add('hidden');
+    stepsList.innerHTML = '';
+    document.getElementById('modal-steps-section').classList.remove('hidden');
   }
 
   const startBtn = document.getElementById('modal-start-btn');
@@ -1197,8 +2149,16 @@ function openTaskModal(taskId) {
     doneBtn.classList.add('hidden');
   } else {
     doneBtn.classList.remove('hidden');
-    if (item.status === 'in_progress') startBtn.classList.add('hidden');
-    else startBtn.classList.remove('hidden');
+    startBtn.classList.remove('hidden');
+    if (item.status === 'in_progress') {
+      startBtn.textContent = 'In Progress';
+      startBtn.style.background = '#EA6C00';
+      startBtn.dataset.state = 'inprogress';
+    } else {
+      startBtn.textContent = 'Start Task';
+      startBtn.style.background = 'var(--primary)';
+      startBtn.dataset.state = '';
+    }
   }
 
   document.getElementById('task-modal').classList.remove('hidden');
@@ -1211,14 +2171,39 @@ function closeModal() {
 
 async function modalStartTask() {
   if (!modalTaskId) return;
-  await startTaskAction(modalTaskId);
-  closeModal();
+  const startBtn = document.getElementById('modal-start-btn');
+  const isInProgress = startBtn?.dataset.state === 'inprogress';
+  if (isInProgress) {
+    await unstartTask(modalTaskId);
+    document.getElementById('modal-status').textContent = 'Pending';
+    startBtn.textContent = 'Start Task';
+    startBtn.style.background = 'var(--primary)';
+    startBtn.dataset.state = '';
+  } else {
+    await startTaskAction(modalTaskId);
+    document.getElementById('modal-status').textContent = 'In Progress';
+    startBtn.textContent = 'In Progress';
+    startBtn.style.background = '#EA6C00';
+    startBtn.dataset.state = 'inprogress';
+  }
 }
 
 async function modalMarkDone() {
   if (!modalTaskId) return;
   await markDone(modalTaskId);
   closeModal();
+}
+
+function togglePlanStep(checkbox) {
+  const span = checkbox.closest('li')?.querySelector('.step-text');
+  if (!span) return;
+  if (checkbox.checked) {
+    span.style.textDecoration = 'line-through';
+    span.style.color = 'var(--muted-foreground)';
+  } else {
+    span.style.textDecoration = '';
+    span.style.color = 'var(--foreground)';
+  }
 }
 
 async function toggleModalStep(index) {
@@ -1230,6 +2215,47 @@ async function toggleModalStep(index) {
   } catch (e) {
     console.error('toggleModalStep failed:', e);
   }
+}
+
+function editModalStep(index) {
+  if (!modalTaskId) return;
+  const li = document.querySelector(`#modal-steps li[data-step-index="${index}"]`);
+  if (!li) return;
+  const span = li.querySelector('.step-text');
+  if (!span || li.querySelector('input.step-edit')) return;
+  const original = span.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = original;
+  input.maxLength = 500;
+  input.className = 'step-edit flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-2 py-1 text-sm text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none';
+  span.replaceWith(input);
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+
+  let submitted = false;
+  const commit = async () => {
+    if (submitted) return;
+    submitted = true;
+    const next = input.value.trim();
+    if (!next || next === original) {
+      openTaskModal(modalTaskId);
+      return;
+    }
+    try {
+      await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/step-text`, { index, text: next });
+      await refreshDashboard();
+      openTaskModal(modalTaskId);
+    } catch (e) {
+      alert('Failed to edit step: ' + e.message);
+      openTaskModal(modalTaskId);
+    }
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+    else if (ev.key === 'Escape') { submitted = true; openTaskModal(modalTaskId); }
+  });
 }
 
 document.addEventListener('keydown', (e) => {
@@ -1250,8 +2276,9 @@ function renderCalendar(data, activeTasksArray) {
 
   const tasksByDate = {};
   activeTasksArray.forEach(t => {
-    if (t.deadline_iso) {
-      const d = new Date(t.deadline_iso);
+    const anchor = t.planned_start_iso || t.deadline_iso;
+    if (anchor) {
+      const d = new Date(anchor);
       if (d.getFullYear() === year && d.getMonth() === month) {
         const dateNum = d.getDate();
         if (!tasksByDate[dateNum]) tasksByDate[dateNum] = [];
@@ -1260,57 +2287,154 @@ function renderCalendar(data, activeTasksArray) {
     }
   });
   for (const k of Object.keys(tasksByDate)) {
-    tasksByDate[k].sort((a, b) => new Date(a.deadline_iso) - new Date(b.deadline_iso));
+    tasksByDate[k].sort((a, b) => {
+      const aKey = new Date(a.planned_start_iso || a.deadline_iso).getTime();
+      const bKey = new Date(b.planned_start_iso || b.deadline_iso).getTime();
+      return aKey - bKey;
+    });
   }
+
+  // Store for day-click popup
+  window._calTasksByDate = tasksByDate;
+  window._calYear = year;
+  window._calMonth = month;
 
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   let html = daysOfWeek.map(d => `<div class="bg-white text-center text-xs font-bold text-[color:var(--muted-foreground)] py-3 border-b border-[var(--border)] uppercase tracking-wider">${d}</div>`).join('');
 
   for (let i = 0; i < firstDayIndex; i++) {
-    html += `<div class="bg-[var(--muted)] min-h-[120px] p-2"></div>`;
+    html += `<div class="bg-[var(--muted)] min-h-[80px] p-2"></div>`;
   }
 
   const today = new Date();
   for (let i = 1; i <= daysInMonth; i++) {
     const isCurrentDay = today.getDate() === i && today.getMonth() === month && today.getFullYear() === year;
-    const dayClass = isCurrentDay ? 'bg-white border-t-2 border-[var(--primary)]' : 'bg-white';
-    const textClass = isCurrentDay ? 'font-serif text-[color:var(--primary)] font-normal text-2xl' : 'text-[color:var(--heading-2)] font-semibold';
-
-    let tasksHtml = '';
-    if (tasksByDate[i]) {
-      tasksHtml = tasksByDate[i].map(t => {
-        const dotColor = t.priority === 'high' ? 'var(--destructive)'
-          : t.priority === 'medium' ? 'var(--warn)'
-          : 'var(--muted-foreground)';
-        return `<div onclick="openTaskModal('${esc(t.task_id)}')" class="text-xs cursor-pointer hover:bg-[var(--accent)] rounded-md px-1.5 py-1 truncate select-none flex items-center gap-1.5" title="${esc(t.task)}" style="color:var(--heading-2);">
-          <span style="width:6px;height:6px;border-radius:999px;background:${dotColor};flex-shrink:0;"></span>
-          <span class="truncate">${esc(t.task)}</span>
-        </div>`;
-      }).join('');
-    }
-
-    html += `
-      <div class="${dayClass} min-h-[120px] p-3 hover:bg-[var(--accent)] transition-colors flex flex-col gap-2 relative group">
-        <div class="text-sm ${textClass} text-right w-full">${i}</div>
-        <div class="flex-1 overflow-y-auto">${tasksHtml}</div>
-      </div>
-    `;
+    const dayClass = isCurrentDay ? 'bg-[#EDE0FF] border-t-2 border-[#7C3AED]' : 'bg-white';
+    const numClass = isCurrentDay ? 'font-serif text-[#7C3AED] font-bold' : 'text-[color:var(--heading-2)] font-semibold';
+    const tasks = tasksByDate[i] || [];
+    const dots = tasks.slice(0, 6).map(t => {
+      const c = t.priority === 'high' ? 'var(--destructive)' : t.priority === 'medium' ? 'var(--warn)' : 'var(--success)';
+      return `<span style="width:7px;height:7px;border-radius:50%;background:${c};display:inline-block;"></span>`;
+    }).join('');
+    const extra = tasks.length > 6 ? `<span style="font-size:9px;color:var(--muted-foreground);font-weight:700;">+${tasks.length-6}</span>` : '';
+    html += `<div onclick="openCalendarDay(${i})" class="${dayClass} min-h-[80px] px-2 py-2 ${tasks.length?'cursor-pointer':'cursor-default'} transition-colors flex flex-col justify-between" style="hover:background:var(--accent)">
+      <div class="text-sm ${numClass} text-right w-full">${i}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;padding-top:4px;">${dots}${extra}</div>
+    </div>`;
   }
 
   const totalCells = firstDayIndex + daysInMonth;
   const trailingEmpty = (7 - (totalCells % 7)) % 7;
   for (let i = 0; i < trailingEmpty; i++) {
-    html += `<div class="bg-[var(--muted)] min-h-[120px] p-2"></div>`;
+    html += `<div class="bg-[var(--muted)] min-h-[80px] p-2"></div>`;
   }
-
   grid.innerHTML = html;
 }
 
+function openCalendarDay(day) {
+  const tasks = (window._calTasksByDate || {})[day] || [];
+  const year = window._calYear, month = window._calMonth;
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const dateLabel = day + ' ' + monthNames[month] + ' ' + year;
+  const existing = document.getElementById('cal-day-popup');
+  if (existing) existing.remove();
+  const taskRows = tasks.length ? tasks.map(t => {
+    const c = t.priority==='high'?'var(--destructive)':t.priority==='medium'?'var(--warn)':'var(--success)';
+    const anchor = t.planned_start_iso || t.deadline_iso;
+    const timeStr = anchor ? (formatCustomDate(anchor)||'') : 'No deadline';
+    const qLabel = {do:'Do Now',plan:'Plan',quick:'Quick Wins',later:'Later'}[effectiveQuadrant(t)]||'';
+    return `<div onclick="document.getElementById('cal-day-popup').remove();openTaskModal('${esc(t.task_id)}')"
+      style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background:#fff;margin-bottom:8px;transition:background .15s;"
+      onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background='#fff'">
+      <span style="width:10px;height:10px;border-radius:50%;background:${c};flex-shrink:0;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.task)}</div>
+        <div style="font-size:11px;color:var(--muted-foreground);margin-top:2px;">${esc(timeStr)}${qLabel?' · '+qLabel:''}</div>
+      </div>
+    </div>`;
+  }).join('') : `<div style="text-align:center;padding:20px;font-size:14px;color:var(--muted-foreground);">No tasks for this day 🎉</div>`;
+  const popup = document.createElement('div');
+  popup.id = 'cal-day-popup';
+  popup.style.cssText = 'position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(55,50,47,0.4);backdrop-filter:blur(4px);';
+  popup.innerHTML = `<div style="background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 20px 40px rgba(55,50,47,0.12);padding:24px;width:100%;max-width:420px;max-height:80vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-family:var(--font-serif);font-size:22px;color:var(--foreground);">${dateLabel}</div>
+      <button onclick="document.getElementById('cal-day-popup').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted-foreground);">×</button>
+    </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted-foreground);margin-bottom:10px;">${tasks.length} task${tasks.length===1?'':'s'}</div>
+    ${taskRows}
+  </div>`;
+  popup.addEventListener('click', e => { if(e.target===popup) popup.remove(); });
+  document.body.appendChild(popup);
+}
+
 // ---------------- Actions ----------------
-async function markDone(taskId) { try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/complete`); refreshDashboard(); } catch (e) { console.error(e); } }
+const _pendingDone = new Set();
+async function markDone(taskId) {
+  const row = document.querySelector(`.task-row[data-tid="${taskId}"]`);
+  const tick = row ? row.querySelector('.task-tick') : null;
+  const alreadyDone = _pendingDone.has(taskId);
+
+  if (alreadyDone) {
+    // Untick: restore to active
+    _pendingDone.delete(taskId);
+    if (row) {
+      row.classList.remove('task-done');
+      if (tick) tick.checked = false;
+      const btns = row.querySelectorAll('button:not(.task-tick)');
+      btns.forEach(b => b.style.visibility = '');
+    }
+    try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/pause`); } catch (e) { console.error(e); }
+  } else {
+    // Tick: mark done visually, stay in list
+    _pendingDone.add(taskId);
+    if (row) {
+      row.classList.add('task-done');
+      if (tick) tick.checked = true;
+      const btns = row.querySelectorAll('button:not(.task-tick)');
+      btns.forEach(b => b.style.visibility = 'hidden');
+    }
+    try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/complete`); } catch (e) { console.error(e); }
+  }
+}
+async function cancelTask(taskId) {
+  if (!confirm('Cancel and remove this task? This cannot be undone.')) return;
+  try {
+    await api('DELETE', `/api/tasks/${encodeURIComponent(taskId)}`);
+    await refreshDashboard();
+  } catch (e) {
+    console.error(e);
+  }
+}
+function patchTaskRowButton(taskId, isInProgress) {
+  const eid = String(taskId).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const row = document.querySelector(`.task-row[data-tid="${eid}"]`);
+  if (!row) return;
+  // Swap the action button in place (no re-sort)
+  const actionsEl = row.querySelector('.flex.shrink-0.items-center');
+  if (actionsEl) {
+    if (isInProgress) {
+      actionsEl.innerHTML = `<button data-tid="${taskId}" onclick="event.stopPropagation();unstartTask(this.dataset.tid)" class="ghost-btn" style="background:#EA6C00;color:#fff;border-color:rgba(234,108,0,0.3);">In Progress</button>`;
+    } else {
+      actionsEl.innerHTML = `<button data-tid="${taskId}" onclick="event.stopPropagation();startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
+    }
+  }
+  // Patch the status label text inside the row
+  const statusSpan = row.querySelector('.text-\\[color\\:var\\(--heading-2\\)\\]');
+  if (statusSpan) statusSpan.textContent = isInProgress ? 'In progress' : 'Pending';
+}
+
+async function unstartTask(taskId) {
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/pause`);
+    patchTaskRowButton(taskId, false);
+    refreshDashboard();
+  } catch (e) { console.error(e); }
+}
 async function startTaskAction(taskId) {
   try {
     await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/start`);
+    patchTaskRowButton(taskId, true);
     refreshDashboard();
   } catch (e) {
     console.error(e);
@@ -1354,7 +2478,28 @@ async function answerQuestion(btn) {
     console.error(e); btn.disabled = false; btn.textContent = 'Submit'; answeredQuestions.delete(`${tid}-${idx}`);
   }
 }
-async function resetAll() { if (!confirm('Are you sure you want to delete all your tasks? This cannot be undone.')) return; try { await api('POST', '/api/reset'); refreshDashboard(); } catch (e) { console.error(e); } }
+async function resetAll() {
+  if (!confirm('Are you sure you want to delete all your tasks and uploaded chats? This cannot be undone.')) return;
+  try {
+    await api('POST', '/api/reset');
+    // Clear saved chats from localStorage and memory
+    localStorage.removeItem(savedChatsKey());
+    savedChats = [];
+    activeChatId = null;
+    chatSelf = '';
+    // Reset upload panel UI
+    const chatPlaceholder = document.getElementById('chat-placeholder');
+    const chatActive = document.getElementById('chat-active');
+    if (chatPlaceholder) chatPlaceholder.classList.remove('hidden');
+    if (chatActive) { chatActive.classList.add('hidden'); chatActive.style.display = ''; }
+    renderChatFileList();
+    // Clear console
+    resetUpload();
+    // Clear filters
+    localStorage.removeItem('filters');
+    refreshDashboard();
+  } catch (e) { console.error(e); }
+}
 
 async function removeDep(taskId, dep) {
   try {
@@ -1834,19 +2979,11 @@ async function extractSelectedChat() {
   const timeframe = document.getElementById('timeframe-select')?.value || chat.timeframe || 'all';
   chat.timeframe = timeframe; chat.self = chatSelf;
 
-  // Snapshot existing task ids before processing so we can tag the new ones to this chat
-  let before = new Set();
-  try {
-    const pre = await api('GET', '/api/dashboard');
-    for (const bucket of ['do_now', 'schedule', 'defer', 'need_info', 'in_progress', 'done']) {
-      for (const t of (pre[bucket] || [])) before.add(t.task_id);
-    }
-  } catch {}
-
   // Prepend an identity hint so the LLM knows which voice is the user's
   const prefix = `You are assisting "${chatSelf}". Tasks assigned to or accepted by "${chatSelf}" are the user's own tasks.\n\n`;
   const textToSend = prefix + chat.raw_text;
 
+  let linkedIds = [];
   try {
     const res = await fetch('/api/process-stream', {
       method: 'POST', credentials: 'include',
@@ -1869,25 +3006,23 @@ async function extractSelectedChat() {
           const data = JSON.parse(dataStr);
           if (ev === 'log') consoleLine(data.text);
           else if (ev === 'task') consoleLine(`Extracted: ${data.task}${data.tags?.length ? ' · #' + data.tags.join(' #') : ''}`, 'task');
-          else if (ev === 'done') { finished = true; }
+          else if (ev === 'stored') {
+            if (Array.isArray(data.linked)) linkedIds = data.linked;
+          }
+          else if (ev === 'done') {
+            if (data?.stored?.linked && !linkedIds.length) linkedIds = data.stored.linked;
+            finished = true;
+          }
         } catch {}
       }
     }
 
-    // Diff task ids and save against this chat
-    try {
-      const post = await api('GET', '/api/dashboard');
-      const newIds = [];
-      for (const bucket of ['do_now', 'schedule', 'defer', 'need_info', 'in_progress', 'done']) {
-        for (const t of (post[bucket] || [])) {
-          if (!before.has(t.task_id)) newIds.push(t.task_id);
-        }
-      }
-      chat.task_ids = Array.from(new Set([...(chat.task_ids || []), ...newIds]));
-      chat.processedAt = new Date().toISOString();
-      persistSavedChats(savedChats);
-      consoleLine(`Linked ${newIds.length} new task(s) to this chat.`, 'task');
-    } catch {}
+    const existing = new Set(chat.task_ids || []);
+    const newToChat = linkedIds.filter((id) => !existing.has(id));
+    chat.task_ids = Array.from(new Set([...(chat.task_ids || []), ...linkedIds]));
+    chat.processedAt = new Date().toISOString();
+    persistSavedChats(savedChats);
+    consoleLine(`Linked ${newToChat.length} new task(s) to this chat.`, 'task');
 
     setTimeout(() => setMode('dashboard'), 800);
   } catch (e) {
@@ -1930,6 +3065,7 @@ async function refreshAccount() {
   if (gEl && gLinkBtn && gUnlinkBtn) {
     try {
       const g = await api('GET', '/api/google/status');
+      googleLinkedCache = !!(g && g.linked);
       if (!g.configured) {
         gEl.textContent = '(OAuth not configured)';
         gLinkBtn.disabled = true;
@@ -1953,6 +3089,43 @@ async function refreshAccount() {
     aEl.textContent = a.summary || '—';
   } catch {
     aEl.textContent = '—';
+  }
+
+  try {
+    const prefs = await api('GET', '/api/preferences');
+    document.getElementById('pref-start').value = prefs.working_day_start || '09:00';
+    document.getElementById('pref-end').value = prefs.working_day_end || '18:00';
+    const enabled = new Set((prefs.working_days || 'Mon,Tue,Wed,Thu,Fri').split(',').map(s => s.trim()));
+    const daysEl = document.getElementById('pref-days');
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    daysEl.innerHTML = dayLabels.map(d => {
+      const on = enabled.has(d);
+      return `<button type="button" data-day="${d}" onclick="toggleWorkingDay(this)" class="tag-chip${on ? ' active' : ''}">${d}</button>`;
+    }).join('');
+  } catch {}
+}
+
+function toggleWorkingDay(btn) {
+  btn.classList.toggle('active');
+}
+
+async function savePreferences(btn) {
+  const start = document.getElementById('pref-start').value || '09:00';
+  const end = document.getElementById('pref-end').value || '18:00';
+  const days = Array.from(document.querySelectorAll('#pref-days button.active'))
+    .map(b => b.dataset.day)
+    .join(',');
+  const statusEl = document.getElementById('pref-status');
+  if (!days) { statusEl.textContent = 'Pick at least one working day.'; return; }
+  if (btn) btn.disabled = true;
+  statusEl.textContent = 'Saving…';
+  try {
+    await api('PUT', '/api/preferences', { working_day_start: start, working_day_end: end, working_days: days });
+    statusEl.textContent = 'Saved. Regenerate the schedule for changes to take effect.';
+  } catch (e) {
+    statusEl.textContent = 'Failed: ' + (e.message || 'unknown error');
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -1988,67 +3161,98 @@ async function resetAdaptation() {
   } catch (e) { alert('Reset failed: ' + e.message); }
 }
 
-// ---------------- Clarifications & Dependencies ----------------
-function renderClarificationThreads(data) {
-  const el = document.getElementById('dash-clarification-threads');
-  if (!el) return;
-  const threads = data.clarifications || [];
-  if (!threads.length) {
-    el.innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)] py-6 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No open clarifications.</div>';
-    return;
-  }
-  el.innerHTML = threads.map(t => `
-    <div class="bg-white border border-[rgba(180,130,42,0.35)] rounded-[var(--radius-xl)] px-4 py-3 mb-2 shadow-[var(--shadow-xs)]">
-      <div class="text-xs uppercase tracking-wider text-[color:var(--warn)] mb-1 font-semibold">${esc(t.field)} · ${esc(t.task_id)}</div>
-      <div class="text-sm text-[color:var(--heading-2)] mb-2">${esc(t.question)}</div>
-      <div class="flex gap-2">
-        <input id="clar-${esc(t.id)}" class="flex-1 bg-white border border-[var(--input)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm text-[color:var(--foreground)] placeholder-[color:var(--muted-foreground)] focus:border-[color:var(--primary)] focus:outline-none" placeholder="Your answer…" />
-        <button onclick="submitClarification('${esc(t.id)}')" class="ghost-btn ghost-btn-accent">Submit</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-async function submitClarification(threadId) {
-  const input = document.getElementById(`clar-${threadId}`);
-  const value = input?.value?.trim();
-  if (!value) { input?.focus(); return; }
-  try {
-    await api('POST', `/api/clarifications/${encodeURIComponent(threadId)}/answer`, { answer: value });
-    refreshDashboard();
-  } catch (e) { alert('Failed: ' + e.message); }
-}
-
-function renderDependencyGraph(data) {
-  const el = document.getElementById('dash-dependencies');
-  if (!el) return;
-  const deps = data.dependencies || [];
-  if (!deps.length) {
-    el.innerHTML = '<div class="text-sm text-[color:var(--muted-foreground)]">No dependencies between tasks yet.</div>';
-    return;
-  }
-  el.innerHTML = deps.map(d =>
-    `<div class="text-sm py-1"><code class="text-[color:var(--primary)] font-serif">${esc(d.task_id)}</code> <span class="text-[color:var(--muted-foreground)]">depends on</span> <code class="text-[color:var(--primary)] font-serif">${esc(d.depends_on)}</code>${d.reason ? ` <span class="text-[color:var(--muted-foreground)]">— ${esc(d.reason)}</span>` : ''}</div>`
-  ).join('');
-}
-
 // ---------------- Modal enhancements ----------------
-async function modalSetPriority() {
+async function modalSetEisenhower() {
   if (!modalTaskId) return;
-  const v = document.getElementById('modal-priority-override').value || null;
+  const raw = document.getElementById('modal-eisenhower').value;
+  const quadrant = raw === '' ? null : raw;
   try {
-    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/priority`, { priority: v });
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/eisenhower`, { quadrant });
     await refreshDashboard();
   } catch (e) { alert('Failed: ' + e.message); }
 }
 
-async function modalSetBucket() {
+async function modalSetDuration() {
   if (!modalTaskId) return;
-  const v = document.getElementById('modal-bucket').value;
+  const raw = document.getElementById('modal-duration').value;
+  const minutes = raw === '' ? null : Number(raw);
+  if (minutes !== null && (!isFinite(minutes) || minutes < 5 || minutes > 1440)) {
+    alert('Duration must be between 5 and 1440 minutes.');
+    return;
+  }
   try {
-    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/bucket`, { bucket: v });
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/duration`, { minutes });
     await refreshDashboard();
   } catch (e) { alert('Failed: ' + e.message); }
+}
+
+let googleLinkedCache = null;
+async function getGoogleLinked(force = false) {
+  if (!force && googleLinkedCache !== null) return googleLinkedCache;
+  try {
+    const g = await api('GET', '/api/google/status');
+    googleLinkedCache = !!(g && g.linked);
+  } catch {
+    googleLinkedCache = false;
+  }
+  return googleLinkedCache;
+}
+
+function renderCalendarSyncRow(item) {
+  const cb = document.getElementById('modal-calendar-sync');
+  const sub = document.getElementById('modal-calendar-sync-subtext');
+  if (!cb || !sub) return;
+  cb.checked = !!item.calendar_sync_enabled;
+  cb.disabled = true;
+  sub.textContent = 'Checking…';
+
+  const effective = item.user_duration_minutes != null
+    ? { mins: item.user_duration_minutes, src: 'your override' }
+    : (item.ai_duration_minutes != null
+      ? { mins: item.ai_duration_minutes, src: 'AI estimate' }
+      : { mins: 30, src: 'default — set a duration to override' });
+
+  const deadlineOk = !!item.deadline_iso;
+
+  getGoogleLinked().then((linked) => {
+    if (!linked) {
+      cb.checked = false;
+      cb.disabled = true;
+      sub.textContent = 'Link Google Calendar in Account to enable sync.';
+      return;
+    }
+    if (!deadlineOk) {
+      cb.disabled = true;
+      sub.textContent = 'Set a deadline to sync this task.';
+      return;
+    }
+    cb.disabled = false;
+    sub.textContent = `Duration: ${effective.mins} min (${effective.src}).`;
+  });
+}
+
+async function modalToggleCalendarSync() {
+  if (!modalTaskId) return;
+  const cb = document.getElementById('modal-calendar-sync');
+  const sub = document.getElementById('modal-calendar-sync-subtext');
+  const desired = cb.checked;
+  cb.disabled = true;
+  const prev = sub.textContent;
+  sub.textContent = 'Saving…';
+  try {
+    const res = await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/calendar-sync`, { enabled: desired });
+    if (res.skipped && res.reason) {
+      sub.textContent = `Saved, but not synced yet (${res.reason.replace('_', ' ')}).`;
+    } else {
+      sub.textContent = desired ? 'Synced to Google Calendar.' : 'Removed from Google Calendar.';
+    }
+    await refreshDashboard();
+  } catch (e) {
+    cb.checked = !desired;
+    sub.textContent = e.message;
+  } finally {
+    cb.disabled = false;
+  }
 }
 
 async function modalSubmitClarification() {
@@ -2065,26 +3269,419 @@ async function modalSubmitClarification() {
   } catch (e) { alert('Failed: ' + e.message); }
 }
 
-async function loadModalTimeline() {
-  if (!modalTaskId) return;
-  const tl = document.getElementById('modal-timeline');
-  try {
-    const data = await api('GET', `/api/tasks/${encodeURIComponent(modalTaskId)}/timeline`);
-    const events = data.events || [];
-    if (!events.length) { tl.textContent = 'No events yet.'; return; }
-    tl.innerHTML = events.map(e => {
-      const d = new Date(e.created_at);
-      const ts = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-      return `<div>· <span class="text-[color:var(--muted-foreground)]">${ts}</span> <span class="text-[color:var(--primary)] font-medium">${esc(e.kind)}</span> <span class="text-[color:var(--muted-foreground)]">${esc(JSON.stringify(e.payload))}</span></div>`;
+// ---------------- Avatar Picker ----------------
+const AVATAR_EMOJIS = [
+  '😀','😃','😄','😁','😆','😅','🤣','😂',
+  '😊','😇','🙂','🙃','😉','😌','😍','🥰',
+  '😎','🤓','🧐','🥳','🤩','😏','😒','😞',
+  '😤','😠','🤬','😈','💀','☠️','🤡','👻',
+  '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼',
+  '🐨','🐯','🦁','🐸','🐵','🙈','🙉','🙊',
+  '🌸','🌺','🌻','🌹','🍀','🌈','⭐','🔥',
+  '💎','🎯','🎮','🎨','🎵','🎸','🏆','🚀',
+];
+
+let currentAvatar = null;
+
+function avatarKey() {
+  return currentUser ? `user_avatar_${currentUser.id}` : null;
+}
+
+function loadAvatarFromStorage() {
+  const key = avatarKey();
+  if (!key) return;
+  const saved = localStorage.getItem(key);
+  if (!saved) { applyAvatar(null); return; }
+  try { applyAvatar(JSON.parse(saved)); } catch { applyAvatar(null); }
+}
+
+function applyAvatar(av) {
+  currentAvatar = av;
+  const display = document.getElementById('avatar-display');
+  if (!display) return;
+  if (av && av.type === 'img') {
+    display.innerHTML = `<img class="avatar-img" src="${av.src}" alt="avatar">`;
+    display.style.fontSize = '';
+  } else {
+    display.textContent = av || '❓';
+    display.style.fontSize = '55px';
+  }
+}
+
+function openAvatarPicker() {
+  const picker = document.getElementById('avatar-picker');
+  if (!picker) return;
+  picker.classList.remove('hidden');
+  const grid = document.getElementById('avatar-emoji-grid');
+  if (grid) {
+    grid.innerHTML = AVATAR_EMOJIS.map(e => {
+      const active = currentAvatar === e ? ' active' : '';
+      return `<button class="avatar-emoji-btn${active}" onclick="pickEmoji('${e}')" title="${e}"><span>${e}</span></button>`;
     }).join('');
-  } catch (e) { tl.textContent = 'Failed to load timeline.'; }
+  }
+}
+
+function closeAvatarPicker() {
+  const picker = document.getElementById('avatar-picker');
+  if (picker) picker.classList.add('hidden');
+}
+
+function pickEmoji(emoji) {
+  const key = avatarKey();
+  if (key) localStorage.setItem(key, JSON.stringify(emoji));
+  applyAvatar(emoji);
+  closeAvatarPicker();
+}
+
+function handleAvatarUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const av = { type: 'img', src: e.target.result };
+    const key = avatarKey();
+    if (key) localStorage.setItem(key, JSON.stringify(av));
+    applyAvatar(av);
+    closeAvatarPicker();
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+
+
+// ---------------- Modal: rename title ----------------
+async function modalSaveTitle(newTitle) {
+  if (!modalTaskId || !newTitle) return;
+  const task = findTaskInDashboard(modalTaskId);
+  if (task && newTitle !== task.task) {
+    task.task = newTitle;
+    try { await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/rename`, { title: newTitle }); } catch {}
+    refreshDashboard();
+  }
+}
+
+// ---------------- Modal: deadline edit ----------------
+function toggleDeadlineEdit() {
+  const row = document.getElementById('modal-deadline-edit');
+  const btn = document.getElementById('modal-deadline-edit-btn');
+  if (!row) return;
+  const isHidden = row.classList.contains('hidden');
+  row.classList.toggle('hidden', !isHidden);
+  if (isHidden) {
+    // pre-fill with current deadline
+    const task = findTaskInDashboard(modalTaskId);
+    const input = document.getElementById('modal-deadline-input');
+    if (task?.deadline_iso && input) {
+      // datetime-local needs format: YYYY-MM-DDTHH:MM
+      const d = new Date(task.deadline_iso);
+      const pad = n => String(n).padStart(2,'0');
+      input.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    setTimeout(() => document.getElementById('modal-deadline-input')?.focus(), 50);
+  }
+}
+
+async function saveModalDeadline() {
+  const input = document.getElementById('modal-deadline-input');
+  if (!input?.value || !modalTaskId) return;
+  const iso = new Date(input.value).toISOString();
+  const task = findTaskInDashboard(modalTaskId);
+  if (task) { task.deadline_iso = iso; task.deadline = input.value; }
+  try { await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/deadline`, { deadline_iso: iso }); } catch {}
+  toggleDeadlineEdit();
+  // Refresh deadline display in modal
+  const deadlineEl = document.getElementById('modal-deadline');
+  if (deadlineEl) deadlineEl.textContent = formatCustomDate(iso) || iso;
+  refreshDashboard();
+}
+
+// ---------------- Modal: add action step ----------------
+function addModalStep() {
+  const row = document.getElementById('modal-add-step-row');
+  if (!row) return;
+  row.classList.remove('hidden');
+  row.style.display = 'block';
+  setTimeout(() => { const i = document.getElementById('modal-new-step-input'); if(i){i.value='';i.focus();} }, 50);
+}
+
+function cancelNewModalStep() {
+  const row = document.getElementById('modal-add-step-row');
+  if (row) { row.style.display = 'none'; }
+  const input = document.getElementById('modal-new-step-input');
+  if (input) input.value = '';
+}
+
+
+async function deleteModalStep(index) {
+  if (!modalTaskId) return;
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/step-delete`, { index });
+  } catch (e) {
+    console.error('delete step failed:', e);
+    return;
+  }
+  await refreshDashboard();
+  openTaskModal(modalTaskId);
+}
+
+async function saveNewModalStep() {
+  const input = document.getElementById('modal-new-step-input');
+  const text = input?.value.trim();
+  if (!text || !modalTaskId) return;
+  try { await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/steps`, { text }); } catch {}
+  cancelNewModalStep();
+  document.getElementById('modal-steps-section')?.classList.remove('hidden');
+  await refreshDashboard();
+  openTaskModal(modalTaskId);
+}
+
+
+// ---------------- Add Task Modal ----------------
+function openAddTaskModal() {
+  document.getElementById('add-task-name').value = '';
+  document.getElementById('add-task-quadrant').value = '';
+  document.getElementById('add-task-deadline').value = '';
+  document.getElementById('add-task-duration').value = '';
+  document.getElementById('add-task-error').classList.add('hidden');
+  document.getElementById('add-task-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('add-task-name').focus(), 50);
+}
+
+function closeAddTaskModal() {
+  document.getElementById('add-task-modal').classList.add('hidden');
+}
+
+async function submitAddTask() {
+  const name = document.getElementById('add-task-name').value.trim();
+  const errEl = document.getElementById('add-task-error');
+  errEl.classList.add('hidden');
+  if (!name) { errEl.textContent = 'Task name is required.'; errEl.classList.remove('hidden'); return; }
+
+  const quadrant = document.getElementById('add-task-quadrant').value || null;
+  const deadlineRaw = document.getElementById('add-task-deadline').value;
+  const durationRaw = document.getElementById('add-task-duration').value;
+
+  const deadline_iso = deadlineRaw ? new Date(deadlineRaw).toISOString() : null;
+  const deadline = deadlineRaw ? new Date(deadlineRaw).toLocaleString('en-SG', { dateStyle: 'medium', timeStyle: 'short' }) : null;
+  const duration = durationRaw ? Math.max(5, Math.min(1440, parseInt(durationRaw, 10))) : null;
+
+  const btn = document.querySelector('#add-task-modal button[onclick="submitAddTask()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  try {
+    await api('POST', '/api/tasks/manual', { task: name, quadrant, deadline, deadline_iso, estimated_duration_minutes: duration });
+    closeAddTaskModal();
+    await refreshDashboard();
+  } catch (e) {
+    errEl.textContent = e.message || 'Failed to add task.';
+    errEl.classList.remove('hidden');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Add Task'; }
+  }
+}
+
+// ---------------- Login background bubbles ----------------
+(function() {
+  const container = document.getElementById('chat-bubble-bg');
+  if (!container) return;
+
+  const dark = '#2D5C54', orange = '#D4841A', brown = '#7A4F2D';
+
+  // Chat bubble SVGs
+  function chatBubble(color, style, s) {
+    s = s || 32;
+    if (style === 0) return `<svg width="${s}" height="${s}" viewBox="0 0 40 36"><rect x="2" y="2" width="34" height="24" rx="7" fill="${color}"/><path d="M8 26L5 35L20 27" fill="${color}"/><rect x="9" y="10" width="20" height="3" rx="1.5" fill="white" opacity=".5"/><rect x="9" y="16" width="14" height="3" rx="1.5" fill="white" opacity=".5"/></svg>`;
+    if (style === 1) return `<svg width="${s}" height="${Math.round(s*0.88)}" viewBox="0 0 40 32"><rect x="2" y="2" width="34" height="22" rx="7" fill="${color}"/><path d="M10 24L7 32L22 25" fill="${color}"/><circle cx="13" cy="13" r="3" fill="white" opacity=".55"/><circle cx="22" cy="13" r="3" fill="white" opacity=".55"/><circle cx="31" cy="13" r="3" fill="white" opacity=".55"/></svg>`;
+    return `<svg width="${s}" height="${s}" viewBox="0 0 40 36"><rect x="4" y="2" width="34" height="24" rx="7" fill="${color}"/><path d="M32 26L35 35L20 27" fill="${color}"/><rect x="9" y="10" width="20" height="3" rx="1.5" fill="white" opacity=".5"/><rect x="9" y="16" width="14" height="3" rx="1.5" fill="white" opacity=".5"/></svg>`;
+  }
+
+  // Orange slice SVG
+  function orangeSlice(s) {
+    s = s || 32;
+    return `<svg width="${s}" height="${s}" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="17" fill="#E8901A" stroke="#C26A10" stroke-width="1.5"/>
+      <circle cx="20" cy="20" r="13" fill="#F5B84A"/>
+      <path d="M20 7 L20 33 M7 20 L33 20 M10 10 L30 30 M30 10 L10 30" stroke="#E8901A" stroke-width="1.2" opacity=".6"/>
+      <circle cx="20" cy="20" r="4" fill="#E8901A" opacity=".7"/>
+    </svg>`;
+  }
+
+  // Food/snack item (looks like cookie/bread)
+  function snackItem(s) {
+    s = s || 28;
+    return `<svg width="${s}" height="${Math.round(s*0.85)}" viewBox="0 0 40 34">
+      <ellipse cx="20" cy="17" rx="16" ry="12" fill="${brown}" opacity=".85"/>
+      <ellipse cx="14" cy="13" rx="4" ry="3" fill="${brown}" opacity=".6"/>
+      <ellipse cx="26" cy="13" rx="3.5" ry="2.5" fill="${brown}" opacity=".5"/>
+      <ellipse cx="20" cy="20" rx="3" ry="2" fill="${brown}" opacity=".5"/>
+      <circle cx="13" cy="14" r="1.2" fill="#F0C070" opacity=".7"/>
+      <circle cx="25" cy="13" r="1" fill="#F0C070" opacity=".7"/>
+      <circle cx="20" cy="20" r="1" fill="#F0C070" opacity=".7"/>
+    </svg>`;
+  }
+
+  const cols = Math.ceil(window.innerWidth / 70) + 2;
+  const rows = Math.ceil(window.innerHeight / 70) + 2;
+
+  // Pattern sequence per cell: 0=dark bubble, 1=dark bubble dots, 2=dark bubble r, 3=orange bubble, 4=orange dots, 5=orange bubble r, 6=orange slice, 7=snack
+  const seq = [0, 3, 1, 4, 6, 2, 3, 5, 7, 0, 4, 6, 1, 3, 7, 2, 4, 0, 6, 5];
+  const sizes = [30, 26, 32, 28, 34, 24, 30, 28, 26, 32, 28, 36, 24, 30, 28, 32, 26, 30, 34, 28];
+  const opacs = [0.22, 0.18, 0.20, 0.24, 0.16, 0.22, 0.19, 0.21, 0.17, 0.23];
+  const rots  = [-12, 8, -5, 15, -18, 6, -10, 12, -3, 18, -8, 5, -15, 10, -6];
+
+  let idx = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const t = seq[idx % seq.length];
+      const s = sizes[idx % sizes.length];
+      const rot = rots[idx % rots.length];
+      const op = opacs[idx % opacs.length];
+      const div = document.createElement('div');
+      div.className = 'cb';
+      div.style.opacity = op;
+      div.style.transform = `rotate(${rot}deg)`;
+      if (t === 0) div.innerHTML = chatBubble(dark, 0, s);
+      else if (t === 1) div.innerHTML = chatBubble(dark, 1, s);
+      else if (t === 2) div.innerHTML = chatBubble(dark, 2, s);
+      else if (t === 3) div.innerHTML = chatBubble(orange, 0, s);
+      else if (t === 4) div.innerHTML = chatBubble(orange, 1, s);
+      else if (t === 5) div.innerHTML = chatBubble(orange, 2, s);
+      else if (t === 6) div.innerHTML = orangeSlice(s);
+      else              div.innerHTML = snackItem(s);
+      container.appendChild(div);
+      idx++;
+    }
+  }
+})();
+
+// ---------------- Weather (Open-Meteo) ----------------
+const WMO_ICONS = {
+  0:'☀️',1:'🌤️',2:'⛅',3:'☁️',
+  45:'🌫️',48:'🌫️',
+  51:'🌦️',53:'🌦️',55:'🌧️',
+  61:'🌧️',63:'🌧️',65:'🌧️',
+  71:'🌨️',73:'🌨️',75:'🌨️',
+  80:'🌦️',81:'🌧️',82:'🌧️',
+  95:'⛈️',96:'⛈️',99:'⛈️',
+};
+const WMO_LABELS = {
+  0:'Sunny',1:'Mostly sunny',2:'Partly cloudy',3:'Overcast',
+  45:'Foggy',48:'Foggy',
+  51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',
+  71:'Light snow',73:'Snow',75:'Heavy snow',
+  80:'Showers',81:'Showers',82:'Heavy showers',
+  95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm',
+};
+
+let _weatherCity = localStorage.getItem('weatherCity') || 'Singapore';
+
+async function fetchWeatherForCity(city) {
+  city = (city || '').trim();
+  if (!city) return;
+  const iconEl = document.getElementById('hero-weather-icon');
+  const tempEl = document.getElementById('hero-temp');
+  const labelEl = document.getElementById('hero-weather-label');
+  const cityBtn = document.getElementById('hero-city-btn');
+  if (tempEl) tempEl.textContent = '…°';
+  closeCityPicker();
+  try {
+    // Geocode
+    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`);
+    const geoData = await geoRes.json();
+    const loc = geoData?.results?.[0];
+    if (!loc) { if (labelEl) labelEl.textContent = 'City not found'; return; }
+    const { latitude, longitude, name, country_code } = loc;
+    // Weather
+    const wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode&temperature_unit=celsius&timezone=auto`);
+    const wxData = await wxRes.json();
+    const curr = wxData?.current;
+    const code = curr?.weathercode ?? 0;
+    const temp = curr?.temperature_2m;
+    if (iconEl) iconEl.textContent = WMO_ICONS[code] ?? '🌡️';
+    if (tempEl) tempEl.textContent = `${Math.round(temp)}°`;
+    if (labelEl) labelEl.textContent = WMO_LABELS[code] ?? 'Clear';
+    const cityNameEl = document.getElementById('hero-city-name');
+    if (cityNameEl) cityNameEl.textContent = name + (country_code ? ', ' + country_code.toUpperCase() : '');
+    _weatherCity = city;
+    localStorage.setItem('weatherCity', city);
+  } catch(e) {
+    console.warn('Weather fetch failed', e);
+    if (labelEl) labelEl.textContent = 'Unavailable';
+  }
+}
+
+const CITY_SUGGESTIONS = ['Singapore','Kuala Lumpur','Tokyo','Seoul','London','New York','Sydney','Paris','Bangkok','Jakarta','Hong Kong','Dubai'];
+
+function renderCitySuggestions(list) {
+  const el = document.getElementById('city-suggestions');
+  if (!el) return;
+  el.innerHTML = list.map(c =>
+    `<button onclick="fetchWeatherForCity('${c}')"
+       class="text-xs px-2.5 py-1 rounded-full border border-[var(--border)] bg-white hover:bg-[var(--accent)] text-[color:var(--foreground)] transition-colors cursor-pointer font-medium">${c}</button>`
+  ).join('');
+}
+
+function filterCitySuggestions(q) {
+  const filtered = q.trim()
+    ? CITY_SUGGESTIONS.filter(c => c.toLowerCase().includes(q.toLowerCase()))
+    : CITY_SUGGESTIONS;
+  renderCitySuggestions(filtered);
+}
+
+function openCityPicker() {
+  const picker = document.getElementById('hero-city-picker');
+  const input = document.getElementById('hero-city-input');
+  if (!picker) return;
+  picker.classList.remove('hidden');
+  renderCitySuggestions(CITY_SUGGESTIONS);
+  if (input) { input.value = ''; input.focus(); }
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', _closeCityOnOutside, { once: true });
+  }, 50);
+}
+function _closeCityOnOutside(e) {
+  const picker = document.getElementById('hero-city-picker');
+  const btn = document.getElementById('hero-city-btn');
+  if (picker && !picker.contains(e.target) && e.target !== btn && !btn?.contains(e.target)) {
+    closeCityPicker();
+  } else if (picker && !picker.classList.contains('hidden')) {
+    document.addEventListener('click', _closeCityOnOutside, { once: true });
+  }
+}
+function closeCityPicker() {
+  const picker = document.getElementById('hero-city-picker');
+  if (picker) picker.classList.add('hidden');
 }
 
 // ---------------- Init ----------------
 (async () => {
   const ok = await checkAuth();
   if (ok) refreshDashboard();
+  startHeroClock();
 })();
+
+// fetch weather on load
+(function(){ fetchWeatherForCity(_weatherCity); })();
+
+function startHeroClock() {
+  const timeEl = document.getElementById('hero-time');
+  const dayEl = document.getElementById('hero-day');
+  if (!timeEl || !dayEl) return;
+  const tick = () => {
+    const d = new Date();
+    const hh = d.getHours(), mm = d.getMinutes();
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const h12 = ((hh + 11) % 12) + 1;
+    timeEl.textContent = `${h12}:${String(mm).padStart(2,'0')} ${ampm}`;
+    const fmt = new Intl.DateTimeFormat(undefined, { weekday:'long', day:'numeric', month:'long' });
+    dayEl.textContent = fmt.format(d);
+  };
+  tick();
+  setInterval(tick, 1000 * 15);
+}
 </script>
 </body>
 </html>

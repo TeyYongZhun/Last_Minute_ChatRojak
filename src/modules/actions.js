@@ -13,7 +13,10 @@ import { addTaskEvent } from '../db/repos/taskEvents.js';
 import { computeSchedule } from './smartReminders.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from '../integrations/googleCalendar.js';
 import { getTokens as getGoogleTokens } from '../db/repos/googleTokens.js';
+<<<<<<< HEAD
 import { createEvent } from '../services/googleCalendar.js';
+=======
+>>>>>>> 7f72f9074e2ba08e9e079365fde80d24705a9b3c
 
 function ts(d = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -26,9 +29,9 @@ function reminderId(taskId, fireAtIso) {
 export function generateActionsForPlan(userId, plan, task, now) {
   replaceChecklist(task.id, plan.steps || []);
 
-  if (plan.decision === 'waiting') return;
-  if (!task.deadline_iso) return;
+  const shouldSyncCalendar = task.calendar_sync_enabled && getGoogleTokens(userId);
 
+<<<<<<< HEAD
   const schedule = computeSchedule(task, plan, now);
   if (!schedule.length) return;
 
@@ -43,6 +46,32 @@ export function generateActionsForPlan(userId, plan, task, now) {
   }
 
   if (getGoogleTokens(userId)) {
+=======
+  if (plan.decision === 'waiting') {
+    if (shouldSyncCalendar) {
+      upsertCalendarEvent(userId, task, plan, now)
+        .catch((err) => console.error('[actions] calendar sync error:', err.message));
+    }
+    return;
+  }
+
+  if (task.deadline_iso) {
+    const schedule = computeSchedule(task, plan, now);
+    for (const item of schedule) {
+      const id = reminderId(task.id, item.fire_at_iso);
+      upsertReminder(userId, {
+        id,
+        task_id: task.id,
+        fire_at_iso: item.fire_at_iso,
+        message: item.message,
+      });
+    }
+  } else {
+    deleteRemindersForTask(task.id);
+  }
+
+  if (shouldSyncCalendar) {
+>>>>>>> 7f72f9074e2ba08e9e079365fde80d24705a9b3c
     upsertCalendarEvent(userId, task, plan, now)
       .catch((err) => console.error('[actions] calendar sync error:', err.message));
   }

@@ -40,3 +40,15 @@ export function purgeExpiredSessions() {
   const db = getDb();
   return db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(Date.now()).changes;
 }
+
+export function revokeAllForUser(userId) {
+  const db = getDb();
+  return db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId).changes;
+}
+
+export function revokeAllForUserExcept(userId, keepSid) {
+  const db = getDb();
+  return db
+    .prepare('DELETE FROM sessions WHERE user_id = ? AND id != ?')
+    .run(userId, keepSid ?? '').changes;
+}

@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './load-env.js';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -10,7 +10,10 @@ import {
   replanAll,
   startTask,
   completeTask,
+  pauseTask,
   respondToClarification,
+  setUserEisenhower,
+  setUserDurationMinutes,
   setUserPriority,
   setBucket,
   addTaskDependency,
@@ -25,15 +28,22 @@ import {
 import { runChain } from './modules/promptChain.js';
 import { startTelegramBot, isBotEnabled } from './modules/telegramBot.js';
 import { processWithEvents } from './modules/processStream.js';
-import { getProviderName, MODEL } from './client.js';
+import { getProviderName, getProviderKeyEnv, MODEL } from './client.js';
 import { runMigrations } from './db/migrate.js';
 import { startScheduler } from './scheduler.js';
 import authRouter from './routes/auth.js';
 import telegramRouter from './routes/telegram.js';
 import googleOAuthRouter from './routes/googleOAuth.js';
 import { requireUser } from './auth/middleware.js';
+import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField } from './db/repos/tasks.js';
+import { getPlan } from './db/repos/plans.js';
+import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
+import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
+import { addTaskEvent } from './db/repos/taskEvents.js';
+import { addChecklistItem, updateChecklistItemText, deleteChecklistItem, toggleChecklistItem, getChecklist, replaceChecklist } from './db/repos/checklists.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
+import { getPreferences, upsertPreferences } from './db/repos/userPreferences.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_DIR = path.join(__dirname, '..', 'static');
@@ -58,16 +68,12 @@ app.use('/api/google', googleOAuthRouter);
 
 function parseFilters(query) {
   const filters = {};
-  if (typeof query.bucket === 'string' && query.bucket.trim()) filters.bucket = query.bucket.trim();
   if (typeof query.category === 'string' && query.category.trim()) filters.category = query.category.trim();
   if (typeof query.priority === 'string' && ['high', 'medium', 'low'].includes(query.priority)) {
     filters.priority = query.priority;
   }
   if (typeof query.status === 'string' && query.status.trim()) filters.status = query.status.trim();
   if (typeof query.q === 'string' && query.q.trim()) filters.q = query.q.trim();
-  if (typeof query.tags === 'string' && query.tags.trim()) {
-    filters.tags = query.tags.split(',').map((s) => s.trim()).filter(Boolean);
-  }
   return filters;
 }
 
@@ -88,7 +94,7 @@ app.post('/api/process', requireUser, async (req, res) => {
         message: 'No actionable tasks found',
       });
     }
-    const idMap = mergeNewTasks(req.user.id, chain.tasks);
+    const { idMap } = mergeNewTasks(req.user.id, chain.tasks);
     if (chain.dependencies?.length) {
       applyDependencies(req.user.id, chain.dependencies, idMap);
     }
@@ -135,52 +141,106 @@ app.get('/api/dashboard', requireUser, (req, res) => {
 });
 
 app.post('/api/demo-seed', requireUser, (req, res) => {
+  const { force } = req.body || {};
+  const current = getDashboard(req.user.id).total_tasks;
+  if (current && !force) {
+    return res.json({ seeded: false, total_tasks: current, message: 'Already has tasks — pass force:true to reset' });
+  }
+  if (force) resetUser(req.user.id);
+
+  const now = new Date();
+  const iso = (days, h = 23, m = 59) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + days);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  };
+  const dl = (days, h = 23, m = 59) => {
+    if (days === 0) return `Today ${h}:${String(m).padStart(2, '0')}${h < 12 ? 'am' : 'pm'}`;
+    if (days === 1) return 'Tomorrow 11:59pm';
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const d = new Date(now); d.setDate(d.getDate() + days);
+    return `${names[d.getDay()]} 11:59pm`;
+  };
+
   const tasks = [
     {
-      id: 't1',
-      task: 'Submit assignment',
-      deadline: null,
-      deadline_iso: null,
-      assigned_by: 'Professor',
-      priority: 'high',
-      confidence: 0.95,
-      category: 'Academic',
-      missing_fields: [],
-      status: 'pending',
-      tags: ['urgent', 'solo'],
+      id: 'demo1', task: 'Submit CS2103T Individual Project',
+      deadline: dl(1), deadline_iso: iso(1),
+      assigned_by: 'Prof Leong', priority: 'high', confidence: 0.97,
+      category: 'Academic', estimated_duration_minutes: 120, missing_fields: [], status: 'pending',
     },
     {
-      id: 't2',
-      task: 'Help with lab report',
-      deadline: null,
-      deadline_iso: null,
-      assigned_by: 'Tutor',
-      priority: 'medium',
-      confidence: 0.9,
-      category: 'Academic',
-      missing_fields: [],
-      status: 'pending',
-      tags: ['group-work', 'short'],
+      id: 'demo2', task: 'Prepare slides for group presentation on Thursday',
+      deadline: dl(3), deadline_iso: iso(3),
+      assigned_by: 'Group Leader', priority: 'high', confidence: 0.9,
+      category: 'Academic', estimated_duration_minutes: 90, missing_fields: [], status: 'pending',
     },
     {
-      id: 't3',
-      task: 'Buy groceries',
-      deadline: null,
-      deadline_iso: null,
-      assigned_by: null,
-      priority: 'low',
-      confidence: 0.8,
-      category: 'Errand',
-      missing_fields: [],
-      status: 'pending',
-      tags: ['short', 'solo'],
+      id: 'demo3', task: 'Reply to HR email about internship offer',
+      deadline: dl(0, 17, 0), deadline_iso: iso(0, 17, 0),
+      assigned_by: null, priority: 'medium', confidence: 0.88,
+      category: 'Admin', estimated_duration_minutes: 15, missing_fields: [], status: 'pending',
+    },
+    {
+      id: 'demo4', task: 'Buy groceries and cook dinner',
+      deadline: dl(0, 19, 0), deadline_iso: iso(0, 19, 0),
+      assigned_by: null, priority: 'low', confidence: 0.8,
+      category: 'Errand', estimated_duration_minutes: 45, missing_fields: [], status: 'pending',
+    },
+    {
+      id: 'demo5', task: 'Plan CCA orientation activities for next semester',
+      deadline: dl(10), deadline_iso: iso(10),
+      assigned_by: 'CCA President', priority: 'medium', confidence: 0.85,
+      category: 'CCA', estimated_duration_minutes: 60, missing_fields: [], status: 'pending',
+    },
+    {
+      id: 'demo6', task: 'Read ST2334 lecture notes for midterm revision',
+      deadline: dl(6), deadline_iso: iso(6),
+      assigned_by: null, priority: 'medium', confidence: 0.92,
+      category: 'Academic', estimated_duration_minutes: 60, missing_fields: [], status: 'pending',
     },
   ];
 
-  const current = getDashboard(req.user.id).total_tasks;
-  if (!current) {
-    mergeNewTasks(req.user.id, tasks);
+  const { idMap } = mergeNewTasks(req.user.id, tasks);
+  const rid = (key) => idMap[key] || key;
+
+  setUserEisenhower(req.user.id, rid('demo1'), 'do');
+  setUserEisenhower(req.user.id, rid('demo2'), 'plan');
+  setUserEisenhower(req.user.id, rid('demo3'), 'quick');
+  setUserEisenhower(req.user.id, rid('demo4'), 'later');
+  setUserEisenhower(req.user.id, rid('demo5'), 'plan');
+  setUserEisenhower(req.user.id, rid('demo6'), 'plan');
+
+  const checklists = {
+    demo1: [
+      { text: 'Read the assignment brief carefully', done: true },
+      { text: 'Complete Part 1: Class diagram', done: true },
+      { text: 'Complete Part 2: Sequence diagram', done: false },
+      { text: 'Write JUnit tests', done: false },
+      { text: 'Submit on LumiNUS before deadline', done: false },
+    ],
+    demo2: [
+      { text: 'Outline slide structure with team', done: true },
+      { text: 'Create introduction and background slides', done: false },
+      { text: 'Add methodology and results slides', done: false },
+      { text: 'Practice run with group', done: false },
+    ],
+    demo5: [
+      { text: 'Brainstorm activity ideas', done: false },
+      { text: 'Draft event schedule', done: false },
+      { text: 'Get advisor approval', done: false },
+    ],
+  };
+
+  for (const [key, steps] of Object.entries(checklists)) {
+    const taskId = rid(key);
+    for (const s of steps) addChecklistItem(taskId, s.text);
+    steps.forEach((s, pos) => { if (s.done) toggleChecklistItem(taskId, pos); });
   }
+
+  startTask(req.user.id, rid('demo1'));
+
   res.json({ seeded: true, total_tasks: getDashboard(req.user.id).total_tasks });
 });
 
@@ -224,6 +284,34 @@ app.post('/api/tasks/:taskId/complete', requireUser, async (req, res) => {
   res.json({ status: 'done' });
 });
 
+app.post('/api/tasks/:taskId/pause', requireUser, async (req, res) => {
+  const out = pauseTask(req.user.id, req.params.taskId);
+  switch (out.result) {
+    case 'ok':
+      try { await replanAll(req.user.id, new Date()); } catch (e) { console.error('[/api/tasks/:id/pause] replan error:', e); }
+      return res.json({ status: 'pending' });
+    case 'not_found':
+      return res.status(404).json({ detail: 'Task not found' });
+    case 'already_done':
+      return res.status(409).json({ detail: 'Task is already completed', reason: 'done' });
+    case 'not_in_progress':
+      return res.status(409).json({ detail: 'Task is not in progress', reason: 'not_in_progress' });
+    default:
+      return res.status(500).json({ detail: 'Unknown pause result' });
+  }
+});
+
+app.post('/api/tasks/:taskId/steps', requireUser, (req, res) => {
+  const { text } = req.body || {};
+  const trimmed = typeof text === 'string' ? text.trim() : '';
+  if (!trimmed) return res.status(400).json({ detail: 'text is required' });
+  if (trimmed.length > 500) return res.status(400).json({ detail: 'text must be 500 characters or fewer' });
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  addChecklistItem(req.params.taskId, trimmed);
+  res.json({ status: 'added' });
+});
+
 app.post('/api/tasks/:taskId/step', requireUser, (req, res) => {
   const { index } = req.body || {};
   if (typeof index !== 'number') {
@@ -235,27 +323,85 @@ app.post('/api/tasks/:taskId/step', requireUser, (req, res) => {
   res.json({ status: 'toggled' });
 });
 
-app.post('/api/tasks/:taskId/priority', requireUser, async (req, res) => {
-  const { priority } = req.body || {};
-  const allowed = [null, 'high', 'medium', 'low'];
-  if (!allowed.includes(priority)) {
-    return res.status(400).json({ detail: 'priority must be high, medium, low, or null' });
+app.post('/api/tasks/:taskId/step-text', requireUser, (req, res) => {
+  const { index, text } = req.body || {};
+  if (typeof index !== 'number') {
+    return res.status(400).json({ detail: 'index (number) is required' });
   }
-  if (!setUserPriority(req.user.id, req.params.taskId, priority)) {
+  const trimmed = typeof text === 'string' ? text.trim() : '';
+  if (!trimmed) {
+    return res.status(400).json({ detail: 'text is required' });
+  }
+  if (trimmed.length > 500) {
+    return res.status(400).json({ detail: 'text must be 500 characters or fewer' });
+  }
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  const changes = updateChecklistItemText(req.params.taskId, index, trimmed);
+  if (!changes) return res.status(404).json({ detail: 'Step not found' });
+  res.json({ status: 'updated' });
+});
+
+app.post('/api/tasks/:taskId/step-delete', requireUser, (req, res) => {
+  const { index } = req.body || {};
+  if (typeof index !== 'number') {
+    return res.status(400).json({ detail: 'index (number) is required' });
+  }
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  // If no checklist items exist yet, lazily migrate plan steps into checklist_items first
+  if (!getChecklist(req.params.taskId).length) {
+    const plan = getPlan(req.user.id, req.params.taskId);
+    if (Array.isArray(plan?.steps) && plan.steps.length) {
+      replaceChecklist(req.params.taskId, plan.steps);
+    }
+  }
+  if (!deleteChecklistItem(req.params.taskId, index)) {
+    return res.status(404).json({ detail: 'Step not found' });
+  }
+  res.json({ status: 'deleted' });
+});
+
+app.post('/api/tasks/:taskId/eisenhower', requireUser, async (req, res) => {
+  const { quadrant } = req.body || {};
+  const allowed = [null, 'do', 'plan', 'quick', 'later'];
+  if (!allowed.includes(quadrant)) {
+    return res.status(400).json({ detail: 'quadrant must be do, plan, quick, later, or null' });
+  }
+  if (!setUserEisenhower(req.user.id, req.params.taskId, quadrant)) {
     return res.status(404).json({ detail: 'Task not found' });
-  }
-  try {
-    await replanAll(req.user.id, new Date());
-  } catch (e) {
-    console.error('[/api/tasks/:id/priority] replan error:', e);
   }
   res.json({ ok: true });
 });
 
-app.post('/api/tasks/:taskId/bucket', requireUser, async (req, res) => {
+app.post('/api/tasks/:taskId/duration', requireUser, async (req, res) => {
+  const raw = req.body?.minutes;
+  const minutes = raw === null || raw === undefined || raw === '' ? null : Number(raw);
+  if (minutes !== null && (!isFinite(minutes) || minutes < 5 || minutes > 1440)) {
+    return res.status(400).json({ detail: 'minutes must be null or a number between 5 and 1440' });
+  }
+  if (!setUserDurationMinutes(req.user.id, req.params.taskId, minutes)) {
+    return res.status(404).json({ detail: 'Task not found' });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/tasks/:taskId/priority', requireUser, (req, res) => {
+  const { priority } = req.body || {};
+  const allowed = [null, 'high', 'medium', 'low'];
+  if (!allowed.includes(priority ?? null)) {
+    return res.status(400).json({ detail: 'priority must be high, medium, low, or null' });
+  }
+  if (!setUserPriority(req.user.id, req.params.taskId, priority ?? null)) {
+    return res.status(404).json({ detail: 'Task not found' });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/tasks/:taskId/bucket', requireUser, (req, res) => {
   const { bucket } = req.body || {};
-  if (!['Academic', 'Co-curricular', 'Others'].includes(bucket)) {
-    return res.status(400).json({ detail: 'bucket must be Academic, Co-curricular, or Others' });
+  if (!bucket || typeof bucket !== 'string') {
+    return res.status(400).json({ detail: 'bucket (string) is required' });
   }
   if (!setBucket(req.user.id, req.params.taskId, bucket)) {
     return res.status(404).json({ detail: 'Task not found' });
@@ -296,6 +442,60 @@ app.get('/api/tasks/:taskId/timeline', requireUser, (req, res) => {
   res.json({ events: tl });
 });
 
+app.delete('/api/tasks/:taskId', requireUser, (req, res) => {
+  const deleted = deleteTask(req.user.id, req.params.taskId);
+  if (!deleted) return res.status(404).json({ detail: 'Task not found' });
+  res.json({ ok: true });
+});
+
+app.post('/api/tasks/:taskId/deadline', requireUser, (req, res) => {
+  const { deadline_iso } = req.body || {};
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  const iso = deadline_iso ? String(deadline_iso) : null;
+  updateTaskField(req.user.id, req.params.taskId, 'deadline_iso', iso);
+  if (iso) {
+    const d = new Date(iso);
+    const human = d.toLocaleString('en-SG', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Singapore' });
+    updateTaskField(req.user.id, req.params.taskId, 'deadline', human);
+  } else {
+    updateTaskField(req.user.id, req.params.taskId, 'deadline', null);
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/tasks/manual', requireUser, (req, res) => {
+  const { task, priority = 'medium', quadrant, deadline, deadline_iso, estimated_duration_minutes, category = 'Other' } = req.body || {};
+  if (!task || !String(task).trim()) {
+    return res.status(400).json({ detail: 'task is required' });
+  }
+  const allowed = ['high', 'medium', 'low'];
+  const p = allowed.includes(priority) ? priority : 'medium';
+  const allowedQ = [null, 'do', 'plan', 'quick', 'later'];
+  const q = allowedQ.includes(quadrant ?? null) ? (quadrant || null) : null;
+  const dur = estimated_duration_minutes != null ? Math.max(5, Math.min(1440, Number(estimated_duration_minutes))) : null;
+
+  const id = `m${Date.now()}`;
+  const { idMap } = mergeNewTasks(req.user.id, [{
+    id,
+    task: String(task).trim(),
+    deadline: deadline ?? null,
+    deadline_iso: deadline_iso ?? null,
+    assigned_by: null,
+    priority: p,
+    confidence: 1,
+    category: String(category).trim() || 'Other',
+    estimated_duration_minutes: dur,
+    missing_fields: [],
+    status: 'pending',
+  }]);
+
+  const realId = idMap[id] || id;
+  if (q) setUserEisenhower(req.user.id, realId, q);
+
+  res.json({ ok: true, id: realId });
+});
+
 app.get('/api/clarifications', requireUser, (req, res) => {
   res.json({ threads: listOpenThreads(req.user.id) });
 });
@@ -334,6 +534,15 @@ app.post('/api/clarify', requireUser, async (req, res) => {
   }
 });
 
+app.get('/api/preferences', requireUser, (req, res) => {
+  res.json(getPreferences(req.user.id));
+});
+
+app.put('/api/preferences', requireUser, (req, res) => {
+  const updated = upsertPreferences(req.user.id, req.body || {});
+  res.json(updated);
+});
+
 app.post('/api/replan', requireUser, async (req, res) => {
   try {
     const result = await replanAll(req.user.id, new Date());
@@ -370,6 +579,50 @@ app.post('/api/reset', requireUser, (req, res) => {
   res.json({ status: 'reset' });
 });
 
+app.post('/api/tasks/:taskId/calendar-sync', requireUser, async (req, res) => {
+  const { enabled } = req.body || {};
+  if (typeof enabled !== 'boolean') {
+    return res.status(400).json({ detail: 'enabled must be boolean' });
+  }
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+
+  if (!enabled) {
+    setCalendarSyncEnabled(req.user.id, task.id, 0);
+    addTaskEvent(req.user.id, task.id, 'calendar_sync_toggled', { enabled: false });
+    try {
+      await deleteCalendarEvent(req.user.id, task.id);
+    } catch (err) {
+      console.error('[/api/tasks/:id/calendar-sync] delete error:', err.message);
+    }
+    return res.json({ ok: true, enabled: false });
+  }
+
+  if (!getGoogleTokens(req.user.id)) {
+    return res.status(409).json({ detail: 'Google Calendar not linked' });
+  }
+
+  setCalendarSyncEnabled(req.user.id, task.id, 1);
+  addTaskEvent(req.user.id, task.id, 'calendar_sync_toggled', { enabled: true });
+
+  const fresh = getTask(req.user.id, task.id);
+  const plan = getPlan(req.user.id, task.id);
+  try {
+    const result = await upsertCalendarEvent(req.user.id, fresh, plan, new Date());
+    return res.json({
+      ok: true,
+      enabled: true,
+      event_id: result?.event_id,
+      skipped: result?.skipped ? true : undefined,
+      reason: result?.reason,
+      error: result?.error,
+    });
+  } catch (err) {
+    console.error('[/api/tasks/:id/calendar-sync] upsert error:', err.message);
+    return res.status(500).json({ detail: err.message || 'Calendar sync failed' });
+  }
+});
+
 
 export function createApp() {
   return app;
@@ -383,7 +636,7 @@ if (process.env.NODE_ENV !== 'test' && !process.env.SKIP_SERVER_START) {
     const provider = getProviderName();
     console.log(`Last Minute ChatRojak running at http://localhost:${PORT}`);
     console.log(`AI provider: ${provider} · model: ${MODEL}`);
-    const keyEnv = provider === 'gemini' ? 'GEMINI_API_KEY' : 'Z_AI_API_KEY';
+    const keyEnv = getProviderKeyEnv();
     if (!process.env[keyEnv]) {
       console.warn(`WARNING: ${keyEnv} not set. Copy .env.example to .env and add your key.`);
     }

@@ -101,8 +101,12 @@ function renderDashboardText(data) {
     for (const it of items) {
       const dl = it.deadline ? ` · ${it.deadline}` : '';
       const by = it.assigned_by ? ` · ${it.assigned_by}` : '';
+<<<<<<< HEAD
       const tags = it.tags?.length ? ` · #${it.tags.join(' #')}` : '';
       lines.push(`${it.task_id}  ${it.task}${dl}${by}  [${it.priority_score}]${tags}`);
+=======
+      lines.push(`${it.task_id}  ${it.task}${dl}${by}  [${it.priority_score}]`);
+>>>>>>> 7f72f9074e2ba08e9e079365fde80d24705a9b3c
     }
   };
   push('In progress', data.in_progress);

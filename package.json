@@ -19,7 +19,11 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+<<<<<<< HEAD
     "googleapis": "^144.0.0",
+=======
+    "googleapis": "^171.4.0",
+>>>>>>> 7f72f9074e2ba08e9e079365fde80d24705a9b3c
     "openai": "^4.50.0",
     "zod": "^3.23.8"
   },

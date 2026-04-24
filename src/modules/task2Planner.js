@@ -50,6 +50,29 @@ export function applyAdaptiveWeights({ urgency, importance, effort }, weights = 
   return Math.round(urgency * nu + importance * ni + effort * ne);
 }
 
+// Quadrant keys: 'do' (urgent+important), 'plan' (important), 'quick' (urgent), 'later'.
+export function scoreEisenhower(urgency, importance, weights = null) {
+  const active = weights && weights.active;
+  const uBias = active ? (weights.quadrant_urgent || 0) : 0;
+  const iBias = active ? (weights.quadrant_important || 0) : 0;
+  const urgentThreshold = 65 - uBias * 30;
+  const importantThreshold = 30 - iBias * 20;
+  const urgent = urgency >= urgentThreshold;
+  const important = importance >= importantThreshold;
+  if (urgent && important) return 'do';
+  if (!urgent && important) return 'plan';
+  if (urgent && !important) return 'quick';
+  return 'later';
+}
+
+export function applyDurationBias(aiMinutes, weights = null) {
+  if (aiMinutes == null) return null;
+  const active = weights && weights.active;
+  const bias = active ? (weights.duration || 0) : 0;
+  const adjusted = Math.round(aiMinutes * (1 + bias));
+  return Math.max(5, Math.min(1440, adjusted));
+}
+
 export function detectConflicts(tasks) {
   const conflicts = [];
   for (let i = 0; i < tasks.length; i++) {
@@ -81,7 +104,6 @@ export function detectConflicts(tasks) {
     }
   }
 
-  // Overload: more than 4 "do now" candidates sharing the same calendar day
   const byDay = new Map();
   for (const t of tasks) {
     if (!t.deadline_iso) continue;
@@ -113,9 +135,7 @@ async function generatePlanAI(tasks, context = {}) {
     task: t.task,
     deadline: t.deadline,
     deadline_iso: t.deadline_iso,
-    category_bucket: t.category_bucket || 'Others',
     priority: t.priority,
-    tags: t.tags || [],
   }));
 
   const systemPrompt = `You are a task planner. For each task given, produce:
@@ -176,6 +196,10 @@ export function scorePlan(tasks, now, { weights = null, blockedIds = null } = {}
     const effort = scoreEffort(task.task);
     const aiScore = Math.round(urgency * 0.5 + importance * 0.35 + effort * 0.15);
     const adjustedScore = applyAdaptiveWeights({ urgency, importance, effort }, weights);
+    const eisenhower = scoreEisenhower(urgency, importance, weights);
+    const aiDuration = typeof task.estimated_duration_minutes === 'number'
+      ? Math.max(5, Math.min(1440, Math.round(task.estimated_duration_minutes)))
+      : null;
 
     const missingQs = [];
     for (const field of task.missing_fields || []) {
@@ -208,6 +232,8 @@ export function scorePlan(tasks, now, { weights = null, blockedIds = null } = {}
       priority_score: adjustedScore,
       ai_priority_score: aiScore,
       user_adjusted_score: adjustedScore,
+      eisenhower,
+      ai_duration_minutes: aiDuration,
       decision,
       steps: [],
       conflicts: conflictMsgMap[task.id] || [],

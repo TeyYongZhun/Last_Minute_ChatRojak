@@ -4,39 +4,31 @@ import Anthropic from '@anthropic-ai/sdk';
 let _client = null;
 
 const PROVIDERS = {
-  anthropic: {
-    kind: 'anthropic',
-    apiKeyEnv: 'ANTHROPIC_API_KEY',
-    defaultBaseURL: 'https://api.anthropic.com',
-    baseURLEnv: 'ANTHROPIC_BASE_URL',
-    modelEnv: 'ANTHROPIC_MODEL',
-    defaultModel: 'claude-sonnet-4-6',
-  },
-  zai: {
+  ilmuglm: {
     kind: 'openai',
-    apiKeyEnv: 'Z_AI_API_KEY',
-    defaultBaseURL: 'https://api.z.ai/api/paas/v4/',
-    baseURLEnv: 'Z_AI_BASE_URL',
-    modelEnv: 'Z_AI_MODEL',
-    defaultModel: 'glm-4.6',
-  },
-  gemini: {
-    kind: 'openai',
-    apiKeyEnv: 'GEMINI_API_KEY',
-    defaultBaseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-    baseURLEnv: 'GEMINI_BASE_URL',
-    modelEnv: 'GEMINI_MODEL',
-    defaultModel: 'gemini-2.5-flash',
+    apiKeyEnv: 'ILMU_API_KEY',
+    defaultBaseURL: 'https://api.ilmu.ai/v1',
+    baseURLEnv: 'ILMU_BASE_URL',
+    modelEnv: 'ILMU_MODEL',
+    defaultModel: 'ilmu-glm-5.1',
   },
 };
 
 function activeProviderName() {
-  const p = (process.env.AI_PROVIDER || 'anthropic').toLowerCase();
-  return PROVIDERS[p] ? p : 'anthropic';
+  const p = (process.env.AI_PROVIDER || 'ilmuglm').toLowerCase();
+  return PROVIDERS[p] ? p : 'ilmuglm';
 }
 
 export function getProviderName() {
   return activeProviderName();
+}
+
+export function getProviderConfig() {
+  return PROVIDERS[activeProviderName()];
+}
+
+export function getProviderKeyEnv() {
+  return getProviderConfig().apiKeyEnv;
 }
 
 // Translates OpenAI chat/completions calls to Anthropic Messages calls and
@@ -97,7 +89,7 @@ function createAnthropicShim({ apiKey, baseURL }) {
 export function getClient() {
   if (_client) return _client;
   const name = activeProviderName();
-  const cfg = PROVIDERS[name];
+  const cfg = getProviderConfig();
   const key = process.env[cfg.apiKeyEnv];
   if (!key) {
     throw new Error(`${cfg.apiKeyEnv} is not set. Copy .env.example to .env and add your ${name} key.`);
@@ -106,13 +98,14 @@ export function getClient() {
   if (cfg.kind === 'anthropic') {
     _client = createAnthropicShim({ apiKey: key, baseURL });
   } else {
-    _client = new OpenAI({ apiKey: key, baseURL });
+    const timeoutMs = Number(process.env.AI_REQUEST_TIMEOUT_MS) || 120_000;
+    _client = new OpenAI({ apiKey: key, baseURL, timeout: timeoutMs });
   }
   return _client;
 }
 
 export const MODEL = (() => {
-  const cfg = PROVIDERS[activeProviderName()];
+  const cfg = getProviderConfig();
   return process.env[cfg.modelEnv] || cfg.defaultModel;
 })();
 
@@ -126,6 +119,7 @@ export function extractJson(text) {
   return {};
 }
 
+// 504 included: slow model backends (e.g. ILMU GLM) often 504 on cold start, retry usually succeeds.
 const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
 
 function isRetryable(err) {
@@ -133,10 +127,13 @@ function isRetryable(err) {
   if (err.status && RETRY_STATUS.has(err.status)) return true;
   const code = err.code || err.cause?.code;
   if (code && ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED'].includes(code)) return true;
+  const name = err.name || err.cause?.name;
+  if (name === 'APIConnectionTimeoutError' || name === 'APIConnectionError') return true;
+  if (typeof err.message === 'string' && /timed out|timeout/i.test(err.message)) return true;
   return false;
 }
 
-export async function withRetry(fn, { retries = 1, baseMs = 400, maxWaitMs = 4000 } = {}) {
+export async function withRetry(fn, { retries = 3, baseMs = 600, maxWaitMs = 8000, onRetry } = {}) {
   let attempt = 0;
   while (true) {
     try {
@@ -162,7 +159,9 @@ export async function withRetry(fn, { retries = 1, baseMs = 400, maxWaitMs = 400
         const jitter = Math.random() * 0.3 + 0.85;
         waitMs = Math.min(maxWaitMs, Math.round(baseMs * 2 ** attempt * jitter));
       }
-      console.warn(`[withRetry] attempt ${attempt + 1} failed (${err.status || err.code || err.message}), retrying in ${Math.round(waitMs / 1000)}s`);
+      const waitSec = Math.round(waitMs / 1000);
+      console.warn(`[withRetry] attempt ${attempt + 1} failed (${err.status || err.code || err.message}), retrying in ${waitSec}s`);
+      onRetry?.(`API error (${err.status || err.code || err.message}), retrying in ${waitSec}s…`);
       await new Promise((r) => setTimeout(r, waitMs));
       attempt += 1;
     }

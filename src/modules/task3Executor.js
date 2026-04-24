@@ -16,16 +16,17 @@ import {
   updateTaskStatus,
   updateTaskField,
   updateTaskMissingFields,
-  setTaskTags,
-  getTagsForTasks,
-  listTagCounts,
   deleteAllForUser,
   renameTaskCategory,
   setUserPriority as repoSetUserPriority,
-  setCategoryBucket,
   setComplexity,
   setPriorityScores,
+  setAiEisenhower,
+  setUserEisenhower as repoSetUserEisenhower,
+  setAiDurationMinutes,
+  setUserDurationMinutes as repoSetUserDurationMinutes,
   markCompleted,
+  setCalendarSyncEnabled,
 } from '../db/repos/tasks.js';
 import {
   listPlans,
@@ -35,6 +36,7 @@ import {
 import {
   toggleChecklistItem,
   getChecklist,
+  replaceChecklist,
 } from '../db/repos/checklists.js';
 import { listRecent as listRecentNotifications } from '../db/repos/notifications.js';
 import { listRecent as listRecentReplanEvents, addReplanEvent, hasEventContaining } from '../db/repos/replanEvents.js';
@@ -47,8 +49,17 @@ import {
   removeDependency as repoRemoveDep,
   blockedTaskIds,
 } from './dependencyGraph.js';
-import { recordEdit as recordAdaptiveEdit, shapeWeights, weightsSummary } from './adaptiveScoring.js';
+import {
+  recordEdit as recordAdaptiveEdit,
+  recordDurationAdjust,
+  recordQuadrantAdjust,
+  shapeWeights,
+  weightsSummary,
+  reset as resetAdaptiveWeights,
+} from './adaptiveScoring.js';
 import { openThread, listOpenThreads } from './clarificationLoop.js';
+import { assignSlots, detectSlotOverlaps } from './slotter.js';
+import { getPreferences } from '../db/repos/userPreferences.js';
 
 function ts(d = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -69,48 +80,55 @@ function semanticKey(task) {
 export function mergeNewTasks(userId, newTasks) {
   const db = getDb();
   const idMap = {};
+  const insertedIds = [];
+  const matchedIds = [];
 
   const tx = db.transaction(() => {
     const allTasks = listTasks(userId);
-    const existing = new Set(allTasks.map((t) => t.id));
+    // existing must cover all users' IDs since tasks.id is a global primary key
+    const existing = new Set(db.prepare('SELECT id FROM tasks').all().map((r) => r.id));
     const openSemanticKeys = new Map();
     for (const t of allTasks) {
       if (t.status !== 'done') openSemanticKeys.set(semanticKey(t), t.id);
     }
 
     const allocateId = () => {
-      let candidate = nextTaskId(userId);
-      while (existing.has(candidate)) candidate = nextTaskId(userId);
+      let candidate = nextTaskId();
+      while (existing.has(candidate)) candidate = nextTaskId();
       return candidate;
     };
 
     for (const task of newTasks) {
       const t = { ...task };
+      if (t.estimated_duration_minutes != null && t.ai_duration_minutes == null) {
+        t.ai_duration_minutes = t.estimated_duration_minutes;
+      }
       const originalId = t.id;
       const key = semanticKey(t);
       if (key.startsWith('|')) {
         // empty text — let it through
       } else if (openSemanticKeys.has(key)) {
-        idMap[originalId] = openSemanticKeys.get(key);
+        const matchedId = openSemanticKeys.get(key);
+        idMap[originalId] = matchedId;
+        matchedIds.push(matchedId);
         continue;
       }
       if (!t.id || existing.has(t.id)) t.id = allocateId();
       insertTask(userId, t);
-      setTaskTags(t.id, t.tags || []);
       addTaskEvent(userId, t.id, 'created', {
         source: 'prompt_chain',
-        category_bucket: t.category_bucket || 'Others',
         ai_priority: t.ai_priority || t.priority,
         confidence: t.confidence,
       });
       existing.add(t.id);
       openSemanticKeys.set(key, t.id);
       idMap[originalId] = t.id;
+      insertedIds.push(t.id);
     }
   });
   tx();
 
-  return idMap;
+  return { idMap, insertedIds, matchedIds };
 }
 
 function remapDependencies(deps, idMap) {
@@ -160,6 +178,48 @@ export async function replanAll(userId, now = new Date(), onProgress) {
     blockedIds: blocked,
   });
 
+  // Seed each plan with the existing slot (esp. user-pinned) so assignSlots can honour pins.
+  for (const p of plans) {
+    const prior = prevById[p.task_id];
+    if (prior?.slot_origin === 'user' && prior.planned_start_iso && prior.planned_end_iso) {
+      p.planned_start_iso = prior.planned_start_iso;
+      p.planned_end_iso = prior.planned_end_iso;
+      p.slot_origin = 'user';
+    }
+  }
+
+  const prefs = getPreferences(userId);
+  const deps = listDependencies(userId);
+  const { slots, unplaceable } = assignSlots({ tasks: openTasks, plans, dependencies: deps, prefs, now });
+  const slotByTaskId = Object.fromEntries(slots.map((s) => [s.task_id, s]));
+  for (const p of plans) {
+    const s = slotByTaskId[p.task_id];
+    if (s) {
+      p.planned_start_iso = s.planned_start_iso;
+      p.planned_end_iso = s.planned_end_iso;
+      p.slot_origin = s.origin;
+    } else if (p.slot_origin !== 'user') {
+      p.planned_start_iso = null;
+      p.planned_end_iso = null;
+      p.slot_origin = null;
+    }
+  }
+
+  const taskById = Object.fromEntries(openTasks.map((t) => [t.id, t]));
+  for (const u of unplaceable) {
+    const task = taskById[u.task_id];
+    const label = task?.task || u.task_id;
+    const reason = u.reason === 'deadline_too_close'
+      ? `won't fit inside working hours before its deadline`
+      : `couldn't be scheduled in the planning horizon`;
+    conflicts.push({
+      kind: 'unplaceable',
+      ids: [u.task_id],
+      message: `'${label}' ${reason}.`,
+    });
+  }
+  for (const c of detectSlotOverlaps(plans)) conflicts.push(c);
+
   const db = getDb();
   const tx = db.transaction(() => {
     for (const plan of plans) {
@@ -200,6 +260,8 @@ export async function replanAll(userId, now = new Date(), onProgress) {
         userScore: plan.user_adjusted_score,
       });
       if (plan.complexity) setComplexity(userId, plan.task_id, plan.complexity);
+      if (plan.eisenhower) setAiEisenhower(userId, plan.task_id, plan.eisenhower);
+      if (plan.ai_duration_minutes != null) setAiDurationMinutes(userId, plan.task_id, plan.ai_duration_minutes);
 
       if (task) generateActionsForPlan(userId, plan, task, now);
 
@@ -274,6 +336,7 @@ export function completeTask(userId, taskId) {
   const db = getDb();
   const tx = db.transaction(() => {
     markCompleted(userId, taskId);
+    setCalendarSyncEnabled(userId, taskId, 0);
     updatePlanStatus(userId, taskId, 'done');
     pruneActionsForTask(taskId);
     addReplanEvent(userId, `[${ts()}] Task ${taskId} marked done.`);
@@ -284,6 +347,43 @@ export function completeTask(userId, taskId) {
   return true;
 }
 
+export function pauseTask(userId, taskId) {
+  const task = getTask(userId, taskId);
+  if (!task) return { result: 'not_found' };
+  if (task.status === 'done') return { result: 'already_done' };
+  if (task.status !== 'in_progress') return { result: 'not_in_progress' };
+  const db = getDb();
+  const tx = db.transaction(() => {
+    updateTaskStatus(userId, taskId, 'pending');
+    updatePlanStatus(userId, taskId, 'pending');
+    addReplanEvent(userId, `[${ts()}] Task ${taskId} paused.`);
+    addTaskEvent(userId, taskId, 'status_changed', { to: 'pending', from: 'in_progress' });
+  });
+  tx();
+  return { result: 'ok' };
+}
+
+function deadlineTextToIso(text, now = new Date()) {
+  if (!text || typeof text !== 'string') return null;
+  const hasTime = /\d:\d{2}|\b\d{1,2}\s*(am|pm)\b/i.test(text);
+  let d = null;
+  const slashM = text.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if (slashM) {
+    let day = +slashM[1], month = +slashM[2] - 1;
+    let year = slashM[3] ? +slashM[3] : now.getFullYear();
+    if (year < 100) year += 2000;
+    d = new Date(year, month, day);
+  }
+  if (!d || isNaN(d.getTime())) {
+    const nd = new Date(text);
+    if (!isNaN(nd.getTime())) d = nd;
+  }
+  if (!d || isNaN(d.getTime())) return null;
+  if (!hasTime) d = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 0, 0);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00+08:00`;
+}
+
 export function respondToClarification(userId, taskId, field, value) {
   const task = getTask(userId, taskId);
   if (!task) return false;
@@ -291,6 +391,8 @@ export function respondToClarification(userId, taskId, field, value) {
   const tx = db.transaction(() => {
     if (field === 'deadline') {
       updateTaskField(userId, taskId, 'deadline', value);
+      const iso = deadlineTextToIso(value, new Date());
+      if (iso) updateTaskField(userId, taskId, 'deadline_iso', iso);
     } else if (field === 'assigned_by') {
       updateTaskField(userId, taskId, 'assigned_by', value);
     } else if (field === 'deadline_iso') {
@@ -326,11 +428,43 @@ export function setUserPriority(userId, taskId, priority) {
   return true;
 }
 
-export function setBucket(userId, taskId, bucket) {
+export function setBucket(_userId, _taskId, _bucket) {
+  return false;
+}
+
+export function setUserEisenhower(userId, taskId, quadrant) {
   const task = getTask(userId, taskId);
   if (!task) return false;
-  setCategoryBucket(userId, taskId, bucket);
-  addTaskEvent(userId, taskId, 'bucket_changed', { bucket });
+  const normalized = quadrant === null || quadrant === '' ? null : quadrant;
+  repoSetUserEisenhower(userId, taskId, normalized);
+  addTaskEvent(userId, taskId, 'eisenhower_overridden', {
+    ai_eisenhower: task.ai_eisenhower,
+    user_eisenhower: normalized,
+  });
+  if (normalized && task.ai_eisenhower && normalized !== task.ai_eisenhower) {
+    recordQuadrantAdjust(userId, {
+      aiQuadrant: task.ai_eisenhower,
+      userQuadrant: normalized,
+    });
+  }
+  return true;
+}
+
+export function setUserDurationMinutes(userId, taskId, minutes) {
+  const task = getTask(userId, taskId);
+  if (!task) return false;
+  const m = minutes == null ? null : Math.max(5, Math.min(1440, Math.round(Number(minutes))));
+  repoSetUserDurationMinutes(userId, taskId, m);
+  addTaskEvent(userId, taskId, 'duration_overridden', {
+    ai_duration_minutes: task.ai_duration_minutes,
+    user_duration_minutes: m,
+  });
+  if (m != null && task.ai_duration_minutes) {
+    recordDurationAdjust(userId, {
+      aiMinutes: task.ai_duration_minutes,
+      userMinutes: m,
+    });
+  }
   return true;
 }
 
@@ -361,8 +495,7 @@ export function toggleStep(userId, taskId, stepIndex) {
   return ok;
 }
 
-function matchesFilters(task, plan, tags, filters) {
-  if (filters.bucket && task.category_bucket !== filters.bucket) return false;
+function matchesFilters(task, plan, filters) {
   if (filters.category && (task.category || 'Other').toLowerCase() !== filters.category.toLowerCase()) return false;
   if (filters.priority && task.priority !== filters.priority) return false;
   if (filters.status) {
@@ -374,12 +507,6 @@ function matchesFilters(task, plan, tags, filters) {
     const needle = filters.q.toLowerCase();
     if (!task.task.toLowerCase().includes(needle)) return false;
   }
-  if (filters.tags && filters.tags.length) {
-    const taskTags = new Set(tags);
-    for (const want of filters.tags) {
-      if (!taskTags.has(want)) return false;
-    }
-  }
   return true;
 }
 
@@ -387,11 +514,12 @@ export function getDashboard(userId, filters = {}) {
   const tasks = listTasks(userId);
   const plans = listPlans(userId);
   const planByTaskId = Object.fromEntries(plans.map((p) => [p.task_id, p]));
-  const tagsByTask = getTagsForTasks(tasks.map((t) => t.id));
   const deps = listDependencies(userId);
   const depsByTask = {};
   for (const d of deps) (depsByTask[d.task_id] ||= []).push({ depends_on: d.depends_on, reason: d.reason });
   const doneIds = new Set(tasks.filter((t) => t.status === 'done').map((t) => t.id));
+  const weights = shapeWeights(userId);
+  const durationBias = weights.active ? (weights.duration || 0) : 0;
 
   const do_now = [];
   const in_progress = [];
@@ -410,7 +538,6 @@ export function getDashboard(userId, filters = {}) {
     });
 
   for (const { task, plan } of ordered) {
-    const tags = tagsByTask[task.id] || [];
     const effectivePlan = plan || {
       task_id: task.id,
       priority_score: 0,
@@ -419,11 +546,21 @@ export function getDashboard(userId, filters = {}) {
       conflicts: [],
       missing_info_questions: [],
       status: task.status,
+      planned_start_iso: null,
+      planned_end_iso: null,
+      slot_origin: null,
     };
-    if (!matchesFilters(task, effectivePlan, tags, filters)) continue;
+    if (!matchesFilters(task, effectivePlan, filters)) continue;
     const taskDeps = depsByTask[task.id] || [];
     const depsRemaining = taskDeps.filter((d) => !doneIds.has(d.depends_on));
     const isWaiting = depsRemaining.length > 0 && task.status !== 'done';
+
+    const aiDur = task.ai_duration_minutes ?? null;
+    const userDur = task.user_duration_minutes ?? null;
+    const biasedAiDur = aiDur != null
+      ? Math.max(5, Math.min(1440, Math.round(aiDur * (1 + durationBias))))
+      : null;
+    const effectiveQuadrant = task.user_eisenhower || task.ai_eisenhower || null;
 
     const item = {
       task_id: task.id,
@@ -437,17 +574,27 @@ export function getDashboard(userId, filters = {}) {
       ai_priority_score: task.ai_priority_score ?? effectivePlan.priority_score,
       user_adjusted_score: task.user_adjusted_score ?? effectivePlan.priority_score,
       priority_score: effectivePlan.priority_score,
+      eisenhower: effectiveQuadrant,
+      ai_eisenhower: task.ai_eisenhower,
+      user_eisenhower: task.user_eisenhower,
+      duration_minutes: userDur != null ? userDur : biasedAiDur,
+      ai_duration_minutes: aiDur,
+      user_duration_minutes: userDur,
       decision: isWaiting ? 'waiting' : effectivePlan.decision,
       steps: effectivePlan.steps,
       checklist: getChecklist(task.id),
       conflicts: effectivePlan.conflicts,
       missing_info_questions: effectivePlan.missing_info_questions,
+<<<<<<< HEAD
+=======
+      planned_start_iso: effectivePlan.planned_start_iso || null,
+      planned_end_iso: effectivePlan.planned_end_iso || null,
+      slot_origin: effectivePlan.slot_origin || null,
+>>>>>>> 7f72f9074e2ba08e9e079365fde80d24705a9b3c
       status: task.status,
       confidence: task.confidence,
       category: task.category || 'Other',
-      category_bucket: task.category_bucket || 'Others',
       complexity: task.complexity,
-      tags,
       dependencies: taskDeps,
       depends_remaining: depsRemaining.map((d) => d.depends_on),
       plan_missing: !plan,
@@ -477,13 +624,21 @@ export function getDashboard(userId, filters = {}) {
     dependencies: deps,
     adaptation: weightsSummary(userId),
     total_tasks: tasks.length,
-    available_tags: listTagCounts(userId),
     filters_applied: filters,
   };
 }
 
 export function resetUser(userId) {
-  deleteAllForUser(userId);
+  const db = getDb();
+  db.transaction(() => {
+    // Tasks cascade-deletes: plans, task_tags, checklist_items, reminders,
+    // calendar_events, task_events, task_dependencies, clarification_threads
+    deleteAllForUser(userId);
+    db.prepare('DELETE FROM replan_events WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM notifications WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM user_preferences WHERE user_id = ?').run(userId);
+  })();
+  resetAdaptiveWeights(userId);
 }
 
 export function renameCategory(userId, oldName, newName) {

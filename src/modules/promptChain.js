@@ -1,5 +1,4 @@
 import { parseMessages } from './task1Parser.js';
-import { categorizeTasks } from './categorizer.js';
 import { planTasks } from './task2Planner.js';
 import { validateRun, MAX_RETRIES_PER_VERDICT } from './validator.js';
 import { shapeWeights, weightsSummary } from './adaptiveScoring.js';
@@ -17,10 +16,10 @@ export async function runChain(userId, rawText, now, { timeframe = 'all', onProg
   const trace = [];
   const record = (step, detail) => trace.push({ step, at: stamp(), ...detail });
 
-  log(onProgress, `Step 1/4 — Extracting tasks…`, 'chain_step');
+  log(onProgress, `Step 1/3 — Extracting tasks…`, 'chain_step');
   let tasks;
   try {
-    tasks = await parseMessages(rawText, now, timeframe);
+    tasks = await parseMessages(rawText, now, timeframe, { onProgress });
     record('extract', { count: tasks.length });
     log(onProgress, `Found ${tasks.length} candidate task(s).`, 'chain_step');
   } catch (err) {
@@ -32,20 +31,10 @@ export async function runChain(userId, rawText, now, { timeframe = 'all', onProg
     return { tasks: [], plans: [], dependencies: [], conflicts: [], validation: null, degraded: false, trace };
   }
 
-  log(onProgress, `Step 2/4 — Categorizing into Academic / Co-curricular / Others…`, 'chain_step');
-  const cat = await categorizeTasks(tasks);
-  for (const t of tasks) {
-    t.category_bucket = cat.categories[t.id] || 'Others';
-  }
-  record('categorize', { degraded: !!cat.degraded });
-  if (cat.degraded) log(onProgress, `Categorize step degraded, using heuristic fallback.`, 'warn');
-  const bucketCounts = tasks.reduce((m, t) => ((m[t.category_bucket] = (m[t.category_bucket] || 0) + 1), m), {});
-  log(onProgress, `Buckets → ${Object.entries(bucketCounts).map(([k, v]) => `${k}:${v}`).join(', ')}`, 'chain_step');
-
   const weights = shapeWeights(userId);
   const summary = weightsSummary(userId);
 
-  log(onProgress, `Step 3/4 — Planning (steps, complexity, dependencies)…`, 'chain_step');
+  log(onProgress, `Step 2/3 — Planning (steps, complexity, dependencies)…`, 'chain_step');
   let planResult = await planTasks(tasks, now, (msg) => log(onProgress, msg), {
     weights,
     weightsSummary: summary,
@@ -59,7 +48,7 @@ export async function runChain(userId, rawText, now, { timeframe = 'all', onProg
   };
   record('plan', { plans: planResult.plans.length, deps: planResult.dependencies.length, degraded: planResult.ai_degraded });
 
-  log(onProgress, `Step 4/4 — Validating…`, 'chain_step');
+  log(onProgress, `Step 3/3 — Validating…`, 'chain_step');
   let validation = await validateRun({ tasks, plans: planResult.plans, dependencies: planResult.dependencies });
   record('validate', { verdict: validation.verdict, issues: validation.issues.length });
 
@@ -82,8 +71,6 @@ export async function runChain(userId, rawText, now, { timeframe = 'all', onProg
         break;
       }
       if (!tasks.length) break;
-      const cat2 = await categorizeTasks(tasks);
-      for (const t of tasks) t.category_bucket = cat2.categories[t.id] || 'Others';
     }
 
     const next = await planTasks(tasks, now, (msg) => log(onProgress, msg), {
@@ -129,7 +116,7 @@ export async function runChain(userId, rawText, now, { timeframe = 'all', onProg
     dependencies: planResult.dependencies,
     conflicts: planResult.conflicts,
     validation,
-    degraded: !!planResult.ai_degraded || !!cat.degraded,
+    degraded: !!planResult.ai_degraded,
     trace,
   };
 }

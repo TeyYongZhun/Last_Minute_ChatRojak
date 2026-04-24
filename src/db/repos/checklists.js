@@ -21,6 +21,35 @@ export function replaceChecklist(taskId, steps) {
   }
 }
 
+export function updateChecklistItemText(taskId, position, text) {
+  const db = getDb();
+  return db
+    .prepare('UPDATE checklist_items SET step = ? WHERE task_id = ? AND position = ?')
+    .run(String(text), taskId, position).changes;
+}
+
+export function deleteChecklistItem(taskId, position) {
+  const db = getDb();
+  const tx = db.transaction(() => {
+    const changes = db
+      .prepare('DELETE FROM checklist_items WHERE task_id = ? AND position = ?')
+      .run(taskId, position).changes;
+    if (changes) {
+      db.prepare(
+        'UPDATE checklist_items SET position = position - 1 WHERE task_id = ? AND position > ?'
+      ).run(taskId, position);
+    }
+    return !!changes;
+  });
+  return tx();
+}
+
+export function addChecklistItem(taskId, text) {
+  const db = getDb();
+  const row = db.prepare('SELECT COALESCE(MAX(position)+1,0) AS next FROM checklist_items WHERE task_id = ?').get(taskId);
+  db.prepare('INSERT INTO checklist_items (task_id, position, step, done) VALUES (?, ?, ?, 0)').run(taskId, row.next, String(text));
+}
+
 export function toggleChecklistItem(taskId, position) {
   const db = getDb();
   const row = db
