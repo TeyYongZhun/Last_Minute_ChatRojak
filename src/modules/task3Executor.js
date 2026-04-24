@@ -36,6 +36,7 @@ import {
 import {
   toggleChecklistItem,
   getChecklist,
+  replaceChecklist,
 } from '../db/repos/checklists.js';
 import { listRecent as listRecentNotifications } from '../db/repos/notifications.js';
 import { listRecent as listRecentReplanEvents, addReplanEvent, hasEventContaining } from '../db/repos/replanEvents.js';
@@ -581,7 +582,14 @@ export function getDashboard(userId, filters = {}) {
       user_duration_minutes: userDur,
       decision: isWaiting ? 'waiting' : effectivePlan.decision,
       steps: effectivePlan.steps,
-      checklist: getChecklist(task.id),
+      checklist: (() => {
+        let cl = getChecklist(task.id);
+        if (!cl.length && Array.isArray(effectivePlan.steps) && effectivePlan.steps.length) {
+          replaceChecklist(task.id, effectivePlan.steps);
+          cl = getChecklist(task.id);
+        }
+        return cl;
+      })(),
       conflicts: effectivePlan.conflicts,
       missing_info_questions: effectivePlan.missing_info_questions,
       planned_start_iso: effectivePlan.planned_start_iso || null,

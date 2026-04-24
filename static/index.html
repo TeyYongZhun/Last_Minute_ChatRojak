@@ -525,7 +525,7 @@
     </div>
   </div>
 
-  <aside id="sidebar" class="w-72 border-r border-[var(--border)] flex flex-col pb-4 px-5 flex-shrink-0 z-10 shadow-[var(--shadow-xs)]" style="background:linear-gradient(180deg,rgba(74,140,127,0.15) 0%,rgba(255,255,255,0.95) 100%);backdrop-filter:blur(2px);" style="padding-top:28px;">
+  <aside id="sidebar" class="w-72 border-r border-[var(--border)] flex flex-col pb-4 px-5 flex-shrink-0 z-10 shadow-[var(--shadow-xs)]" style="background:linear-gradient(180deg,rgba(74,140,127,0.15) 0%,rgba(255,255,255,0.95) 100%);backdrop-filter:blur(2px);padding-top:56px;">
 
     <!-- Avatar + user info + Upload CTA -->
     <div style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:24px;">
@@ -2035,9 +2035,12 @@ function openTaskModal(taskId) {
       </li>`).join('');
     document.getElementById('modal-steps-section').classList.remove('hidden');
   } else if (Array.isArray(item.steps) && item.steps.length) {
-    stepsList.innerHTML = item.steps.map((s) => `
-      <li class="text-sm text-[color:var(--heading-2)] flex items-start gap-2">
-        <span class="text-[color:var(--muted-foreground)] mt-0.5">•</span><span>${esc(s)}</span>
+    stepsList.innerHTML = item.steps.map((s, i) => `
+      <li class="step-item" style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--border-soft);" data-step-index="${i}">
+        <input type="checkbox" style="flex-shrink:0;width:16px;height:16px;accent-color:var(--success);cursor:pointer;" onchange="togglePlanStep(this)" />
+        <span class="step-text" style="flex:1;font-size:14px;color:var(--foreground);">${esc(s)}</span>
+        <button class="step-delete" onclick="deleteModalStep(${i})" title="Delete step"
+          style="flex-shrink:0;background:rgba(199,68,58,0.08);border:1px solid rgba(199,68,58,0.25);border-radius:50%;width:22px;height:22px;font-size:14px;line-height:1;cursor:pointer;color:var(--destructive);display:inline-flex;align-items:center;justify-content:center;font-weight:700;padding:0;">&#xD7;</button>
       </li>`).join('');
     document.getElementById('modal-steps-section').classList.remove('hidden');
   } else {
@@ -2095,6 +2098,18 @@ async function modalMarkDone() {
   if (!modalTaskId) return;
   await markDone(modalTaskId);
   closeModal();
+}
+
+function togglePlanStep(checkbox) {
+  const span = checkbox.closest('li')?.querySelector('.step-text');
+  if (!span) return;
+  if (checkbox.checked) {
+    span.style.textDecoration = 'line-through';
+    span.style.color = 'var(--muted-foreground)';
+  } else {
+    span.style.textDecoration = '';
+    span.style.color = 'var(--foreground)';
+  }
 }
 
 async function toggleModalStep(index) {
@@ -3266,7 +3281,13 @@ function cancelNewModalStep() {
 
 async function deleteModalStep(index) {
   if (!modalTaskId) return;
-  try { await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/step-delete`, { index }); } catch {}
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/step-delete`, { index });
+  } catch (e) {
+    console.error('delete step failed:', e);
+    return;
+  }
+  await refreshDashboard();
   openTaskModal(modalTaskId);
 }
 
@@ -3277,7 +3298,8 @@ async function saveNewModalStep() {
   try { await api('POST', `/api/tasks/${encodeURIComponent(modalTaskId)}/steps`, { text }); } catch {}
   cancelNewModalStep();
   document.getElementById('modal-steps-section')?.classList.remove('hidden');
-  openTaskModal(modalTaskId); // re-render modal steps
+  await refreshDashboard();
+  openTaskModal(modalTaskId);
 }
 
 

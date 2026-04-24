@@ -40,7 +40,7 @@ import { getPlan } from './db/repos/plans.js';
 import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
 import { addTaskEvent } from './db/repos/taskEvents.js';
-import { updateChecklistItemText } from './db/repos/checklists.js';
+import { addChecklistItem, updateChecklistItemText, deleteChecklistItem } from './db/repos/checklists.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
 import { getPreferences, upsertPreferences } from './db/repos/userPreferences.js';
@@ -244,6 +244,17 @@ app.post('/api/tasks/:taskId/pause', requireUser, async (req, res) => {
   }
 });
 
+app.post('/api/tasks/:taskId/steps', requireUser, (req, res) => {
+  const { text } = req.body || {};
+  const trimmed = typeof text === 'string' ? text.trim() : '';
+  if (!trimmed) return res.status(400).json({ detail: 'text is required' });
+  if (trimmed.length > 500) return res.status(400).json({ detail: 'text must be 500 characters or fewer' });
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  addChecklistItem(req.params.taskId, trimmed);
+  res.json({ status: 'added' });
+});
+
 app.post('/api/tasks/:taskId/step', requireUser, (req, res) => {
   const { index } = req.body || {};
   if (typeof index !== 'number') {
@@ -272,6 +283,19 @@ app.post('/api/tasks/:taskId/step-text', requireUser, (req, res) => {
   const changes = updateChecklistItemText(req.params.taskId, index, trimmed);
   if (!changes) return res.status(404).json({ detail: 'Step not found' });
   res.json({ status: 'updated' });
+});
+
+app.post('/api/tasks/:taskId/step-delete', requireUser, (req, res) => {
+  const { index } = req.body || {};
+  if (typeof index !== 'number') {
+    return res.status(400).json({ detail: 'index (number) is required' });
+  }
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  if (!deleteChecklistItem(req.params.taskId, index)) {
+    return res.status(404).json({ detail: 'Step not found' });
+  }
+  res.json({ status: 'deleted' });
 });
 
 app.post('/api/tasks/:taskId/eisenhower', requireUser, async (req, res) => {
