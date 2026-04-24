@@ -2016,7 +2016,26 @@ function renderImportantInfo(data, active) {
     }
   }
   if (!items.length) {
-    return `<div class="text-sm text-[color:var(--success)] font-medium py-6 flex flex-col items-center gap-2 bg-white rounded-[var(--radius-xl)] border border-[rgba(91,125,78,0.3)]"><span class="text-2xl">✨</span> All clear!</div>`;
+    const examples = [
+      { q: "When is 'Register for career fair next week' due?", field: 'deadline' },
+      { q: "Who assigned 'Draft thank-you note to internship mentor'?", field: 'assigned_by' },
+    ];
+    const exampleHtml = examples.map((ex, i) => `
+      <div class="info-item accent-amber" style="opacity:0.9;border-style:dashed;">
+        <div class="flex items-start justify-between gap-2 mb-3">
+          <div class="text-sm font-semibold text-[color:var(--warn)] flex items-center gap-2">
+            <span>⚠️</span> ${esc(ex.q)}
+            <span class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[var(--accent)] text-[color:var(--muted-foreground)] border border-[var(--border)]">Example</span>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <input type="text" class="flex-1 bg-white rounded-[var(--radius-md)] px-3 py-2 text-sm border border-[var(--input)] focus:border-[color:var(--warn)] focus:ring-1 focus:ring-[rgba(180,130,42,0.3)] focus:outline-none text-[color:var(--foreground)] transition-colors" placeholder="${ex.field === 'deadline' ? 'e.g. Friday 5pm' : 'e.g. Prof Leong'}" />
+          <button onclick="alert('Preview only — click Try Demo to load real clarification tasks you can submit.')" class="ghost-btn ghost-btn-accent px-4 font-bold text-xs">Submit</button>
+        </div>
+      </div>`).join('');
+    const header = `<div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mb-2 flex items-center gap-2"><span class="text-base">👁</span> Preview — how clarifications look when AI needs info</div>`;
+    const clearBanner = `<div class="text-xs text-[color:var(--success)] font-medium py-2 mt-3 flex items-center justify-center gap-2"><span>✨</span> No real clarifications needed right now.</div>`;
+    return `${header}${exampleHtml}${clearBanner}`;
   }
   return items.join('');
 }
@@ -2437,14 +2456,18 @@ async function answerQuestion(btn) {
   const { tid, field, idx } = btn.dataset;
   const input = document.getElementById(`q-${tid}-${idx}`);
   const value = input?.value?.trim();
+  const infoBox = btn.closest('.info-item');
 
   if (!value) { input?.focus(); return; }
+
+  const prevError = infoBox?.querySelector('.clarify-inline-error');
+  if (prevError) prevError.remove();
 
   btn.disabled = true; btn.textContent = 'Saving...';
 
   try {
+    await api('POST', '/api/clarify', { task_id: tid, field, value });
     answeredQuestions.add(`${tid}-${idx}`);
-    const infoBox = btn.closest('.info-item');
     if (infoBox) {
       const parentContainer = infoBox.parentElement;
       infoBox.style.opacity = '0';
@@ -2456,11 +2479,24 @@ async function answerQuestion(btn) {
         }
       }, 200);
     }
-
-    await api('POST', '/api/clarify', { task_id: tid, field, value });
     refreshDashboard();
   } catch (e) {
-    console.error(e); btn.disabled = false; btn.textContent = 'Submit'; answeredQuestions.delete(`${tid}-${idx}`);
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+    if (infoBox && input) {
+      const msg = e?.message || 'Could not save — please try again.';
+      const err = document.createElement('div');
+      err.className = 'clarify-inline-error text-xs text-[color:var(--destructive)] mt-2';
+      err.textContent = msg;
+      infoBox.appendChild(err);
+      const clearErr = () => {
+        err.remove();
+        input.removeEventListener('input', clearErr);
+      };
+      input.addEventListener('input', clearErr, { once: true });
+      input.focus();
+    }
   }
 }
 async function resetAll() {

@@ -42,6 +42,7 @@ import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent 
 import { addTaskEvent } from './db/repos/taskEvents.js';
 import { addChecklistItem, updateChecklistItemText, deleteChecklistItem, toggleChecklistItem, getChecklist, replaceChecklist } from './db/repos/checklists.js';
 import { generateStepsForTask } from './modules/stepGenerator.js';
+import { parseClarificationDeadline } from './modules/deadlineParser.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
 import { getPreferences, upsertPreferences } from './db/repos/userPreferences.js';
@@ -179,9 +180,9 @@ app.post('/api/demo-seed', requireUser, (req, res) => {
     },
     {
       id: 'demo3', task: 'Reply to HR email about internship offer',
-      deadline: dl(0, 17, 0), deadline_iso: iso(0, 17, 0),
-      assigned_by: null, priority: 'medium', confidence: 0.88,
-      category: 'Admin', estimated_duration_minutes: 15, missing_fields: [], status: 'pending',
+      deadline: null, deadline_iso: null,
+      assigned_by: 'HR', priority: 'medium', confidence: 0.88,
+      category: 'Admin', estimated_duration_minutes: 15, missing_fields: ['deadline'], status: 'pending',
     },
     {
       id: 'demo4', task: 'Buy groceries and cook dinner',
@@ -551,7 +552,15 @@ app.post('/api/clarify', requireUser, async (req, res) => {
   if (!task_id || !field || value == null) {
     return res.status(400).json({ detail: 'task_id, field, value are required' });
   }
-  if (!respondToClarification(req.user.id, task_id, field, value)) {
+  let prefParsedIso = null;
+  if (field === 'deadline') {
+    const parsed = await parseClarificationDeadline(String(value), new Date());
+    if (parsed.error) {
+      return res.status(400).json({ detail: parsed.error, code: 'bad_date' });
+    }
+    prefParsedIso = parsed.iso;
+  }
+  if (!respondToClarification(req.user.id, task_id, field, value, prefParsedIso)) {
     return res.status(404).json({ detail: 'Task not found' });
   }
   try {
