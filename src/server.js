@@ -43,6 +43,7 @@ import { addTaskEvent } from './db/repos/taskEvents.js';
 import { updateChecklistItemText } from './db/repos/checklists.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
+import { getPreferences, upsertPreferences } from './db/repos/userPreferences.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_DIR = path.join(__dirname, '..', 'static');
@@ -97,7 +98,7 @@ app.post('/api/process', requireUser, async (req, res) => {
         message: 'No actionable tasks found',
       });
     }
-    const idMap = mergeNewTasks(req.user.id, chain.tasks);
+    const { idMap } = mergeNewTasks(req.user.id, chain.tasks);
     if (chain.dependencies?.length) {
       applyDependencies(req.user.id, chain.dependencies, idMap);
     }
@@ -396,6 +397,15 @@ app.post('/api/clarify', requireUser, async (req, res) => {
     console.error('[/api/clarify] replan error:', e);
     res.status(500).json({ detail: e.message });
   }
+});
+
+app.get('/api/preferences', requireUser, (req, res) => {
+  res.json(getPreferences(req.user.id));
+});
+
+app.put('/api/preferences', requireUser, (req, res) => {
+  const updated = upsertPreferences(req.user.id, req.body || {});
+  res.json(updated);
 });
 
 app.post('/api/replan', requireUser, async (req, res) => {
