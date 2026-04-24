@@ -27,6 +27,9 @@ import {
   setUserDurationMinutes as repoSetUserDurationMinutes,
   markCompleted,
   setCalendarSyncEnabled,
+  replaceTaskTags,
+  getTagsForTask,
+  listAvailableTags,
 } from '../db/repos/tasks.js';
 import {
   listPlans,
@@ -115,6 +118,7 @@ export function mergeNewTasks(userId, newTasks) {
       }
       if (!t.id || existing.has(t.id)) t.id = allocateId();
       insertTask(userId, t);
+      replaceTaskTags(t.id, t.tags || []);
       addTaskEvent(userId, t.id, 'created', {
         source: 'prompt_chain',
         ai_priority: t.ai_priority || t.priority,
@@ -495,9 +499,15 @@ export function toggleStep(userId, taskId, stepIndex) {
   return ok;
 }
 
-function matchesFilters(task, plan, filters) {
+function matchesFilters(task, plan, filters, taskTags = []) {
   if (filters.category && (task.category || 'Other').toLowerCase() !== filters.category.toLowerCase()) return false;
   if (filters.priority && task.priority !== filters.priority) return false;
+  if (Array.isArray(filters.tags) && filters.tags.length) {
+    const have = new Set(taskTags.map((t) => String(t).toLowerCase()));
+    for (const wanted of filters.tags) {
+      if (!have.has(String(wanted).toLowerCase())) return false;
+    }
+  }
   if (filters.status) {
     if (filters.status === 'active' && task.status === 'done') return false;
     if (filters.status === 'done' && task.status !== 'done') return false;
@@ -538,6 +548,7 @@ export function getDashboard(userId, filters = {}) {
     });
 
   for (const { task, plan } of ordered) {
+    const tags = getTagsForTask(task.id);
     const effectivePlan = plan || {
       task_id: task.id,
       priority_score: 0,
@@ -550,7 +561,7 @@ export function getDashboard(userId, filters = {}) {
       planned_end_iso: null,
       slot_origin: null,
     };
-    if (!matchesFilters(task, effectivePlan, filters)) continue;
+    if (!matchesFilters(task, effectivePlan, filters, tags)) continue;
     const taskDeps = depsByTask[task.id] || [];
     const depsRemaining = taskDeps.filter((d) => !doneIds.has(d.depends_on));
     const isWaiting = depsRemaining.length > 0 && task.status !== 'done';
@@ -592,6 +603,7 @@ export function getDashboard(userId, filters = {}) {
       confidence: task.confidence,
       category: task.category || 'Other',
       complexity: task.complexity,
+      tags,
       dependencies: taskDeps,
       depends_remaining: depsRemaining.map((d) => d.depends_on),
       plan_missing: !plan,
@@ -620,6 +632,7 @@ export function getDashboard(userId, filters = {}) {
     clarifications: listOpenThreads(userId),
     dependencies: deps,
     adaptation: weightsSummary(userId),
+    available_tags: listAvailableTags(userId),
     total_tasks: tasks.length,
     filters_applied: filters,
   };

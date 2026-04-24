@@ -52,6 +52,16 @@
       box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06), var(--shadow-xs);
     }
     .ghost-btn-accent:hover { background: var(--primary); filter: brightness(1.12); border-color: var(--primary); }
+    .clarify-spinner {
+      display:inline-block; width:12px; height:12px;
+      border:2px solid rgba(255,255,255,0.35); border-top-color:#fff;
+      border-radius:50%; animation: clarify-spin .7s linear infinite;
+    }
+    @keyframes clarify-spin { to { transform: rotate(360deg); } }
+    .in-progress-btn { transition: background-color .15s ease; }
+    .in-progress-btn:hover:not(:disabled) { background:#C75B00 !important; }
+    .in-progress-btn:hover:not(:disabled) .in-progress-label { display: none; }
+    .in-progress-btn:hover:not(:disabled)::after { content: 'Pause'; }
 
     .task-row {
       background: #fff; border: 1px solid var(--border);
@@ -1650,7 +1660,7 @@ function renderTaskRow(item) {
   const actions = item.status === 'done'
     ? ''
     : item.status === 'in_progress'
-    ? `<button data-tid="${tid}" onclick="event.stopPropagation();unstartTask(this.dataset.tid)" class="ghost-btn" style="background:#EA6C00;color:#fff;border-color:#EA6C008,0.3);">In Progress</button>`
+    ? `<button data-tid="${tid}" onclick="event.stopPropagation();unstartTask(this.dataset.tid)" title="Click to pause" class="ghost-btn in-progress-btn" style="background:#EA6C00;color:#fff;border-color:rgba(234,108,0,0.3);"><span class="in-progress-label">In Progress</span></button>`
     : `<button data-tid="${tid}" onclick="event.stopPropagation();startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
 
   const tickbox = `<input type="checkbox" class="task-tick" ${item.status === 'done' ? 'checked' : ''} data-tid="${tid}" onclick="event.stopPropagation()" onchange="markDone(this.dataset.tid)" title="Mark done" />`;
@@ -2016,26 +2026,11 @@ function renderImportantInfo(data, active) {
     }
   }
   if (!items.length) {
-    const examples = [
-      { q: "When is 'Register for career fair next week' due?", field: 'deadline' },
-      { q: "Who assigned 'Draft thank-you note to internship mentor'?", field: 'assigned_by' },
-    ];
-    const exampleHtml = examples.map((ex, i) => `
-      <div class="info-item accent-amber" style="opacity:0.9;border-style:dashed;">
-        <div class="flex items-start justify-between gap-2 mb-3">
-          <div class="text-sm font-semibold text-[color:var(--warn)] flex items-center gap-2">
-            <span>⚠️</span> ${esc(ex.q)}
-            <span class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-[var(--accent)] text-[color:var(--muted-foreground)] border border-[var(--border)]">Example</span>
-          </div>
-        </div>
-        <div class="flex gap-3">
-          <input type="text" class="flex-1 bg-white rounded-[var(--radius-md)] px-3 py-2 text-sm border border-[var(--input)] focus:border-[color:var(--warn)] focus:ring-1 focus:ring-[rgba(180,130,42,0.3)] focus:outline-none text-[color:var(--foreground)] transition-colors" placeholder="${ex.field === 'deadline' ? 'e.g. Friday 5pm' : 'e.g. Prof Leong'}" />
-          <button onclick="alert('Preview only — click Try Demo to load real clarification tasks you can submit.')" class="ghost-btn ghost-btn-accent px-4 font-bold text-xs">Submit</button>
-        </div>
-      </div>`).join('');
-    const header = `<div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mb-2 flex items-center gap-2"><span class="text-base">👁</span> Preview — how clarifications look when AI needs info</div>`;
-    const clearBanner = `<div class="text-xs text-[color:var(--success)] font-medium py-2 mt-3 flex items-center justify-center gap-2"><span>✨</span> No real clarifications needed right now.</div>`;
-    return `${header}${exampleHtml}${clearBanner}`;
+    return `
+      <div class="text-sm font-medium py-6 flex flex-col items-center gap-3 bg-white rounded-[var(--radius-xl)] border border-[rgba(91,125,78,0.3)]">
+        <div class="text-[color:var(--success)] flex items-center gap-2"><span class="text-2xl">✨</span> All clear!</div>
+        <div class="text-xs text-[color:var(--muted-foreground)]">Want to see example clarifications? Click <button onclick="loadDemo()" class="underline font-semibold text-[color:var(--primary)] hover:opacity-80">Try Demo</button> to seed test data.</div>
+      </div>`;
   }
   return items.join('');
 }
@@ -2154,15 +2149,7 @@ function openTaskModal(taskId) {
   } else {
     doneBtn.classList.remove('hidden');
     startBtn.classList.remove('hidden');
-    if (item.status === 'in_progress') {
-      startBtn.textContent = 'In Progress';
-      startBtn.style.background = '#EA6C00';
-      startBtn.dataset.state = 'inprogress';
-    } else {
-      startBtn.textContent = 'Start Task';
-      startBtn.style.background = 'var(--primary)';
-      startBtn.dataset.state = '';
-    }
+    refreshModalStartButton(item.status === 'in_progress' ? 'in_progress' : 'pending');
   }
 
   document.getElementById('task-modal').classList.remove('hidden');
@@ -2180,15 +2167,9 @@ async function modalStartTask() {
   if (isInProgress) {
     await unstartTask(modalTaskId);
     document.getElementById('modal-status').textContent = 'Pending';
-    startBtn.textContent = 'Start Task';
-    startBtn.style.background = 'var(--primary)';
-    startBtn.dataset.state = '';
   } else {
     await startTaskAction(modalTaskId);
     document.getElementById('modal-status').textContent = 'In Progress';
-    startBtn.textContent = 'In Progress';
-    startBtn.style.background = '#EA6C00';
-    startBtn.dataset.state = 'inprogress';
   }
 }
 
@@ -2418,7 +2399,7 @@ function patchTaskRowButton(taskId, isInProgress) {
   const actionsEl = row.querySelector('.flex.shrink-0.items-center');
   if (actionsEl) {
     if (isInProgress) {
-      actionsEl.innerHTML = `<button data-tid="${taskId}" onclick="event.stopPropagation();unstartTask(this.dataset.tid)" class="ghost-btn" style="background:#EA6C00;color:#fff;border-color:rgba(234,108,0,0.3);">In Progress</button>`;
+      actionsEl.innerHTML = `<button data-tid="${taskId}" onclick="event.stopPropagation();unstartTask(this.dataset.tid)" title="Click to pause" class="ghost-btn in-progress-btn" style="background:#EA6C00;color:#fff;border-color:rgba(234,108,0,0.3);"><span class="in-progress-label">In Progress</span></button>`;
     } else {
       actionsEl.innerHTML = `<button data-tid="${taskId}" onclick="event.stopPropagation();startTaskAction(this.dataset.tid)" class="ghost-btn ghost-btn-accent">Start</button>`;
     }
@@ -2428,20 +2409,75 @@ function patchTaskRowButton(taskId, isInProgress) {
   if (statusSpan) statusSpan.textContent = isInProgress ? 'In progress' : 'Pending';
 }
 
+const _taskActionInFlight = new Set();
+const SPINNER_HTML = '<span class="inline-flex items-center gap-1.5"><span class="clarify-spinner"></span>Working…</span>';
+
+function setTaskActionBusy(taskId, busy) {
+  const eid = String(taskId).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const row = document.querySelector(`.task-row[data-tid="${eid}"]`);
+  const rowBtn = row?.querySelector('.flex.shrink-0.items-center button');
+  if (rowBtn) {
+    if (busy) {
+      rowBtn.dataset.prevHtml = rowBtn.innerHTML;
+      rowBtn.disabled = true;
+      rowBtn.innerHTML = SPINNER_HTML;
+      rowBtn.style.cursor = 'wait';
+    } else if (rowBtn.dataset.prevHtml) {
+      delete rowBtn.dataset.prevHtml;
+      // Let the upcoming refreshDashboard re-render; just re-enable in case refresh is slow.
+      rowBtn.disabled = false;
+      rowBtn.style.cursor = '';
+    }
+  }
+  if (modalTaskId === taskId) {
+    const mBtn = document.getElementById('modal-start-btn');
+    if (mBtn) {
+      if (busy) {
+        mBtn.dataset.prevHtml = mBtn.innerHTML;
+        mBtn.disabled = true;
+        mBtn.innerHTML = SPINNER_HTML;
+        mBtn.style.cursor = 'wait';
+      } else {
+        mBtn.disabled = false;
+        mBtn.style.cursor = '';
+      }
+    }
+  }
+}
+
 async function unstartTask(taskId) {
+  if (_taskActionInFlight.has(taskId)) return;
+  _taskActionInFlight.add(taskId);
+  setTaskActionBusy(taskId, true);
   try {
     await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/pause`);
     patchTaskRowButton(taskId, false);
-    refreshDashboard();
-  } catch (e) { console.error(e); }
+    await refreshDashboard();
+    if (modalTaskId === taskId) refreshModalStartButton('pending');
+  } catch (e) {
+    console.error(e);
+    patchTaskRowButton(taskId, true); // revert DOM if server rejected
+    if (modalTaskId === taskId) refreshModalStartButton('in_progress');
+    alert('Failed to pause: ' + (e.message || 'unknown error'));
+  } finally {
+    setTaskActionBusy(taskId, false);
+    _taskActionInFlight.delete(taskId);
+  }
 }
+
 async function startTaskAction(taskId) {
+  if (_taskActionInFlight.has(taskId)) return;
+  _taskActionInFlight.add(taskId);
+  setTaskActionBusy(taskId, true);
   try {
     await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/start`);
     patchTaskRowButton(taskId, true);
-    refreshDashboard();
+    await refreshDashboard();
+    if (modalTaskId === taskId) refreshModalStartButton('in_progress');
   } catch (e) {
     console.error(e);
+    patchTaskRowButton(taskId, false); // revert DOM if server rejected
+    if (modalTaskId === taskId) refreshModalStartButton('pending');
     if (e.status === 409) {
       alert(e.message || 'Task cannot be started right now.');
     } else if (e.status === 404) {
@@ -2449,6 +2485,27 @@ async function startTaskAction(taskId) {
     } else {
       alert('Failed to start task: ' + (e.message || 'unknown error'));
     }
+  } finally {
+    setTaskActionBusy(taskId, false);
+    _taskActionInFlight.delete(taskId);
+  }
+}
+
+function refreshModalStartButton(status) {
+  const btn = document.getElementById('modal-start-btn');
+  if (!btn) return;
+  if (status === 'in_progress') {
+    btn.innerHTML = '<span class="in-progress-label">In Progress</span>';
+    btn.style.background = '#EA6C00';
+    btn.dataset.state = 'inprogress';
+    btn.classList.add('in-progress-btn');
+    btn.title = 'Click to pause';
+  } else {
+    btn.innerHTML = 'Start Task';
+    btn.style.background = 'var(--primary)';
+    btn.dataset.state = '';
+    btn.classList.remove('in-progress-btn');
+    btn.title = '';
   }
 }
 
@@ -2463,27 +2520,35 @@ async function answerQuestion(btn) {
   const prevError = infoBox?.querySelector('.clarify-inline-error');
   if (prevError) prevError.remove();
 
-  btn.disabled = true; btn.textContent = 'Saving...';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="inline-flex items-center gap-2"><span class="clarify-spinner" aria-hidden="true"></span>Saving…</span>';
 
   try {
     await api('POST', '/api/clarify', { task_id: tid, field, value });
     answeredQuestions.add(`${tid}-${idx}`);
+    btn.innerHTML = '<span class="inline-flex items-center gap-1">✓ Saved</span>';
+    btn.style.background = '#2D8C6A';
+    btn.style.borderColor = '#2D8C6A';
     if (infoBox) {
       const parentContainer = infoBox.parentElement;
-      infoBox.style.opacity = '0';
-      infoBox.style.transform = 'translateY(-10px)';
       setTimeout(() => {
-        infoBox.remove();
-        if (parentContainer.children.length === 0) {
-          parentContainer.innerHTML = `<div class="text-sm text-[color:var(--success)] font-medium py-6 flex flex-col items-center gap-2 bg-white rounded-[var(--radius-xl)] border border-[rgba(91,125,78,0.3)]"><span class="text-2xl">✨</span> All clear!</div>`;
-        }
-      }, 200);
+        infoBox.style.opacity = '0';
+        infoBox.style.transform = 'translateY(-10px)';
+        setTimeout(() => {
+          infoBox.remove();
+          if (parentContainer.children.length === 0) {
+            parentContainer.innerHTML = `<div class="text-sm text-[color:var(--success)] font-medium py-6 flex flex-col items-center gap-2 bg-white rounded-[var(--radius-xl)] border border-[rgba(91,125,78,0.3)]"><span class="text-2xl">✨</span> All clear!</div>`;
+          }
+        }, 250);
+      }, 650);
     }
     refreshDashboard();
   } catch (e) {
     console.error(e);
     btn.disabled = false;
-    btn.textContent = 'Submit';
+    btn.innerHTML = 'Submit';
+    btn.style.background = '';
+    btn.style.borderColor = '';
     if (infoBox && input) {
       const msg = e?.message || 'Could not save — please try again.';
       const err = document.createElement('div');
