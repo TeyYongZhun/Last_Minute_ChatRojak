@@ -24,7 +24,7 @@
       --font-serif:'Instrument Serif',ui-serif,Georgia,serif;
     }
     html, body { font-family: var(--font-sans); height: 100%; margin: 0; overflow: hidden; }
-    body { background: var(--background); color: var(--foreground); -webkit-font-smoothing: antialiased; display: flex; }
+    body { background: linear-gradient(120deg, #B6D1CB 0%, #C3DCD5 25%, #E9DCC5 60%, #F5DCB6 100%); background-attachment: fixed; color: var(--foreground); -webkit-font-smoothing: antialiased; display: flex; }
 
     .font-serif { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
 
@@ -269,6 +269,10 @@
     .quadrant[data-quadrant="plan"]  .quadrant-header { background: #90CAF9; border-bottom-color: #64B5F6; }
     .quadrant[data-quadrant="quick"] .quadrant-header { background: #81C784; border-bottom-color: #66BB6A; }
     .quadrant[data-quadrant="later"] .quadrant-header { background: #CE93D8; border-bottom-color: #BA68C8; }
+    .quadrant[data-quadrant="do"]    { background: #FFEBEE; border-color: #EF9A9A; }
+    .quadrant[data-quadrant="plan"]  { background: #E3F2FD; border-color: #90CAF9; }
+    .quadrant[data-quadrant="quick"] { background: #E8F5E9; border-color: #81C784; }
+    .quadrant[data-quadrant="later"] { background: #F3E5F5; border-color: #CE93D8; }
     .quadrant-title {
       font-family: var(--font-serif);
       font-size: 22px;
@@ -634,8 +638,8 @@
       </button>
     </nav>
 
-    <div class="border-t border-[var(--border)] pt-3 px-2 text-xs text-[color:var(--muted-foreground)]">
-      <button onclick="logout()" style="width:100%;padding:10px 0;border-radius:8px;background:#DC2626;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);transition:background .15s;" onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">Log out</button>
+    <div class="px-2">
+<button onclick="logout()" style="width:100%;padding:10px 0;border-radius:8px;background:#DC2626;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);transition:background .15s;" onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">Log out</button>
     </div>
   </aside>
 
@@ -666,7 +670,7 @@
           <!-- Right: preview + identity picker -->
           <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] overflow-hidden flex flex-col" style="min-height:420px;">
 
-            <div id="chat-placeholder" class="flex-1 flex flex-col items-center justify-center text-center" style="padding:40px 24px; background:#F7F5F3;">
+            <div id="chat-placeholder" class="flex-1 flex flex-col items-center justify-center text-center" style="padding:40px 24px; background:transparent;">
               <div class="text-4xl mb-3 opacity-30">💬</div>
               <div class="text-sm font-semibold text-[color:var(--muted-foreground)]">Select a chat to preview</div>
               <div class="text-xs text-[color:var(--muted-foreground)] mt-1">Choose from the list on the left, or add a new chat</div>
@@ -681,7 +685,7 @@
                 </div>
               </div>
 
-              <div id="chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-2" style="padding:12px 14px; max-height:260px; background:#F7F5F3;"></div>
+              <div id="chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-2" style="padding:12px 14px; max-height:260px; background:transparent;"></div>
 
               <div class="flex-shrink-0 border-t border-[var(--border)] bg-white" style="padding:14px 16px;">
                 <div class="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] mb-2">Who are you in this chat?</div>
