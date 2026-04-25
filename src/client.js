@@ -12,6 +12,14 @@ const PROVIDERS = {
     modelEnv: 'ILMU_MODEL',
     defaultModel: 'ilmu-glm-5.1',
   },
+  gemini: {
+    kind: 'gemini',
+    apiKeyEnv: 'GEMINI_API_KEY',
+    defaultBaseURL: 'https://generativelanguage.googleapis.com/v1beta',
+    baseURLEnv: 'GEMINI_BASE_URL',
+    modelEnv: 'GEMINI_MODEL',
+    defaultModel: 'gemini-2.5-flash',
+  },
 };
 
 function activeProviderName() {
@@ -86,6 +94,93 @@ function createAnthropicShim({ apiKey, baseURL }) {
   return { chat: { completions: { create } } };
 }
 
+// Native Gemini REST shim. The OpenAI-compat endpoint silently misbehaves on
+// some prompts (returns empty content / wrong finish_reason), so we call
+// generateContent directly and reshape the response into the OpenAI format.
+function createGeminiShim({ apiKey, baseURL }) {
+  const DEFAULT_MAX_TOKENS = 8192;
+  const root = baseURL.replace(/\/+$/, '');
+
+  function buildBody({ messages = [], temperature, max_tokens }) {
+    let systemText;
+    const contents = [];
+    for (const m of messages) {
+      const text = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+      if (m.role === 'system') {
+        systemText = systemText ? `${systemText}\n\n${text}` : text;
+      } else {
+        contents.push({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text }],
+        });
+      }
+    }
+    const body = {
+      contents,
+      generationConfig: {
+        maxOutputTokens: max_tokens ?? DEFAULT_MAX_TOKENS,
+        ...(temperature != null ? { temperature } : {}),
+      },
+    };
+    if (systemText) body.systemInstruction = { parts: [{ text: systemText }] };
+    return body;
+  }
+
+  function mapFinish(reason) {
+    switch (reason) {
+      case 'STOP': return 'stop';
+      case 'MAX_TOKENS': return 'length';
+      case 'SAFETY':
+      case 'RECITATION':
+      case 'BLOCKLIST':
+      case 'PROHIBITED_CONTENT': return 'content_filter';
+      default: return reason ? String(reason).toLowerCase() : 'stop';
+    }
+  }
+
+  async function create({ model, messages, temperature, max_tokens }) {
+    const url = `${root}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const body = buildBody({ messages, temperature, max_tokens });
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      const err = new Error(`Gemini API error ${res.status}: ${errText.slice(0, 500)}`);
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    const cand = data.candidates?.[0];
+    const text = (cand?.content?.parts || [])
+      .map((p) => p.text || '')
+      .join('');
+    const usage = data.usageMetadata;
+    return {
+      id: data.responseId || undefined,
+      model,
+      choices: [
+        {
+          index: 0,
+          message: { role: 'assistant', content: text },
+          finish_reason: mapFinish(cand?.finishReason),
+        },
+      ],
+      usage: usage
+        ? {
+            prompt_tokens: usage.promptTokenCount || 0,
+            completion_tokens: usage.candidatesTokenCount || 0,
+            total_tokens: usage.totalTokenCount || 0,
+          }
+        : undefined,
+    };
+  }
+
+  return { chat: { completions: { create } } };
+}
+
 export function getClient() {
   if (_client) return _client;
   const name = activeProviderName();
@@ -97,6 +192,8 @@ export function getClient() {
   const baseURL = process.env[cfg.baseURLEnv] || cfg.defaultBaseURL;
   if (cfg.kind === 'anthropic') {
     _client = createAnthropicShim({ apiKey: key, baseURL });
+  } else if (cfg.kind === 'gemini') {
+    _client = createGeminiShim({ apiKey: key, baseURL });
   } else {
     const timeoutMs = Number(process.env.AI_REQUEST_TIMEOUT_MS) || 120_000;
     _client = new OpenAI({ apiKey: key, baseURL, timeout: timeoutMs });
