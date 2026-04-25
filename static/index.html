@@ -3305,6 +3305,8 @@ async function extractSelectedChat() {
       body: JSON.stringify({ text: textToSend, timeframe }),
     });
     if (res.status === 401) { showAuthGate(); return; }
+    if (res.status === 413) throw new Error('Chat file is too large (max ~500 KB). Please trim the chat and try again.');
+    if (!res.ok) throw new Error(`Server error (${res.status})`);
     const reader = res.body.getReader(); const decoder = new TextDecoder(); let buf = '';
     let finished = false;
     while (!finished) {
