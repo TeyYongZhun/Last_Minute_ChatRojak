@@ -15,7 +15,6 @@ Paste your messy WhatsApp, Telegram, or team chat messages and ChatRojak automat
 - **Life Balance Analysis** — Monitors workload distribution and flags overload
 - **Clarification Loop** — Asks follow-up questions when task details are ambiguous
 - **Google Calendar Sync** — Automatically creates calendar events from your task plan
-- **Telegram Bot** — Submit and manage tasks directly from Telegram
 - **Multiple AI Providers** — Supports Gemini (Google), ILMU GLM, and Anthropic Claude
 
 ---
@@ -29,7 +28,7 @@ Paste your messy WhatsApp, Telegram, or team chat messages and ChatRojak automat
 | Frontend | Vanilla HTML/JS (SPA) |
 | AI | Anthropic Claude, Google Gemini, ILMU GLM |
 | Auth | Cookie sessions + bcryptjs |
-| Integrations | Google Calendar OAuth2, Telegram Bot API |
+| Integrations | Google Calendar OAuth2|
 | Testing | Vitest + Supertest |
 
 ---
