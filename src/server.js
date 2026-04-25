@@ -36,7 +36,7 @@ import authRouter from './routes/auth.js';
 import telegramRouter from './routes/telegram.js';
 import googleOAuthRouter from './routes/googleOAuth.js';
 import { requireUser } from './auth/middleware.js';
-import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField, setAiSuggestion, listOpenTasks } from './db/repos/tasks.js';
+import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField, setAiSuggestion, listOpenTasks, listTasks, setAssignedTo, updateTaskMissingFields } from './db/repos/tasks.js';
 import { getPlan, upsertPlan } from './db/repos/plans.js';
 import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
@@ -109,6 +109,28 @@ function sanitiseParticipants(raw) {
   return list.length >= 2 ? list : null;
 }
 
+function extractParticipantsFromText(rawText) {
+  if (typeof rawText !== 'string') return null;
+  const seen = new Set();
+  const list = [];
+  const senderRe = /^(?:\[?[^\]\n]*?\]?\s*-?\s*)?([A-Za-z][A-Za-z .'\-]{0,40}?):\s/gm;
+  let m;
+  while ((m = senderRe.exec(rawText)) !== null) {
+    const name = m[1].trim();
+    if (!name || name.length > 40 || seen.has(name)) continue;
+    if (/^(am|pm|http|https|note)$/i.test(name)) continue;
+    seen.add(name);
+    list.push(name);
+    if (list.length >= 12) break;
+  }
+  if (!seen.has('You')) list.unshift('You');
+  return list.length >= 2 ? list : null;
+}
+
+function resolveParticipants(rawText, bodyParticipants) {
+  return sanitiseParticipants(bodyParticipants) || extractParticipantsFromText(rawText);
+}
+
 app.post('/api/process', requireUser, async (req, res) => {
   const { text, timeframe = 'all', participants } = req.body || {};
   if (!text || !text.trim()) {
@@ -116,7 +138,7 @@ app.post('/api/process', requireUser, async (req, res) => {
   }
   try {
     const now = new Date();
-    const chain = await runChain(req.user.id, text, now, { timeframe, participants: sanitiseParticipants(participants) });
+    const chain = await runChain(req.user.id, text, now, { timeframe, participants: resolveParticipants(text, participants) });
     if (!chain.tasks.length) {
       return res.json({
         tasks_extracted: 0,
@@ -159,7 +181,7 @@ app.post('/api/process-stream', requireUser, async (req, res) => {
     res.write(`event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`);
   };
   try {
-    await processWithEvents(req.user.id, text, new Date(), emit, timeframe, sanitiseParticipants(participants));
+    await processWithEvents(req.user.id, text, new Date(), emit, timeframe, resolveParticipants(text, participants));
   } catch (e) {
     console.error('[/api/process-stream] error:', e);
     emit('error', { message: e.message || 'Processing failed' });
@@ -207,6 +229,7 @@ app.post('/api/demo-seed', requireUser, async (req, res) => {
       deadline: dl(3), deadline_iso: iso(3),
       assigned_by: 'Group Leader', priority: 'high', confidence: 0.9,
       category: 'Academic', tags: ['group-work'], estimated_duration_minutes: 90, missing_fields: [], status: 'pending',
+      assigned_to: ['You', 'John', 'Sarah'],
     },
     {
       id: 't3', task: 'Reply to HR email about internship offer',
@@ -225,6 +248,7 @@ app.post('/api/demo-seed', requireUser, async (req, res) => {
       deadline: dl(10), deadline_iso: iso(10),
       assigned_by: 'CCA President', priority: 'medium', confidence: 0.85,
       category: 'CCA', estimated_duration_minutes: 60, missing_fields: [], status: 'pending',
+      assigned_to: ['You', 'Sarah'],
     },
     {
       id: 't6', task: 'Read ST2334 lecture notes for midterm revision',
@@ -385,6 +409,49 @@ app.post('/api/tasks/:taskId/steps/generate', requireUser, async (req, res) => {
     console.error('[steps/generate]', err);
     res.status(502).json({ detail: err.message || 'AI step generation failed' });
   }
+});
+
+app.post('/api/assignees/remove', requireUser, (req, res) => {
+  const raw = req.body?.name;
+  const name = typeof raw === 'string' ? raw.trim() : '';
+  if (!name) return res.status(400).json({ detail: 'name is required' });
+  if (name === 'You') return res.status(400).json({ detail: 'Cannot delete "You" — it represents you.' });
+  const tasks = listTasks(req.user.id);
+  let affected = 0;
+  for (const t of tasks) {
+    if (!Array.isArray(t.assigned_to) || !t.assigned_to.includes(name)) continue;
+    const next = t.assigned_to.filter((n) => n !== name);
+    setAssignedTo(req.user.id, t.id, next.length ? next : null);
+    affected += 1;
+  }
+  res.json({ ok: true, removed: name, affected });
+});
+
+app.post('/api/tasks/:taskId/assigned-to', requireUser, (req, res) => {
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  const raw = req.body?.assigned_to;
+  let names = null;
+  if (Array.isArray(raw)) {
+    const seen = new Set();
+    names = [];
+    for (const item of raw) {
+      if (typeof item !== 'string') continue;
+      const n = item.trim();
+      if (!n || seen.has(n)) continue;
+      seen.add(n);
+      names.push(n);
+      if (names.length >= 10) break;
+    }
+    // Empty array stays empty — distinguishes "explicitly unassigned" from "never set" (null).
+  }
+  setAssignedTo(req.user.id, task.id, names);
+  if (Array.isArray(task.missing_fields) && task.missing_fields.includes('assigned_to')) {
+    const remaining = task.missing_fields.filter((f) => f !== 'assigned_to');
+    updateTaskMissingFields(req.user.id, task.id, remaining);
+  }
+  addTaskEvent(req.user.id, task.id, 'assigned_to_updated', { assigned_to: names });
+  res.json({ ok: true, assigned_to: names });
 });
 
 app.post('/api/tasks/:taskId/suggest', requireUser, async (req, res) => {
