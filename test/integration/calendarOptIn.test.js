@@ -88,7 +88,8 @@ describe('POST /api/tasks/:taskId/calendar-sync', () => {
       .send({ enabled: true })
       .set('content-type', 'application/json');
     expect(res.status).toBe(200);
-    expect(res.body.enabled).toBe(true);
+    expect(res.body.synced).toBe(true);
+    expect(typeof res.body.event_id).toBe('string');
 
     const post = calls.find((c) => c.method === 'POST');
     expect(post).toBeTruthy();

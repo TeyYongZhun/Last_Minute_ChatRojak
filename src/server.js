@@ -35,7 +35,7 @@ import authRouter from './routes/auth.js';
 import telegramRouter from './routes/telegram.js';
 import googleOAuthRouter from './routes/googleOAuth.js';
 import { requireUser } from './auth/middleware.js';
-import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField } from './db/repos/tasks.js';
+import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField, setAiSuggestion } from './db/repos/tasks.js';
 import { getPlan } from './db/repos/plans.js';
 import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
@@ -43,6 +43,7 @@ import { addTaskEvent } from './db/repos/taskEvents.js';
 import { addChecklistItem, updateChecklistItemText, deleteChecklistItem, toggleChecklistItem, getChecklist, replaceChecklist } from './db/repos/checklists.js';
 import { generateStepsForTask } from './modules/stepGenerator.js';
 import { parseClarificationDeadline } from './modules/deadlineParser.js';
+import { suggestCalendarForTask } from './modules/calendarSuggester.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
 import { getPreferences, upsertPreferences } from './db/repos/userPreferences.js';
@@ -74,6 +75,14 @@ function parseFilters(query) {
   if (typeof query.priority === 'string' && ['high', 'medium', 'low'].includes(query.priority)) {
     filters.priority = query.priority;
   }
+  const rawTags = [];
+  if (Array.isArray(query.tags)) {
+    for (const item of query.tags) rawTags.push(...String(item || '').split(','));
+  } else if (typeof query.tags === 'string') {
+    rawTags.push(...query.tags.split(','));
+  }
+  const tags = rawTags.map((t) => t.trim()).filter(Boolean);
+  if (tags.length) filters.tags = tags;
   if (typeof query.status === 'string' && query.status.trim()) filters.status = query.status.trim();
   if (typeof query.q === 'string' && query.q.trim()) filters.q = query.q.trim();
   return filters;
@@ -142,7 +151,7 @@ app.get('/api/dashboard', requireUser, (req, res) => {
   res.json(getDashboard(req.user.id, parseFilters(req.query)));
 });
 
-app.post('/api/demo-seed', requireUser, (req, res) => {
+app.post('/api/demo-seed', requireUser, async (req, res) => {
   const { force } = req.body || {};
   const current = getDashboard(req.user.id).total_tasks;
   if (current && !force) {
@@ -167,49 +176,49 @@ app.post('/api/demo-seed', requireUser, (req, res) => {
 
   const tasks = [
     {
-      id: 'demo1', task: 'Submit CS2103T Individual Project',
+      id: 't1', task: 'Submit CS2103T Individual Project',
       deadline: dl(1), deadline_iso: iso(1),
       assigned_by: 'Prof Leong', priority: 'high', confidence: 0.97,
-      category: 'Academic', estimated_duration_minutes: 120, missing_fields: [], status: 'pending',
+      category: 'Academic', tags: ['urgent', 'solo'], estimated_duration_minutes: 120, missing_fields: [], status: 'pending',
     },
     {
-      id: 'demo2', task: 'Prepare slides for group presentation on Thursday',
+      id: 't2', task: 'Prepare slides for group presentation on Thursday',
       deadline: dl(3), deadline_iso: iso(3),
       assigned_by: 'Group Leader', priority: 'high', confidence: 0.9,
-      category: 'Academic', estimated_duration_minutes: 90, missing_fields: [], status: 'pending',
+      category: 'Academic', tags: ['group-work'], estimated_duration_minutes: 90, missing_fields: [], status: 'pending',
     },
     {
-      id: 'demo3', task: 'Reply to HR email about internship offer',
+      id: 't3', task: 'Reply to HR email about internship offer',
       deadline: null, deadline_iso: null,
       assigned_by: 'HR', priority: 'medium', confidence: 0.88,
-      category: 'Admin', estimated_duration_minutes: 15, missing_fields: ['deadline'], status: 'pending',
+      category: 'Admin', tags: ['quick'], estimated_duration_minutes: 15, missing_fields: ['deadline'], status: 'pending',
     },
     {
-      id: 'demo4', task: 'Buy groceries and cook dinner',
+      id: 't4', task: 'Buy groceries and cook dinner',
       deadline: dl(0, 19, 0), deadline_iso: iso(0, 19, 0),
       assigned_by: null, priority: 'low', confidence: 0.8,
-      category: 'Errand', estimated_duration_minutes: 45, missing_fields: [], status: 'pending',
+      category: 'Errand', tags: ['errand'], estimated_duration_minutes: 45, missing_fields: [], status: 'pending',
     },
     {
-      id: 'demo5', task: 'Plan CCA orientation activities for next semester',
+      id: 't5', task: 'Plan CCA orientation activities for next semester',
       deadline: dl(10), deadline_iso: iso(10),
       assigned_by: 'CCA President', priority: 'medium', confidence: 0.85,
       category: 'CCA', estimated_duration_minutes: 60, missing_fields: [], status: 'pending',
     },
     {
-      id: 'demo6', task: 'Read ST2334 lecture notes for midterm revision',
+      id: 't6', task: 'Read ST2334 lecture notes for midterm revision',
       deadline: dl(6), deadline_iso: iso(6),
       assigned_by: null, priority: 'medium', confidence: 0.92,
       category: 'Academic', estimated_duration_minutes: 60, missing_fields: [], status: 'pending',
     },
     {
-      id: 'demo7', task: 'Register for career fair next week',
+      id: 't7', task: 'Register for career fair next week',
       deadline: null, deadline_iso: null,
       assigned_by: 'Career Office', priority: 'medium', confidence: 0.85,
       category: 'Admin', estimated_duration_minutes: 15, missing_fields: ['deadline'], status: 'pending',
     },
     {
-      id: 'demo8', task: 'Draft thank-you note to internship mentor',
+      id: 't8', task: 'Draft thank-you note to internship mentor',
       deadline: dl(5, 18, 0), deadline_iso: iso(5, 18, 0),
       assigned_by: null, priority: 'low', confidence: 0.8,
       category: 'Personal', estimated_duration_minutes: 10, missing_fields: ['assigned_by'], status: 'pending',
@@ -219,28 +228,28 @@ app.post('/api/demo-seed', requireUser, (req, res) => {
   const { idMap } = mergeNewTasks(req.user.id, tasks);
   const rid = (key) => idMap[key] || key;
 
-  setUserEisenhower(req.user.id, rid('demo1'), 'do');
-  setUserEisenhower(req.user.id, rid('demo2'), 'plan');
-  setUserEisenhower(req.user.id, rid('demo3'), 'quick');
-  setUserEisenhower(req.user.id, rid('demo4'), 'later');
-  setUserEisenhower(req.user.id, rid('demo5'), 'plan');
-  setUserEisenhower(req.user.id, rid('demo6'), 'plan');
+  setUserEisenhower(req.user.id, rid('t1'), 'do');
+  setUserEisenhower(req.user.id, rid('t2'), 'plan');
+  setUserEisenhower(req.user.id, rid('t3'), 'quick');
+  setUserEisenhower(req.user.id, rid('t4'), 'later');
+  setUserEisenhower(req.user.id, rid('t5'), 'plan');
+  setUserEisenhower(req.user.id, rid('t6'), 'plan');
 
   const checklists = {
-    demo1: [
+    t1: [
       { text: 'Read the assignment brief carefully', done: true },
       { text: 'Complete Part 1: Class diagram', done: true },
       { text: 'Complete Part 2: Sequence diagram', done: false },
       { text: 'Write JUnit tests', done: false },
       { text: 'Submit on LumiNUS before deadline', done: false },
     ],
-    demo2: [
+    t2: [
       { text: 'Outline slide structure with team', done: true },
       { text: 'Create introduction and background slides', done: false },
       { text: 'Add methodology and results slides', done: false },
       { text: 'Practice run with group', done: false },
     ],
-    demo5: [
+    t5: [
       { text: 'Brainstorm activity ideas', done: false },
       { text: 'Draft event schedule', done: false },
       { text: 'Get advisor approval', done: false },
@@ -254,6 +263,12 @@ app.post('/api/demo-seed', requireUser, (req, res) => {
   }
 
   startTask(req.user.id, rid('demo1'));
+
+  try {
+    await replanAll(req.user.id, new Date());
+  } catch (e) {
+    console.error('[/api/demo-seed] replan error:', e);
+  }
 
   res.json({ seeded: true, total_tasks: getDashboard(req.user.id).total_tasks });
 });
@@ -339,6 +354,19 @@ app.post('/api/tasks/:taskId/steps/generate', requireUser, async (req, res) => {
   } catch (err) {
     console.error('[steps/generate]', err);
     res.status(502).json({ detail: err.message || 'AI step generation failed' });
+  }
+});
+
+app.post('/api/tasks/:taskId/suggest', requireUser, async (req, res) => {
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  try {
+    const suggestion = await suggestCalendarForTask(task, new Date());
+    setAiSuggestion(req.user.id, task.id, suggestion);
+    res.json(suggestion);
+  } catch (err) {
+    console.error('[tasks/suggest]', err);
+    res.status(502).json({ detail: err.message || 'AI suggestion failed' });
   }
 });
 
@@ -637,27 +665,43 @@ app.post('/api/tasks/:taskId/calendar-sync', requireUser, async (req, res) => {
   }
 
   if (!getGoogleTokens(req.user.id)) {
-    return res.status(409).json({ detail: 'Google Calendar not linked' });
+    return res.status(409).json({ detail: 'Google Calendar not linked', code: 'not_linked' });
   }
-
-  setCalendarSyncEnabled(req.user.id, task.id, 1);
-  addTaskEvent(req.user.id, task.id, 'calendar_sync_toggled', { enabled: true });
 
   const fresh = getTask(req.user.id, task.id);
   const plan = getPlan(req.user.id, task.id);
+  // Anchor the calendar event to the task's deadline (not the scheduler's slot) so
+  // behaviour is identical regardless of AI urgency. Keeps description metadata
+  // intact while forcing buildEventBody down the deadline fallback.
+  const planForSync = plan ? { ...plan, planned_start_iso: null, planned_end_iso: null, slot_origin: null } : null;
   try {
-    const result = await upsertCalendarEvent(req.user.id, fresh, plan, new Date());
-    return res.json({
-      ok: true,
-      enabled: true,
-      event_id: result?.event_id,
-      skipped: result?.skipped ? true : undefined,
-      reason: result?.reason,
-      error: result?.error,
+    const result = await upsertCalendarEvent(req.user.id, fresh, planForSync, new Date());
+
+    if (result?.synced && result.event_id) {
+      setCalendarSyncEnabled(req.user.id, task.id, 1);
+      addTaskEvent(req.user.id, task.id, 'calendar_sync_toggled', { enabled: true });
+      return res.json({ ok: true, synced: true, event_id: result.event_id });
+    }
+
+    if (result?.skipped) {
+      return res.json({
+        ok: false,
+        synced: false,
+        skipped: true,
+        reason: result.reason || 'unknown',
+        error: result.error || null,
+      });
+    }
+
+    // synced === false + error
+    return res.status(502).json({
+      ok: false,
+      synced: false,
+      error: result?.error || 'Calendar sync failed',
     });
   } catch (err) {
     console.error('[/api/tasks/:id/calendar-sync] upsert error:', err.message);
-    return res.status(500).json({ detail: err.message || 'Calendar sync failed' });
+    return res.status(502).json({ ok: false, synced: false, error: err.message || 'Calendar sync failed' });
   }
 });
 

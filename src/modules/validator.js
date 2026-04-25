@@ -1,6 +1,7 @@
 import { getClient, MODEL, extractJson, withRetry } from '../client.js';
 
 const MAX_RETRIES_PER_VERDICT = 2;
+const VALID_BUCKETS = new Set(['Academic', 'Co-curricular', 'Others']);
 
 const SYSTEM_PROMPT = `You are a QA reviewer for a task-extraction pipeline. You receive the merged output of two upstream steps (extract, plan). Identify concrete quality issues.
 
@@ -26,6 +27,10 @@ function localChecks(tasks, plans, dependencies) {
   const taskIds = new Set(tasks.map((t) => t.id));
 
   for (const t of tasks) {
+    const bucket = t.category_bucket ?? t.category ?? null;
+    if (bucket && !VALID_BUCKETS.has(bucket)) {
+      issues.push({ task_id: t.id, code: 'bad_bucket', fix: 'Use one of: Academic, Co-curricular, Others.' });
+    }
     if (!t.deadline_iso && !(t.missing_fields || []).includes('deadline')) {
       issues.push({ task_id: t.id, code: 'missing_deadline', fix: 'Add "deadline" to missing_fields and open a clarification.' });
     }
@@ -56,6 +61,7 @@ export async function validateRun({ tasks, plans, dependencies }) {
       deadline_iso: t.deadline_iso,
       missing_fields: t.missing_fields || [],
       confidence: t.confidence,
+      category_bucket: t.category_bucket ?? t.category ?? null,
     })),
     plans: plans.map((p) => ({
       task_id: p.task_id,
