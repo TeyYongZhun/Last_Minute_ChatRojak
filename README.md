@@ -1,7 +1,7 @@
 # Last Minute ChatRojak
 
-### 🎥 Pitching Video
-> **[Watch our Project Pitching Video here](https://drive.google.com/drive/folders/11xFTcpw0_6hDmv2WjKBwpsWeKG2rzUAi)** > *(Please ensure link permissions are set to "Anyone with the link can view")*
+### 🎥 Pitching Video 
+> **[Watch our Project Pitching Video here](https://drive.google.com/drive/folders/11xFTcpw0_6hDmv2WjKBwpsWeKG2rzUAi)** 
 
 ---
 
