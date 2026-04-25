@@ -1448,6 +1448,20 @@ async function refreshDashboard() {
     if (!globalDashboardData.life_balance) {
       try { const s = localStorage.getItem('lifeBalanceResult'); if (s) globalDashboardData.life_balance = JSON.parse(s); } catch {}
     }
+    if (window._pendingTeamFilterExpand) {
+      window._pendingTeamFilterExpand = false;
+      const all = [
+        ...(data.do_now || []), ...(data.in_progress || []), ...(data.schedule || []),
+        ...(data.defer || []), ...(data.waiting || []), ...(data.done || []),
+      ];
+      if (hasTeamTasks(all)) {
+        const users = collectTeamUsers(all);
+        const stored = new Set(loadTaskFilterUsers() || ['You']);
+        let changed = false;
+        for (const u of users) if (!stored.has(u)) { stored.add(u); changed = true; }
+        if (changed) saveTaskFilterUsers(Array.from(stored));
+      }
+    }
     renderViews(globalDashboardData);
   } catch (e) {
     if (e.status === 401) { showAuthGate(); return; }
@@ -1537,8 +1551,21 @@ function activeTasks(data) {
 
   if (hasTeamTasks(all)) {
     const users = collectTeamUsers(all);
-    const selected = getEffectiveFilterUsers(users);
-    all = all.filter((t) => taskVisibleUnderFilter(t, selected));
+    let selected = getEffectiveFilterUsers(users);
+    let visible = all.filter((t) => taskVisibleUnderFilter(t, selected));
+    // Safety net: if the default ['You'] filter would hide every task in a team
+    // chat (because nothing was assigned to "You"), auto-expand to all users so
+    // the user actually sees what was extracted. Only triggers when the stored
+    // filter is the untouched default — explicit "Show none" / custom picks
+    // are respected.
+    const stored = loadTaskFilterUsers();
+    const isUntouchedDefault = !stored || (stored.length === 1 && stored[0] === 'You');
+    if (visible.length === 0 && all.length > 0 && isUntouchedDefault) {
+      saveTaskFilterUsers(users);
+      selected = new Set(users);
+      visible = all.filter((t) => taskVisibleUnderFilter(t, selected));
+    }
+    all = visible;
   }
 
   if (needle) {
@@ -3990,6 +4017,10 @@ async function extractSelectedChat() {
           }
           else if (ev === 'done') {
             if (data?.stored?.linked && !linkedIds.length) linkedIds = data.stored.linked;
+            // After a fresh chat extraction, ensure the team-filter doesn't hide
+            // tasks assigned to people other than "You" — auto-include any new
+            // assignees so the user sees what they just extracted.
+            window._pendingTeamFilterExpand = true;
             finished = true;
           }
         } catch {}

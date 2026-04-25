@@ -1,14 +1,46 @@
-Dr. Rahman: Submit Assignment 2 by Friday 11:59pm.
-Sarah: ok thanks
-Emma: help with lab report tomorrow?
-CS Society: need volunteers next week.
-Alex: can someone review my slides tonight?
-Mei: I can take the first pass.
-Jordan: please share the meeting notes after class.
-Nadia: dinner at 7pm works for me.
-Irfan: finish the budget sheet before Thursday.
-Priya: noted, I will update it.
-Hana: who is bringing the projector?
-Omar: I'll bring it and test the cable.
-Lina: remember to email the venue about the room.
-Ben: sent already.
+[23/04/2026, 09:02] Dr. Tan: Reminder: Submit Assignment 3 by Monday 28 April 11:59pm. No late submissions.
+[23/04/2026, 09:03] You: got it
+[23/04/2026, 09:05] Dr. Tan: Also, group project proposal is due Friday 1 May 5pm.
+[23/04/2026, 10:15] Mei: who's doing the slides for the proposal?
+[23/04/2026, 10:16] Irfan: I'll take the slides.
+[23/04/2026, 10:18] Aisha: I can write the executive summary.
+[23/04/2026, 10:20] Mei: cool. You and Jordan handle the technical section.
+[23/04/2026, 10:21] You: sure
+[23/04/2026, 10:22] Jordan: ok np
+[23/04/2026, 12:30] Priya: btw the venue booking form needs to go out today.
+[23/04/2026, 12:31] Priya: someone please email Mr Lim before 6pm today.
+[23/04/2026, 12:35] You: I'll send it.
+[23/04/2026, 14:00] CS Society: AGM is on Tuesday 29 April 7pm. Everyone please RSVP by Sunday.
+[23/04/2026, 14:10] Mei: Aisha can you also review the slides after Irfan drafts them?
+[23/04/2026, 14:12] Aisha: yep, I'll review the slides after they're drafted.
+[23/04/2026, 16:45] Jordan: does anyone know the TA's email?
+[23/04/2026, 16:47] Mei: try moodle
+[23/04/2026, 19:00] Dr. Tan: One more thing — finish the literature review section before Thursday.
+[23/04/2026, 19:01] Dr. Tan: Actually, let's push the literature review to Friday 1 May 11am.
+[23/04/2026, 19:30] You: noted
+[24/04/2026, 08:10] Aisha: we should print posters for the AGM too.
+[24/04/2026, 08:12] Aisha: print 30 posters for the AGM by Monday 4pm.
+[24/04/2026, 09:00] Priya: I'll finalize the poster design first, then someone can send to print.
+[24/04/2026, 09:05] Mei: Jordan, handle the printing once Priya's design is done.
+[24/04/2026, 09:06] Jordan: yeah will do
+[24/04/2026, 11:20] Irfan: meeting tmr 3pm?
+[24/04/2026, 11:22] Mei: meeting tomorrow 3pm at SR4.
+[24/04/2026, 13:40] You: please remember to bring laptops to the meeting.
+[24/04/2026, 15:00] Priya: I'll book the discussion room for Saturday 3pm.
+[24/04/2026, 15:05] Priya: actually book it for Saturday 4pm, my mistake.
+[24/04/2026, 17:30] CS Society: Volunteers needed for AGM setup — Tuesday 29 April 5pm onwards.
+[24/04/2026, 17:35] You: I'll volunteer for AGM setup.
+[24/04/2026, 20:00] Mei: also, everyone upload your Assignment 3 parts to the shared drive before Sunday 11pm so I can compile.
+[24/04/2026, 22:15] Aisha: someone should book catering for the AGM eventually
+[24/04/2026, 22:16] Aisha: low priority, can decide later this week
+[25/04/2026, 08:00] Dr. Tan: Quiz next Wednesday 30 April during lecture. Study chapters 5 and 6 beforehand.
+[25/04/2026, 08:30] You: ok
+[25/04/2026, 09:15] Priya: Mei and Jordan, please double-check the budget sheet — due Monday 28 April 9am.
+[25/04/2026, 09:16] Mei: ok
+[25/04/2026, 09:17] Jordan: ok
+[25/04/2026, 09:40] Aisha: I need the technical writeup draft from You and Jordan by Monday 28 April 10:30am so I can finalize the exec summary.
+[25/04/2026, 10:00] CS Society: Everyone, please share your availability for the next exco meeting.
+[25/04/2026, 12:00] Irfan: lol Jordan lost his pen
+[25/04/2026, 12:01] Jordan: hahahaha
+[25/04/2026, 14:00] Mei: someone fix the broken link on the project website sometime this week.
+[25/04/2026, 14:30] Dr. Tan: One last thing — collect peer feedback forms by Monday 28 April 5pm and pass them to me.
