@@ -235,7 +235,7 @@ app.post('/api/demo-seed', requireUser, async (req, res) => {
       id: 't3', task: 'Reply to HR email about internship offer',
       deadline: null, deadline_iso: null,
       assigned_by: 'HR', priority: 'medium', confidence: 0.88,
-      category: 'Admin', tags: ['quick'], estimated_duration_minutes: 15, missing_fields: ['deadline'], status: 'pending',
+      category: 'Admin', tags: ['quick'], estimated_duration_minutes: 15, missing_fields: [], status: 'pending',
     },
     {
       id: 't4', task: 'Buy groceries and cook dinner',
@@ -260,13 +260,33 @@ app.post('/api/demo-seed', requireUser, async (req, res) => {
       id: 't7', task: 'Register for career fair next week',
       deadline: null, deadline_iso: null,
       assigned_by: 'Career Office', priority: 'medium', confidence: 0.85,
-      category: 'Admin', estimated_duration_minutes: 15, missing_fields: ['deadline'], status: 'pending',
+      category: 'Admin', estimated_duration_minutes: 15, missing_fields: [], status: 'pending',
     },
     {
       id: 't8', task: 'Draft thank-you note to internship mentor',
       deadline: dl(5, 18, 0), deadline_iso: iso(5, 18, 0),
       assigned_by: null, priority: 'low', confidence: 0.8,
-      category: 'Personal', estimated_duration_minutes: 10, missing_fields: ['assigned_by'], status: 'pending',
+      category: 'Personal', estimated_duration_minutes: 10, missing_fields: [], status: 'pending',
+    },
+    // Clarification examples — Missing Info
+    {
+      id: 't9', task: 'Submit reflection journal for community service module',
+      deadline: null, deadline_iso: null,
+      assigned_by: 'Module Coordinator', priority: 'medium', confidence: 0.82,
+      category: 'Academic', estimated_duration_minutes: 30, missing_fields: ['deadline'], status: 'pending',
+    },
+    {
+      id: 't10', task: 'Review and approve the updated project proposal',
+      deadline: dl(3), deadline_iso: iso(3),
+      assigned_by: null, priority: 'medium', confidence: 0.87,
+      category: 'Academic', estimated_duration_minutes: 20, missing_fields: ['assigned_by'], status: 'pending',
+    },
+    // Clarification example — Ambiguous / Malformed
+    {
+      id: 't11', task: 'do smth abt the proj bcz asap lah omg',
+      deadline: null, deadline_iso: null,
+      assigned_by: null, priority: 'high', confidence: 0.31,
+      category: 'Other', estimated_duration_minutes: 30, missing_fields: ['task', 'deadline'], status: 'pending',
     },
   ];
 
@@ -308,14 +328,20 @@ app.post('/api/demo-seed', requireUser, async (req, res) => {
   }
 
   const demoPlans = [
-    { key: 't1', score: 95, decision: 'do_now'   },
-    { key: 't2', score: 75, decision: 'schedule'  },
-    { key: 't3', score: 60, decision: 'schedule'  },
-    { key: 't4', score: 40, decision: 'defer'     },
-    { key: 't5', score: 50, decision: 'schedule'  },
-    { key: 't6', score: 55, decision: 'schedule'  },
-    { key: 't7', score: 45, decision: 'defer'     },
-    { key: 't8', score: 30, decision: 'defer'     },
+    { key: 't1', score: 95, decision: 'do_now',   questions: [] },
+    { key: 't2', score: 75, decision: 'schedule',  questions: [] },
+    { key: 't3', score: 60, decision: 'schedule',  questions: [] },
+    { key: 't4', score: 40, decision: 'defer',     questions: [] },
+    { key: 't5', score: 50, decision: 'schedule',  questions: [] },
+    { key: 't6', score: 55, decision: 'schedule',  questions: [] },
+    { key: 't7', score: 45, decision: 'defer',     questions: [] },
+    { key: 't8', score: 30, decision: 'defer',     questions: [] },
+    // Missing Info — missing deadline
+    { key: 't9',  score: 50, decision: 'ask_user', questions: ['deadline|When is the deadline for submitting the reflection journal?'] },
+    // Missing Info — missing assigner
+    { key: 't10', score: 48, decision: 'ask_user', questions: ['assigned_by|Who asked you to review and approve this project proposal?'] },
+    // Ambiguous / Malformed — garbled chat message
+    { key: 't11', score: 55, decision: 'ask_user', questions: ['task|What is this task about? Type the correct project name and what needs to be done.', 'deadline|When does this need to be completed?'] },
   ];
   for (const p of demoPlans) {
     upsertPlan(req.user.id, {
@@ -324,7 +350,7 @@ app.post('/api/demo-seed', requireUser, async (req, res) => {
       decision: p.decision,
       steps: [],
       conflicts: [],
-      missing_info_questions: [],
+      missing_info_questions: p.questions,
       status: 'pending',
     });
   }
@@ -712,13 +738,8 @@ app.post('/api/clarify', requireUser, async (req, res) => {
   if (!respondToClarification(req.user.id, task_id, field, value, prefParsedIso)) {
     return res.status(404).json({ detail: 'Task not found' });
   }
-  try {
-    await replanAll(req.user.id, new Date());
-    res.json({ status: 'updated' });
-  } catch (e) {
-    console.error('[/api/clarify] replan error:', e);
-    res.status(500).json({ detail: e.message });
-  }
+  res.json({ status: 'updated' });
+  replanAll(req.user.id, new Date()).catch((e) => console.error('[/api/clarify] replan error:', e));
 });
 
 app.get('/api/preferences', requireUser, (req, res) => {

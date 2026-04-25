@@ -179,7 +179,10 @@ export async function replanAll(userId, now = new Date(), onProgress) {
   const prevPlans = listPlans(userId);
   const prevById = Object.fromEntries(prevPlans.map((p) => [p.task_id, p]));
 
-  const { plans, conflicts } = await planTasks(openTasks, now, onProgress, {
+  // Tasks with unresolved missing fields must stay as ask_user — don't replan them
+  const tasksToReplan = openTasks.filter(t => !(t.missing_fields || []).length);
+
+  const { plans, conflicts } = await planTasks(tasksToReplan, now, onProgress, {
     weights,
     weightsSummary: weightsSummaryText,
     blockedIds: blocked,
@@ -417,9 +420,14 @@ export function respondToClarification(userId, taskId, field, value, prefParsedI
     if (!parsedAssignedTo.length) return false;
   }
 
+  // Compute remaining missing fields before the transaction so we can use it after
+  const remaining = (task.missing_fields || []).filter((f) => f !== field);
+
   const db = getDb();
   const tx = db.transaction(() => {
-    if (field === 'deadline') {
+    if (field === 'task') {
+      updateTaskField(userId, taskId, 'task', value);
+    } else if (field === 'deadline') {
       updateTaskField(userId, taskId, 'deadline', value);
       const iso = prefParsedIso || deadlineTextToIso(value, new Date());
       if (iso) updateTaskField(userId, taskId, 'deadline_iso', iso);
@@ -430,7 +438,6 @@ export function respondToClarification(userId, taskId, field, value, prefParsedI
     } else if (field === 'assigned_to' && parsedAssignedTo) {
       setAssignedTo(userId, taskId, parsedAssignedTo);
     }
-    const remaining = (task.missing_fields || []).filter((f) => f !== field);
     updateTaskMissingFields(userId, taskId, remaining);
     if (!remaining.length && task.status === 'blocked_waiting_info') {
       updateTaskStatus(userId, taskId, 'pending');
@@ -439,6 +446,15 @@ export function respondToClarification(userId, taskId, field, value, prefParsedI
     addTaskEvent(userId, taskId, 'clarified', { field, value });
   });
   tx();
+
+  // Move to schedule immediately so the task appears in the power grid.
+  // Remaining clarification questions are tracked client-side via answeredQuestions.
+  const plans = listPlans(userId);
+  const plan = plans.find((p) => p.task_id === taskId);
+  if (plan && plan.decision === 'ask_user') {
+    upsertPlan(userId, { ...plan, decision: 'schedule' });
+  }
+
   return true;
 }
 
@@ -589,6 +605,10 @@ export function getDashboard(userId, filters = {}) {
       planned_end_iso: null,
       slot_origin: null,
     };
+    // Safety net: tasks with unresolved missing fields always stay in need_info
+    if ((task.missing_fields || []).length > 0 && effectivePlan.decision !== 'ask_user') {
+      effectivePlan.decision = 'ask_user';
+    }
     if (!matchesFilters(task, effectivePlan, filters, tags)) continue;
     const taskDeps = depsByTask[task.id] || [];
     const depsRemaining = taskDeps.filter((d) => !doneIds.has(d.depends_on));
