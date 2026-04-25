@@ -36,7 +36,7 @@ import authRouter from './routes/auth.js';
 import telegramRouter from './routes/telegram.js';
 import googleOAuthRouter from './routes/googleOAuth.js';
 import { requireUser } from './auth/middleware.js';
-import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField, setAiSuggestion } from './db/repos/tasks.js';
+import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField, setAiSuggestion, listOpenTasks } from './db/repos/tasks.js';
 import { getPlan, upsertPlan } from './db/repos/plans.js';
 import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
@@ -45,6 +45,7 @@ import { addChecklistItem, updateChecklistItemText, deleteChecklistItem, toggleC
 import { generateStepsForTask } from './modules/stepGenerator.js';
 import { parseClarificationDeadline } from './modules/deadlineParser.js';
 import { suggestCalendarForTask } from './modules/calendarSuggester.js';
+import { analyzeWorkload } from './modules/lifeBalance.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
 import { getPreferences, upsertPreferences } from './db/repos/userPreferences.js';
@@ -89,14 +90,33 @@ function parseFilters(query) {
   return filters;
 }
 
+function sanitiseParticipants(raw) {
+  if (!Array.isArray(raw)) return null;
+  const seen = new Set();
+  const list = [];
+  for (const item of raw) {
+    if (typeof item !== 'string') continue;
+    const name = item.trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    list.push(name);
+    if (list.length >= 10) break;
+  }
+  if (!seen.has('You')) {
+    list.unshift('You');
+    seen.add('You');
+  }
+  return list.length >= 2 ? list : null;
+}
+
 app.post('/api/process', requireUser, async (req, res) => {
-  const { text, timeframe = 'all' } = req.body || {};
+  const { text, timeframe = 'all', participants } = req.body || {};
   if (!text || !text.trim()) {
     return res.status(400).json({ detail: 'No text provided' });
   }
   try {
     const now = new Date();
-    const chain = await runChain(req.user.id, text, now, { timeframe });
+    const chain = await runChain(req.user.id, text, now, { timeframe, participants: sanitiseParticipants(participants) });
     if (!chain.tasks.length) {
       return res.json({
         tasks_extracted: 0,
@@ -125,7 +145,7 @@ app.post('/api/process', requireUser, async (req, res) => {
 });
 
 app.post('/api/process-stream', requireUser, async (req, res) => {
-  const { text: rawText, timeframe = 'all' } = req.body || {};
+  const { text: rawText, timeframe = 'all', participants } = req.body || {};
   const text = (rawText || '').trim();
   if (!text) {
     return res.status(400).json({ detail: 'No text provided' });
@@ -139,7 +159,7 @@ app.post('/api/process-stream', requireUser, async (req, res) => {
     res.write(`event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`);
   };
   try {
-    await processWithEvents(req.user.id, text, new Date(), emit, timeframe);
+    await processWithEvents(req.user.id, text, new Date(), emit, timeframe, sanitiseParticipants(participants));
   } catch (e) {
     console.error('[/api/process-stream] error:', e);
     emit('error', { message: e.message || 'Processing failed' });
@@ -380,6 +400,20 @@ app.post('/api/tasks/:taskId/suggest', requireUser, async (req, res) => {
   }
 });
 
+app.post('/api/life-balance/analyze', requireUser, async (req, res) => {
+  try {
+    const tasks = listOpenTasks(req.user.id).map((t) => ({
+      task: t.task,
+      deadline_iso: t.deadline_iso,
+    }));
+    const result = await analyzeWorkload(tasks, new Date());
+    res.json(result);
+  } catch (err) {
+    console.error('[life-balance/analyze]', err);
+    res.status(502).json({ detail: err.message || 'Workload analysis failed' });
+  }
+});
+
 app.post('/api/tasks/:taskId/step', requireUser, (req, res) => {
   const { index } = req.body || {};
   if (typeof index !== 'number') {
@@ -587,6 +621,16 @@ app.post('/api/clarify', requireUser, async (req, res) => {
       return res.status(400).json({ detail: parsed.error, code: 'bad_date' });
     }
     prefParsedIso = parsed.iso;
+  }
+  if (field === 'assigned_to') {
+    const seen = new Set();
+    const names = String(value || '')
+      .split(/[,;]|\band\b/i)
+      .map((s) => s.trim())
+      .filter((s) => s && !seen.has(s) && (seen.add(s) || true));
+    if (!names.length) {
+      return res.status(400).json({ detail: 'Type one or more names (e.g. "John, Sarah").', code: 'bad_assignees' });
+    }
   }
   if (!respondToClarification(req.user.id, task_id, field, value, prefParsedIso)) {
     return res.status(404).json({ detail: 'Task not found' });

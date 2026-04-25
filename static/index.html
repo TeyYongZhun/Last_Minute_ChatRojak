@@ -624,6 +624,9 @@
       <button data-mode="calendar" class="nav-btn" onclick="setMode('calendar')">
         <span class="mr-3 text-xl">📅</span> Calendar
       </button>
+      <button data-mode="life-balance" class="nav-btn" onclick="setMode('life-balance')">
+        <span class="mr-3 text-xl">🌿</span> Life Balance
+      </button>
       <button data-mode="account" class="nav-btn" onclick="setMode('account')">
         <span class="mr-3 text-xl">👤</span> Account
       </button>
@@ -692,6 +695,18 @@
                       onmouseenter="setWhoDropdownHover(true)" onmouseleave="setWhoDropdownHover(false)"
                       style="top:calc(100% + 4px); left:0; right:0; border-radius:var(--radius-md); max-height:180px; overscroll-behavior:contain;"></div>
                 </div>
+                <div class="mb-3">
+                  <label class="inline-flex items-center gap-2 text-[12px] font-medium text-[color:var(--foreground)] cursor-pointer select-none">
+                    <input id="team-mode-toggle" type="checkbox" onchange="onTeamModeToggle()" />
+                    <span>👥 Team chat (multiple people)</span>
+                  </label>
+                  <div id="team-participants-row" class="hidden mt-2">
+                    <input id="team-participants-input" type="text" placeholder="Participants — e.g. John, Sarah" autocomplete="off"
+                           class="w-full bg-white border border-[var(--input)] text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-[13px] transition-colors"
+                           style="border-radius:var(--radius-md); padding:7px 12px;" />
+                    <div class="text-[11px] text-[color:var(--muted-foreground)] mt-1">"You" is added automatically. Comma-separated.</div>
+                  </div>
+                </div>
                 <div class="flex items-center gap-2.5">
                   <label class="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)] whitespace-nowrap flex-shrink-0">Timeframe</label>
                   <select id="timeframe-select" class="filter-select" style="font-size:12px;">
@@ -723,13 +738,17 @@
 
       <!-- Dashboard View -->
       <div id="view-dashboard" class="view-section hidden">
-        <h2 class="font-serif text-5xl font-normal mb-6 text-[color:var(--foreground)] leading-none">Power Grid</h2>
+        <div class="flex items-end justify-between mb-6 gap-4 flex-wrap">
+          <h2 class="font-serif text-5xl font-normal text-[color:var(--foreground)] leading-none">Power Grid</h2>
+          <div id="current-user-row" class="hidden flex items-center gap-3">
+            <span class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)]">👤 Current User</span>
+            <select id="current-user-select" onchange="onCurrentUserChange()" class="bg-white border border-[var(--input)] text-[color:var(--foreground)] text-sm focus:border-[color:var(--primary)] focus:outline-none transition-colors" style="border-radius:var(--radius-md);padding:6px 12px;"></select>
+          </div>
+        </div>
 
         <!-- Stat strip -->
         <div id="dash-stat-cards" class="grid gap-3 mb-5" style="grid-template-columns:repeat(3,minmax(0,1fr));"></div>
 
-        <!-- Overload warning banner -->
-        <div id="overload-banner" class="hidden mb-5"></div>
 
         <!-- Empty state -->
         <div id="dashboard-empty-state" class="hidden mb-6" style="border:1.5px dashed var(--border);border-radius:var(--radius-xl);padding:32px 24px;text-align:center;background:rgba(255,255,255,0.5);">
@@ -858,6 +877,13 @@
             <button onclick="unlinkGoogleCalendar()" id="google-unlink-btn" class="ghost-btn hidden" style="padding:6px 14px; font-size:12px;">Unlink</button>
           </div>
         </div>
+      </div>
+
+      <div id="view-life-balance" class="view-section hidden">
+        <h2 class="font-serif text-5xl font-normal mb-8 text-[color:var(--foreground)] leading-none flex items-center gap-3">
+          <span style="font-size:42px;">🌿</span> Life Balance
+        </h2>
+        <div id="life-balance-card"></div>
       </div>
 
       <div id="view-account" class="view-section hidden">
@@ -1421,6 +1447,31 @@ function sortByUrgency(items, now = new Date()) {
   });
 }
 
+function getCurrentTeamUser() {
+  try { return localStorage.getItem('currentTeamUser') || 'You'; } catch { return 'You'; }
+}
+function setCurrentTeamUser(user) {
+  try { localStorage.setItem('currentTeamUser', user || 'You'); } catch {}
+}
+function taskBelongsToUser(task, user) {
+  if (!Array.isArray(task.assigned_to) || task.assigned_to.length === 0) {
+    return user === 'You';
+  }
+  return task.assigned_to.includes(user);
+}
+function collectTeamUsers(allTasks) {
+  const set = new Set(['You']);
+  for (const t of allTasks || []) {
+    if (Array.isArray(t.assigned_to)) {
+      for (const n of t.assigned_to) if (typeof n === 'string' && n.trim()) set.add(n.trim());
+    }
+  }
+  return Array.from(set);
+}
+function hasTeamTasks(allTasks) {
+  return (allTasks || []).some((t) => Array.isArray(t.assigned_to) && t.assigned_to.length);
+}
+
 function activeTasks(data) {
   const raw = filters.quadrants || {};
   const anyOn = raw.do_now || raw.schedule || raw.quick || raw.defer;
@@ -1435,6 +1486,11 @@ function activeTasks(data) {
     ...(data.need_info   || []),
     ...(data.waiting     || []),
   ];
+
+  if (hasTeamTasks(all)) {
+    const me = getCurrentTeamUser();
+    all = all.filter((t) => taskBelongsToUser(t, me));
+  }
 
   if (needle) {
     all = all.filter(t => (t.task || '').toLowerCase().includes(needle));
@@ -1508,10 +1564,38 @@ function clearFilters() {
 }
 
 // ---------------- Rendering ----------------
+function renderCurrentUserDropdown(data) {
+  const row = document.getElementById('current-user-row');
+  const sel = document.getElementById('current-user-select');
+  if (!row || !sel) return;
+  const all = [
+    ...(data.do_now || []), ...(data.in_progress || []), ...(data.schedule || []),
+    ...(data.defer || []), ...(data.need_info || []), ...(data.waiting || []), ...(data.done || []),
+  ];
+  if (!hasTeamTasks(all)) {
+    row.classList.add('hidden');
+    return;
+  }
+  row.classList.remove('hidden');
+  row.style.display = 'flex';
+  const users = collectTeamUsers(all);
+  let me = getCurrentTeamUser();
+  if (!users.includes(me)) { me = 'You'; setCurrentTeamUser('You'); }
+  sel.innerHTML = users.map((u) => `<option value="${esc(u)}" ${u === me ? 'selected' : ''}>${esc(u)}</option>`).join('');
+}
+
+function onCurrentUserChange() {
+  const sel = document.getElementById('current-user-select');
+  if (!sel) return;
+  setCurrentTeamUser(sel.value || 'You');
+  refreshDashboard();
+}
+
 function renderViews(data) {
   const summary = document.getElementById('summary-line');
   const emptyState = document.getElementById('dashboard-empty-state');
   renderFilterToolbar(data);
+  renderCurrentUserDropdown(data);
   if (!data.total_tasks) {
     if (emptyState) emptyState.classList.remove('hidden');
     summary.textContent = 'No active tasks';
@@ -1534,7 +1618,7 @@ function renderViews(data) {
 
   safeRender('dash-stat-cards', () => renderStatCards(data, active));
   try { renderPowerGrid(active); } catch (e) { console.error('renderPowerGrid failed:', e); }
-  try { renderOverloadBanner(active); } catch (e) { console.error('renderOverloadBanner failed:', e); }
+  try { renderLifeBalance(active); } catch (e) { console.error('renderLifeBalance failed:', e); }
   safeRender('dash-clarifications', () => renderImportantInfo(data, active));
   safeRender('checklist-content', () => renderTasks(data, active));
   try { renderCalendar(data, active); } catch (e) { console.error('renderCalendar failed:', e); }
@@ -1717,7 +1801,17 @@ function renderTaskRow(item) {
     ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#2D8C6A;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;">⏱ ${fmtDuration(durVal)}</span>`
     : '';
   const plannedChip = plannedSlotChip(item);
-  const metaChips = [quadrantPill, durationPill, plannedChip].filter(Boolean).join(' ');
+  const assignedToChips = (Array.isArray(item.assigned_to) && item.assigned_to.length)
+    ? item.assigned_to.map((name) => {
+        const isYou = name === 'You';
+        const bg = isYou ? 'rgba(45,140,106,0.15)' : 'var(--accent)';
+        const fg = isYou ? '#2D8C6A' : 'var(--heading-2)';
+        const initials = String(name).trim().split(/\s+/).map((s) => s[0] || '').join('').slice(0, 2).toUpperCase();
+        return `<span style="display:inline-flex;align-items:center;gap:6px;background:${bg};color:${fg};font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.08);font-size:9px;font-weight:700;">${esc(initials || '?')}</span>${esc(name)}</span>`;
+      }).join(' ')
+    : '';
+  const metaChips = [quadrantPill, durationPill, plannedChip, assignedToChips].filter(Boolean).join(' ');
   const assignedBy = item.assigned_by ? `<span class="text-[color:var(--muted-foreground)]">by ${esc(item.assigned_by)}</span>` : '';
 
   let deadlineTime = '';
@@ -1891,30 +1985,139 @@ function renderPowerGrid(active) {
   }
 }
 
-function renderOverloadBanner(active) {
-  const el = document.getElementById('overload-banner');
-  if (!el) return;
-  const now = Date.now();
-  const horizonMs = 24 * 3600 * 1000;
-  const soon = (active || []).filter((t) =>
-    effectiveQuadrant(t) === 'do' &&
-    t.deadline_iso &&
-    new Date(t.deadline_iso).getTime() - now < horizonMs &&
-    t.status !== 'done'
-  );
-  const totalMin = soon.reduce((s, t) => s + (effectiveDuration(t) || 0), 0);
-  const capacityMin = 360; // ~6 productive hours/day
-  if (totalMin > capacityMin && soon.length > 0) {
-    el.className = 'mb-5';
-    el.innerHTML = `<div class="flex items-center gap-3 bg-[rgba(199,68,58,0.08)] border border-[rgba(199,68,58,0.3)] rounded-[var(--radius-xl)] px-4 py-3">
-      <span style="font-size:18px;">⚠</span>
-      <div class="flex-1 text-sm text-[color:var(--heading-2)]">
-        <strong class="text-[color:var(--destructive)]">${fmtDuration(totalMin)} of Do Now work</strong> is due in the next 24 hours — typical capacity is about <strong>6h</strong>. Consider moving some to Plan or trimming scope.
+const LIFE_BALANCE_TIPS = [
+  { icon: '⏱', text: 'Break big tasks into smaller steps.' },
+  { icon: '☕', text: 'Take short breaks to stay focused.' },
+  { icon: '🌙', text: 'Avoid heavy workload late at night.' },
+];
+
+const LIFE_BALANCE_STATUS = {
+  balanced:      { label: 'Balanced',      icon: '🍃', tint: 'rgba(91,125,78,0.10)', border: 'rgba(91,125,78,0.35)', fg: 'var(--success)' },
+  slightly_busy: { label: 'Slightly busy', icon: '⏳', tint: 'rgba(180,130,42,0.10)', border: 'rgba(180,130,42,0.35)', fg: 'var(--warn)' },
+  overloaded:    { label: 'Overloaded',    icon: '⚠️', tint: 'rgba(199,68,58,0.08)',  border: 'rgba(199,68,58,0.35)', fg: 'var(--destructive)' },
+};
+
+function weeklyWorkload(active) {
+  const counts = [0, 0, 0, 0, 0, 0, 0]; // Mon..Sun
+  for (const t of active || []) {
+    if (!t.deadline_iso || t.status === 'done') continue;
+    const d = new Date(t.deadline_iso);
+    if (isNaN(d.getTime())) continue;
+    // Convert getDay() (0=Sun..6=Sat) to Mon-first index (0=Mon..6=Sun)
+    const monFirst = (d.getDay() + 6) % 7;
+    counts[monFirst] += 1;
+  }
+  return counts;
+}
+
+function renderWorkloadBars(counts) {
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const max = Math.max(1, ...counts);
+  const sorted = [...counts].sort((a, b) => b - a);
+  const top = sorted[0];
+  const second = sorted[1];
+  const colorFor = (n) => {
+    if (n === 0) return 'var(--border)';
+    if (n === top && top > 0) return 'var(--destructive)';
+    if (n === second && second > 0 && second < top) return 'var(--warn)';
+    return 'var(--success)';
+  };
+  const bars = counts.map((n, i) => {
+    const heightPct = (n / max) * 100;
+    return `
+      <div class="flex flex-col items-center gap-1" style="flex:1;min-width:0;">
+        <div class="text-xs font-bold" style="color:${n > 0 ? 'var(--foreground)' : 'var(--muted-foreground)'};">${n}</div>
+        <div style="width:24px;height:80px;background:transparent;display:flex;align-items:flex-end;">
+          <div style="width:100%;height:${heightPct}%;background:${colorFor(n)};border-radius:6px 6px 0 0;transition:height .25s ease;"></div>
+        </div>
+        <div class="text-[11px] text-[color:var(--muted-foreground)]">${labels[i]}</div>
+      </div>`;
+  }).join('');
+  return `<div class="flex items-end justify-between gap-2 px-2 py-3">${bars}</div>`;
+}
+
+function lifeBalanceStatusBlock(result) {
+  const meta = LIFE_BALANCE_STATUS[result.status] || LIFE_BALANCE_STATUS.balanced;
+  return `
+    <div class="rounded-[var(--radius-lg)] border px-4 py-3" style="background:${meta.tint};border-color:${meta.border};">
+      <div class="flex items-start gap-3">
+        <span style="font-size:22px;line-height:1;">${meta.icon}</span>
+        <div class="flex-1">
+          <div class="text-sm font-bold uppercase tracking-wider" style="color:${meta.fg};">${meta.label}</div>
+          <div class="text-sm text-[color:var(--heading-2)] mt-0.5">${esc(result.message || '')}</div>
+        </div>
       </div>
+      ${result.suggestion ? `
+      <div class="mt-3 pt-3 border-t" style="border-color:${meta.border};">
+        <div class="text-[11px] font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-1">💡 Suggestion</div>
+        <div class="text-sm text-[color:var(--heading-2)]">${esc(result.suggestion)}</div>
+      </div>` : ''}
     </div>`;
-  } else {
-    el.className = 'hidden';
-    el.innerHTML = '';
+}
+
+function renderLifeBalance(active) {
+  const el = document.getElementById('life-balance-card');
+  if (!el) return;
+  const counts = weeklyWorkload(active);
+  const result = (globalDashboardData && globalDashboardData.life_balance) || null;
+
+  const statusHtml = result
+    ? lifeBalanceStatusBlock(result)
+    : `
+      <div class="rounded-[var(--radius-lg)] border border-[var(--border)] px-4 py-3 flex items-center justify-between gap-3">
+        <div>
+          <div class="text-sm font-bold uppercase tracking-wider text-[color:var(--muted-foreground)]">Life Balance</div>
+          <div class="text-xs text-[color:var(--muted-foreground)] mt-1">Get an AI read on whether your week is overloaded.</div>
+        </div>
+        <button id="life-balance-analyze-btn" onclick="analyzeLifeBalance(this)" class="ghost-btn ghost-btn-accent" style="padding:6px 14px;font-size:12px;">
+          <span class="inline-flex items-center gap-1.5">✨ Analyze workload</span>
+        </button>
+      </div>`;
+
+  const refresh = result
+    ? `<button onclick="analyzeLifeBalance(this)" class="text-xs text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]" title="Re-run analysis">↻ Refresh</button>`
+    : '';
+
+  const tipsHtml = LIFE_BALANCE_TIPS.map((t) => `
+    <div class="flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)]" style="background:var(--accent);">
+      <span style="font-size:16px;line-height:1;">${t.icon}</span>
+      <div class="text-sm text-[color:var(--heading-2)]">${esc(t.text)}</div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <section class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] p-5">
+      ${refresh ? `<div class="flex justify-end mb-2">${refresh}</div>` : ''}
+      ${statusHtml}
+      <div class="mt-5">
+        <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-1">Workload Overview</div>
+        ${renderWorkloadBars(counts)}
+      </div>
+      <div class="mt-5">
+        <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-2">Tips for you</div>
+        <div class="space-y-2">${tipsHtml}</div>
+      </div>
+    </section>`;
+}
+
+async function analyzeLifeBalance(btn) {
+  if (btn) {
+    btn.disabled = true;
+    btn.dataset.prevHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="clarify-spinner" style="border-color:rgba(0,0,0,0.18);border-top-color:currentColor;"></span>Analyzing…</span>';
+    btn.style.cursor = 'wait';
+  }
+  try {
+    const res = await api('POST', '/api/life-balance/analyze', {});
+    if (globalDashboardData) globalDashboardData.life_balance = res;
+    const active = activeTasks(globalDashboardData || {});
+    renderLifeBalance(active);
+  } catch (e) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = btn.dataset.prevHtml || '✨ Analyze workload';
+      btn.style.cursor = '';
+    }
+    alert('Workload analysis failed: ' + (e?.message || 'unknown error'));
   }
 }
 
@@ -3277,6 +3480,30 @@ function consoleLine(text, kind = '') {
 
 function resetUpload() { document.getElementById('console').innerHTML = ''; document.getElementById('upload-processing').classList.add('hidden'); }
 
+function onTeamModeToggle() {
+  const cb = document.getElementById('team-mode-toggle');
+  const row = document.getElementById('team-participants-row');
+  if (!cb || !row) return;
+  row.classList.toggle('hidden', !cb.checked);
+  if (cb.checked) document.getElementById('team-participants-input')?.focus();
+}
+
+function readTeamParticipants() {
+  const cb = document.getElementById('team-mode-toggle');
+  if (!cb?.checked) return null;
+  const raw = document.getElementById('team-participants-input')?.value || '';
+  const seen = new Set();
+  const list = [];
+  for (const part of raw.split(/[,;]/)) {
+    const name = part.trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    list.push(name);
+  }
+  if (!seen.has('You')) list.unshift('You');
+  return list.length >= 2 ? list : null;
+}
+
 async function extractSelectedChat() {
   const chat = activeChat();
   if (!chat) { setStatus('Select a chat first.', 'error'); return; }
@@ -3299,10 +3526,11 @@ async function extractSelectedChat() {
 
   let linkedIds = [];
   try {
+    const participants = readTeamParticipants();
     const res = await fetch('/api/process-stream', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: textToSend, timeframe }),
+      body: JSON.stringify({ text: textToSend, timeframe, participants }),
     });
     if (res.status === 401) { showAuthGate(); return; }
     const reader = res.body.getReader(); const decoder = new TextDecoder(); let buf = '';

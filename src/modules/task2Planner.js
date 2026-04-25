@@ -202,6 +202,7 @@ export function scorePlan(tasks, now, { weights = null, blockedIds = null } = {}
     for (const field of task.missing_fields || []) {
       if (field === 'deadline') missingQs.push(`When is '${task.task}' due?`);
       else if (field === 'assigned_by') missingQs.push(`Who assigned '${task.task}'?`);
+      else if (field === 'assigned_to') missingQs.push(`Who should handle '${task.task}'?`);
     }
 
     const isBlocked = blocked.has(task.id);

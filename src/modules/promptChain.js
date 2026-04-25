@@ -12,14 +12,14 @@ function log(onProgress, text, kind = 'log') {
   try { onProgress?.({ kind, text, at: stamp() }); } catch {}
 }
 
-export async function runChain(userId, rawText, now, { timeframe = 'all', onProgress } = {}) {
+export async function runChain(userId, rawText, now, { timeframe = 'all', onProgress, participants = null } = {}) {
   const trace = [];
   const record = (step, detail) => trace.push({ step, at: stamp(), ...detail });
 
   log(onProgress, `Step 1/3 — Extracting tasks…`, 'chain_step');
   let tasks;
   try {
-    tasks = await parseMessages(rawText, now, timeframe, { onProgress });
+    tasks = await parseMessages(rawText, now, timeframe, { onProgress, participants });
     record('extract', { count: tasks.length });
     log(onProgress, `Found ${tasks.length} candidate task(s).`, 'chain_step');
   } catch (err) {
@@ -65,7 +65,7 @@ export async function runChain(userId, rawText, now, { timeframe = 'all', onProg
     if (v === 'retry_extract') {
       log(onProgress, `Validator requested re-extract (attempt ${retriesUsed[v]}/${MAX_RETRIES_PER_VERDICT})…`, 'warn');
       try {
-        tasks = await parseMessages(rawText, now, timeframe);
+        tasks = await parseMessages(rawText, now, timeframe, { participants });
       } catch (err) {
         log(onProgress, `Re-extract failed: ${err.message}`, 'error');
         break;
