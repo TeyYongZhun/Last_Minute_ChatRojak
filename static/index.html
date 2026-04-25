@@ -504,9 +504,30 @@
     }
     .avatar-emoji-btn:hover { background: var(--accent); }
     .avatar-emoji-btn.active { background: var(--primary); border-color: var(--primary); }
+
+    #toast-container {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      z-index: 9999; pointer-events: none;
+    }
+    .toast {
+      padding: 10px 18px; border-radius: var(--radius-md);
+      font-size: 13px; font-weight: 500; color: #fff;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none; white-space: nowrap; max-width: 420px;
+      white-space: normal; text-align: center;
+    }
+    .toast.toast-show { opacity: 1; transform: translateY(0); }
+    .toast.toast-error { background: var(--destructive); }
+    .toast.toast-warn { background: #B4822A; }
+    .toast.toast-info { background: var(--primary); }
   </style>
 </head>
 <body>
+
+  <div id="toast-container"></div>
 
   <div id="auth-gate" class="hidden fixed inset-0 z-50 bg-[var(--background)] flex items-center justify-center">
     <div class="w-full max-w-sm px-6">
@@ -898,7 +919,6 @@
   <div class="modal-box">
     <div class="flex items-start justify-between mb-5">
       <div class="flex-1 min-w-0 pr-3">
-        <div id="modal-category" class="mb-2"></div>
         <h3 id="modal-title" contenteditable="true" spellcheck="false"
       class="font-serif text-3xl font-normal text-[color:var(--foreground)] leading-tight outline-none border-b-2 border-transparent focus:border-[color:var(--primary)] transition-colors cursor-text rounded-sm px-0.5 -mx-0.5"
       onblur="modalSaveTitle(this.textContent.trim())"
@@ -1084,6 +1104,7 @@ async function api(method, path, body) {
     const err = new Error(data?.detail || (res.status + ' ' + res.statusText));
     err.status = res.status;
     err.data = data;
+    err.reason = data?.reason || null;
     throw err;
   }
   return data;
@@ -1339,6 +1360,20 @@ function esc(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+function showToast(msg, type = 'error', durationMs = 4000) {
+  const container = document.getElementById('toast-container');
+  if (!container) { console.warn(msg); return; }
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  requestAnimationFrame(() => { requestAnimationFrame(() => { el.classList.add('toast-show'); }); });
+  setTimeout(() => {
+    el.classList.remove('toast-show');
+    el.addEventListener('transitionend', () => el.remove(), { once: true });
+  }, durationMs);
+}
+
 function setStatus(msg, type = 'info') {
   const el = document.getElementById('status-msg');
   if (!el) return;
@@ -1390,8 +1425,9 @@ function activeTasks(data) {
   const raw = filters.quadrants || {};
   const anyOn = raw.do_now || raw.schedule || raw.quick || raw.defer;
   const allOff = !anyOn;
+  const needle = (filters.q || '').toLowerCase().trim();
 
-  const all = [
+  let all = [
     ...(data.do_now      || []),
     ...(data.in_progress || []),
     ...(data.schedule    || []),
@@ -1399,6 +1435,10 @@ function activeTasks(data) {
     ...(data.need_info   || []),
     ...(data.waiting     || []),
   ];
+
+  if (needle) {
+    all = all.filter(t => (t.task || '').toLowerCase().includes(needle));
+  }
 
   if (allOff) return sortByUrgency(all);
 
@@ -1455,6 +1495,8 @@ function applyFilters() {
 }
 
 function applyFiltersDebounced() {
+  filters.q = (document.getElementById('task-search')?.value || '').trim();
+  if (globalDashboardData) renderViews(globalDashboardData);
   if (filterDebounceTimer) clearTimeout(filterDebounceTimer);
   filterDebounceTimer = setTimeout(applyFilters, 300);
 }
@@ -1667,10 +1709,6 @@ function renderTaskRow(item) {
 
   const tickbox = `<input type="checkbox" class="task-tick" ${item.status === 'done' ? 'checked' : ''} data-tid="${tid}" onclick="event.stopPropagation()" onchange="markDone(this.dataset.tid)" title="Mark done" />`;
 
-  const tagChips = (item.tags || []).map(t =>
-    `<button class="tag-chip" onclick="toggleTag('${esc(t)}')">#${esc(t)}</button>`
-  ).join(' ');
-
   const quadrantLabel = { do: 'Do Now', plan: 'Plan', quick: 'Quick Wins', later: 'Later' };
   const qKey = effectiveQuadrant(item);
   const quadrantPill = `<span class="pill-quadrant q-${qKey}">${quadrantLabel[qKey] || 'Later'}</span>`;
@@ -1679,7 +1717,7 @@ function renderTaskRow(item) {
     ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#2D8C6A;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;">⏱ ${fmtDuration(durVal)}</span>`
     : '';
   const plannedChip = plannedSlotChip(item);
-  const metaChips = [quadrantPill, durationPill, plannedChip, tagChips].filter(Boolean).join(' ');
+  const metaChips = [quadrantPill, durationPill, plannedChip].filter(Boolean).join(' ');
   const assignedBy = item.assigned_by ? `<span class="text-[color:var(--muted-foreground)]">by ${esc(item.assigned_by)}</span>` : '';
 
   let deadlineTime = '';
@@ -1709,21 +1747,22 @@ function renderTaskRow(item) {
 function renderStatCards(data, active) {
   const total = active.length;
   const dueToday = active.filter((t) => t.deadline_iso && isToday(new Date(t.deadline_iso))).length;
-  const card = (value, label, valueClass) => `
-    <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)]">
-      <div class="font-serif text-4xl font-normal leading-none ${valueClass}">${value}</div>
-      <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2">${label}</div>
+  const activeCard = `
+    <div class="rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)]" style="background:linear-gradient(135deg,#3B82F6 0%,#6366F1 100%);">
+      <div class="font-serif text-4xl font-normal leading-none text-white">${total}</div>
+      <div class="text-xs uppercase tracking-wider mt-2" style="color:rgba(255,255,255,0.8);">Active</div>
+    </div>`;
+  const dueTodayCard = `
+    <div class="rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)]" style="background:linear-gradient(135deg,#EF4444 0%,#F97316 100%);">
+      <div class="font-serif text-4xl font-normal leading-none text-white">${dueToday}</div>
+      <div class="text-xs uppercase tracking-wider mt-2" style="color:rgba(255,255,255,0.8);">Due Today</div>
     </div>`;
   const addCard = `
-    <button onclick="openAddTaskModal()" class="bg-white border border-dashed border-[var(--border)] rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)] flex flex-col items-start cursor-pointer transition-all hover:border-[color:var(--primary)] hover:shadow-[var(--shadow-sm)] group" style="font-family:var(--font-sans);text-align:left;">
-      <div class="font-serif text-4xl font-normal leading-none text-[color:var(--muted-foreground)] group-hover:text-[color:var(--primary)] transition-colors">+</div>
-      <div class="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] mt-2 group-hover:text-[color:var(--primary)] transition-colors">Add Task</div>
+    <button onclick="openAddTaskModal()" class="rounded-[var(--radius-xl)] px-5 py-4 shadow-[var(--shadow-xs)] flex flex-col items-start cursor-pointer transition-all hover:brightness-110 group" style="background:linear-gradient(135deg,#8B5CF6 0%,#EC4899 100%);font-family:var(--font-sans);text-align:left;border:none;">
+      <div class="font-serif text-4xl font-normal leading-none text-white">+</div>
+      <div class="text-xs uppercase tracking-wider mt-2" style="color:rgba(255,255,255,0.8);">Add Task</div>
     </button>`;
-  return [
-    card(total, 'Active', 'text-[color:var(--foreground)]'),
-    card(dueToday, 'Due Today', dueToday ? 'text-[color:var(--destructive)]' : 'text-[color:var(--foreground)]'),
-    addCard,
-  ].join('');
+  return [activeCard, dueTodayCard, addCard].join('');
 }
 
 // ---------------- Power Grid ----------------
@@ -2072,8 +2111,6 @@ function openTaskModal(taskId) {
   if (!item) return;
   modalTaskId = taskId;
 
-  const tagChips = (item.tags || []).map((t) => `<span class="tag-chip">#${esc(t)}</span>`).join(' ');
-  document.getElementById('modal-category').innerHTML = tagChips;
   document.getElementById('modal-title').textContent = item.task || '';
 
   const deadlineRaw = item.deadline_iso || item.deadline;
@@ -2169,17 +2206,23 @@ async function modalStartTask() {
   const isInProgress = startBtn?.dataset.state === 'inprogress';
   if (isInProgress) {
     await unstartTask(modalTaskId);
-    document.getElementById('modal-status').textContent = 'Pending';
   } else {
     await startTaskAction(modalTaskId);
-    document.getElementById('modal-status').textContent = 'In Progress';
   }
 }
 
 async function modalMarkDone() {
   if (!modalTaskId) return;
-  await markDone(modalTaskId);
+  const taskId = modalTaskId;
   closeModal();
+  const row = document.querySelector(`.task-row[data-tid="${taskId}"]`);
+  if (row) row.remove();
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/complete`);
+  } catch (e) {
+    console.error(e);
+  }
+  refreshDashboard();
 }
 
 const URGENCY_STYLES = {
@@ -2195,15 +2238,32 @@ function renderAiSuggestion(item) {
   const sug = item?.ai_suggestion || null;
 
   if (!sug) {
+    const hasDeadline = !!item.deadline_iso;
+    const actuallyOnCalendar = !!item.calendar_event_id && item.calendar_sync_state === 'ok';
+    const syncFailed = item.calendar_sync_state === 'failed' || (!!item.calendar_sync_enabled && !actuallyOnCalendar);
+    let calendarAction = '';
+    if (actuallyOnCalendar) {
+      calendarAction = `<span class="text-xs font-semibold text-[color:var(--success)]">✓ On Calendar</span>
+        <button onclick="acceptCalendarSuggestion(this)" title="Re-push event" class="text-xs text-[color:var(--muted-foreground)] hover:text-[color:var(--primary)] underline">Re-sync</button>
+        <button onclick="removeCalendarSuggestion(this)" class="text-xs text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] underline">Remove</button>`;
+    } else if (syncFailed) {
+      calendarAction = `<span class="text-xs font-semibold text-[color:var(--warn)]">⚠️ Sync failed</span>
+        <button onclick="acceptCalendarSuggestion(this)" class="ghost-btn ghost-btn-accent" style="padding:4px 10px;font-size:11px;">Retry</button>`;
+    } else if (hasDeadline) {
+      calendarAction = `<button onclick="acceptCalendarSuggestion(this)" class="ghost-btn ghost-btn-accent" style="padding:6px 14px;font-size:12px;">📅 Add to Calendar</button>`;
+    }
     host.innerHTML = `
-      <div class="flex items-center justify-between bg-white border border-[var(--border)] rounded-[var(--radius-lg)] px-4 py-3">
+      <div class="flex items-center justify-between bg-white border border-[var(--border)] rounded-[var(--radius-lg)] px-4 py-3 gap-3 flex-wrap">
         <div>
           <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)]">AI Suggestion</div>
           <div class="text-xs text-[color:var(--muted-foreground)] mt-1">Get an urgency read and a calendar tip from AI.</div>
         </div>
-        <button id="modal-ai-suggest-btn" onclick="requestAiSuggestion()" class="ghost-btn ghost-btn-accent" style="padding:6px 14px;font-size:12px;">
-          <span class="inline-flex items-center gap-1.5">✨ Get suggestion</span>
-        </button>
+        <span class="inline-flex items-center gap-3 flex-wrap justify-end">
+          ${calendarAction ? `<span class="inline-flex items-center gap-2">${calendarAction}</span>` : ''}
+          <button id="modal-ai-suggest-btn" onclick="requestAiSuggestion()" class="ghost-btn ghost-btn-accent" style="padding:6px 14px;font-size:12px;">
+            <span class="inline-flex items-center gap-1.5">✨ Get suggestion</span>
+          </button>
+        </span>
       </div>`;
     return;
   }
@@ -2542,7 +2602,8 @@ async function markDone(taskId) {
       const btns = row.querySelectorAll('button:not(.task-tick)');
       btns.forEach(b => b.style.visibility = '');
     }
-    try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/pause`); } catch (e) { console.error(e); }
+    try { await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/uncomplete`); } catch (e) { console.error(e); }
+    await refreshDashboard();
   } else {
     // Tick: mark done visually, stay in list
     _pendingDone.add(taskId);
@@ -2582,7 +2643,6 @@ function patchTaskRowButton(taskId, isInProgress) {
   if (statusSpan) statusSpan.textContent = isInProgress ? 'In progress' : 'Pending';
 }
 
-const _taskActionInFlight = new Set();
 const SPINNER_HTML = '<span class="inline-flex items-center gap-1.5"><span class="clarify-spinner"></span>Working…</span>';
 
 function setTaskActionBusy(taskId, busy) {
@@ -2619,66 +2679,61 @@ function setTaskActionBusy(taskId, busy) {
 }
 
 async function unstartTask(taskId) {
-  if (_taskActionInFlight.has(taskId)) return;
-  _taskActionInFlight.add(taskId);
-  setTaskActionBusy(taskId, true);
+  patchTaskRowButton(taskId, false);
+  if (modalTaskId === taskId) refreshModalStartButton('pending');
   try {
     await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/pause`);
-    patchTaskRowButton(taskId, false);
-    await refreshDashboard();
-    if (modalTaskId === taskId) refreshModalStartButton('pending');
   } catch (e) {
     console.error(e);
-    patchTaskRowButton(taskId, true); // revert DOM if server rejected
+    patchTaskRowButton(taskId, true);
     if (modalTaskId === taskId) refreshModalStartButton('in_progress');
-    alert('Failed to pause: ' + (e.message || 'unknown error'));
-  } finally {
-    setTaskActionBusy(taskId, false);
-    _taskActionInFlight.delete(taskId);
+    showToast('Failed to pause: ' + (e.message || 'unknown error'), 'error');
   }
+  refreshDashboard();
 }
 
 async function startTaskAction(taskId) {
-  if (_taskActionInFlight.has(taskId)) return;
-  _taskActionInFlight.add(taskId);
-  setTaskActionBusy(taskId, true);
+  patchTaskRowButton(taskId, true);
+  if (modalTaskId === taskId) refreshModalStartButton('in_progress');
   try {
     await api('POST', `/api/tasks/${encodeURIComponent(taskId)}/start`);
-    patchTaskRowButton(taskId, true);
-    await refreshDashboard();
-    if (modalTaskId === taskId) refreshModalStartButton('in_progress');
   } catch (e) {
     console.error(e);
-    patchTaskRowButton(taskId, false); // revert DOM if server rejected
+    patchTaskRowButton(taskId, false);
     if (modalTaskId === taskId) refreshModalStartButton('pending');
     if (e.status === 409) {
-      alert(e.message || 'Task cannot be started right now.');
+      if (e.reason === 'blocked_by_deps') {
+        showToast('This task is waiting on another task to finish first.', 'warn');
+      } else {
+        showToast(e.message || 'Task cannot be started right now.', 'warn');
+      }
     } else if (e.status === 404) {
-      alert('Task not found.');
+      showToast('Task not found.', 'error');
     } else {
-      alert('Failed to start task: ' + (e.message || 'unknown error'));
+      showToast('Failed to start task: ' + (e.message || 'unknown error'), 'error');
     }
-  } finally {
-    setTaskActionBusy(taskId, false);
-    _taskActionInFlight.delete(taskId);
   }
+  refreshDashboard();
 }
 
 function refreshModalStartButton(status) {
   const btn = document.getElementById('modal-start-btn');
   if (!btn) return;
+  const statusEl = document.getElementById('modal-status');
   if (status === 'in_progress') {
     btn.innerHTML = '<span class="in-progress-label">In Progress</span>';
     btn.style.background = '#EA6C00';
     btn.dataset.state = 'inprogress';
     btn.classList.add('in-progress-btn');
     btn.title = 'Click to pause';
+    if (statusEl) statusEl.textContent = 'In Progress';
   } else {
     btn.innerHTML = 'Start Task';
     btn.style.background = 'var(--primary)';
     btn.dataset.state = '';
     btn.classList.remove('in-progress-btn');
     btn.title = '';
+    if (statusEl) statusEl.textContent = 'Pending';
   }
 }
 

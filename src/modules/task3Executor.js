@@ -26,6 +26,7 @@ import {
   setAiDurationMinutes,
   setUserDurationMinutes as repoSetUserDurationMinutes,
   markCompleted,
+  markUncompleted,
   setCalendarSyncEnabled,
   replaceTaskTags,
   getTagsForTask,
@@ -313,10 +314,6 @@ export function startTask(userId, taskId) {
   if (!task) return { result: 'not_found' };
   if (task.status === 'done') return { result: 'done' };
   if (task.status === 'in_progress') return { result: 'already_started' };
-  if (task.status === 'blocked_waiting_info' || (task.missing_fields || []).length) {
-    return { result: 'blocked', missing_fields: task.missing_fields || [] };
-  }
-
   const allTasks = listTasks(userId);
   const doneIds = new Set(allTasks.filter((t) => t.status === 'done').map((t) => t.id));
   const myDeps = getDependenciesFor(userId, taskId).filter((d) => !doneIds.has(d.depends_on));
@@ -349,6 +346,21 @@ export function completeTask(userId, taskId) {
   });
   tx();
   removeCalendarEvent(userId, taskId).catch(() => {});
+  return true;
+}
+
+export function uncompleteTask(userId, taskId) {
+  const task = getTask(userId, taskId);
+  if (!task) return false;
+  if (task.status !== 'done') return false;
+  const db = getDb();
+  const tx = db.transaction(() => {
+    markUncompleted(userId, taskId);
+    updatePlanStatus(userId, taskId, 'pending');
+    addReplanEvent(userId, `[${ts()}] Task ${taskId} unmarked done.`);
+    addTaskEvent(userId, taskId, 'status_changed', { to: 'pending', from: 'done' });
+  });
+  tx();
   return true;
 }
 

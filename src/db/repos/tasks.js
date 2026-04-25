@@ -170,6 +170,15 @@ export function markCompleted(userId, taskId) {
     .run(now, now, userId, taskId).changes;
 }
 
+export function markUncompleted(userId, taskId) {
+  const db = getDb();
+  return db
+    .prepare(
+      "UPDATE tasks SET status = 'pending', completed_at = NULL, updated_at = ? WHERE user_id = ? AND id = ?"
+    )
+    .run(Date.now(), userId, taskId).changes;
+}
+
 export function updateTaskField(userId, taskId, field, value) {
   if (!['deadline', 'deadline_iso', 'assigned_by', 'task'].includes(field)) {
     throw new Error(`updateTaskField: unsupported field '${field}'`);
