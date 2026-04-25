@@ -28,6 +28,7 @@ import {
   markCompleted,
   markUncompleted,
   setCalendarSyncEnabled,
+  setAssignedTo,
   replaceTaskTags,
   getTagsForTask,
   listAvailableTags,
@@ -404,6 +405,18 @@ function deadlineTextToIso(text, now = new Date()) {
 export function respondToClarification(userId, taskId, field, value, prefParsedIso = null) {
   const task = getTask(userId, taskId);
   if (!task) return false;
+
+  let parsedAssignedTo = null;
+  if (field === 'assigned_to') {
+    const seen = new Set();
+    parsedAssignedTo = String(value || '')
+      .split(/[,;]|\band\b/i)
+      .map((s) => s.trim())
+      .filter((s) => s && !seen.has(s) && (seen.add(s) || true))
+      .slice(0, 10);
+    if (!parsedAssignedTo.length) return false;
+  }
+
   const db = getDb();
   const tx = db.transaction(() => {
     if (field === 'deadline') {
@@ -414,6 +427,8 @@ export function respondToClarification(userId, taskId, field, value, prefParsedI
       updateTaskField(userId, taskId, 'assigned_by', value);
     } else if (field === 'deadline_iso') {
       updateTaskField(userId, taskId, 'deadline_iso', value);
+    } else if (field === 'assigned_to' && parsedAssignedTo) {
+      setAssignedTo(userId, taskId, parsedAssignedTo);
     }
     const remaining = (task.missing_fields || []).filter((f) => f !== field);
     updateTaskMissingFields(userId, taskId, remaining);
@@ -623,6 +638,7 @@ export function getDashboard(userId, filters = {}) {
       updated_at: task.updated_at,
       completed_at: task.completed_at,
       ai_suggestion: task.ai_suggestion || null,
+      assigned_to: task.assigned_to || null,
       calendar_sync_enabled: task.calendar_sync_enabled ? 1 : 0,
       ...(() => {
         const ev = getEventForTask(task.id);

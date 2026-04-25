@@ -2,13 +2,17 @@ import { runChain } from './promptChain.js';
 import { mergeNewTasks, replanAll, applyDependencies, getDashboard } from './task3Executor.js';
 import { MODEL, getProviderName } from '../client.js';
 
-export async function processWithEvents(userId, text, now, emit, timeframe = 'all') {
+export async function processWithEvents(userId, text, now, emit, timeframe = 'all', participants = null) {
   const lineCount = text.split('\n').filter((l) => l.trim().length > 0).length;
   emit('log', { text: `Parsing ${lineCount} message line(s) via 3-step AI chain…` });
   emit('log', { text: `Using ${getProviderName()} · ${MODEL}` });
+  if (Array.isArray(participants) && participants.length >= 2) {
+    emit('log', { text: `Team mode: participants = ${participants.join(', ')}` });
+  }
 
   const chain = await runChain(userId, text, now, {
     timeframe,
+    participants,
     onProgress: (entry) => {
       if (!entry) return;
       emit('log', { text: entry.text });

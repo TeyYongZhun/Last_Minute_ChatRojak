@@ -31,7 +31,19 @@ function normaliseRow(row) {
     completed_at: row.completed_at ?? null,
     calendar_sync_enabled: row.calendar_sync_enabled ? 1 : 0,
     ai_suggestion: (() => { try { return row.ai_suggestion ? JSON.parse(row.ai_suggestion) : null; } catch { return null; } })(),
+    assigned_to: (() => {
+      if (!row.assigned_to) return null;
+      try { const v = JSON.parse(row.assigned_to); return Array.isArray(v) ? v : null; } catch { return null; }
+    })(),
   };
+}
+
+export function setAssignedTo(userId, taskId, assignedTo) {
+  const db = getDb();
+  const json = Array.isArray(assignedTo) ? JSON.stringify(assignedTo) : null;
+  return db
+    .prepare('UPDATE tasks SET assigned_to = ?, updated_at = ? WHERE user_id = ? AND id = ?')
+    .run(json, Date.now(), userId, taskId).changes;
 }
 
 export function setAiSuggestion(userId, taskId, suggestion) {
@@ -109,14 +121,19 @@ export function insertTask(userId, task) {
     ? null
     : Math.max(5, Math.min(1440, Math.round(Number(task.ai_duration_minutes))));
 
+  const assignedToJson = Array.isArray(task.assigned_to) && task.assigned_to.length
+    ? JSON.stringify(task.assigned_to)
+    : null;
+
   db.prepare(
     `INSERT INTO tasks (
        id, user_id, task, deadline, deadline_iso, assigned_by,
        priority, confidence, category, missing_fields, status, created_at,
        ai_priority, user_priority, ai_priority_score, user_adjusted_score,
        updated_at, completed_at, complexity,
-       ai_eisenhower, user_eisenhower, ai_duration_minutes, user_duration_minutes
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       ai_eisenhower, user_eisenhower, ai_duration_minutes, user_duration_minutes,
+       assigned_to
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     task.id,
     userId,
@@ -140,7 +157,8 @@ export function insertTask(userId, task) {
     aiQuadrant,
     null,
     aiDuration,
-    null
+    null,
+    assignedToJson
   );
 }
 

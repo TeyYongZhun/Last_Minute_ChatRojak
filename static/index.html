@@ -624,6 +624,9 @@
       <button data-mode="calendar" class="nav-btn" onclick="setMode('calendar')">
         <span class="mr-3 text-xl">📅</span> Calendar
       </button>
+      <button data-mode="life-balance" class="nav-btn" onclick="setMode('life-balance')">
+        <span class="mr-3 text-xl">🌿</span> Life Balance
+      </button>
       <button data-mode="account" class="nav-btn" onclick="setMode('account')">
         <span class="mr-3 text-xl">👤</span> Account
       </button>
@@ -728,8 +731,6 @@
         <!-- Stat strip -->
         <div id="dash-stat-cards" class="grid gap-3 mb-5" style="grid-template-columns:repeat(3,minmax(0,1fr));"></div>
 
-        <!-- Overload warning banner -->
-        <div id="overload-banner" class="hidden mb-5"></div>
 
         <!-- Empty state -->
         <div id="dashboard-empty-state" class="hidden mb-6" style="border:1.5px dashed var(--border);border-radius:var(--radius-xl);padding:32px 24px;text-align:center;background:rgba(255,255,255,0.5);">
@@ -821,6 +822,8 @@
           </div>
         </div>
 
+        <div id="checklist-user-filter" class="hidden mb-5"></div>
+
         <div id="checklist-content">
            <div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">Pick a quadrant above to see tasks.</div>
         </div>
@@ -858,6 +861,13 @@
             <button onclick="unlinkGoogleCalendar()" id="google-unlink-btn" class="ghost-btn hidden" style="padding:6px 14px; font-size:12px;">Unlink</button>
           </div>
         </div>
+      </div>
+
+      <div id="view-life-balance" class="view-section hidden">
+        <h2 class="font-serif text-5xl font-normal mb-8 text-[color:var(--foreground)] leading-none flex items-center gap-3">
+          <span style="font-size:42px;">🌿</span> Life Balance
+        </h2>
+        <div id="life-balance-card"></div>
       </div>
 
       <div id="view-account" class="view-section hidden">
@@ -966,6 +976,10 @@
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Assigned by</span>
         <span id="modal-assignee" class="text-[color:var(--heading-2)]"></span>
       </div>
+      <div class="flex items-start gap-3 text-sm">
+        <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0 mt-1">Assignees</span>
+        <div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap" id="modal-assignees"></div>
+      </div>
       <div class="flex items-center gap-3 text-sm">
         <span class="text-[color:var(--muted-foreground)] w-24 flex-shrink-0">Status</span>
         <span id="modal-status" class="text-[color:var(--heading-2)]"></span>
@@ -1018,6 +1032,33 @@
       <button id="modal-start-btn" onclick="modalStartTask()" class="flex-1 py-2.5 hover:brightness-110 text-white rounded-full text-sm font-bold transition-all" style="background:var(--primary)">Start Task</button>
       <button id="modal-done-btn" onclick="modalMarkDone()" class="flex-1 py-2.5 bg-[var(--success)] hover:brightness-110 text-white rounded-full text-sm font-bold transition-all">Mark Done</button>
 
+    </div>
+  </div>
+</div>
+
+<!-- Edit Assignees Modal -->
+<div id="assignees-modal" class="modal-backdrop hidden" onclick="if(event.target===this)closeAssigneesEditor()">
+  <div class="modal-box" style="max-width:440px;">
+    <div class="flex items-center justify-between mb-5">
+      <div class="font-serif text-2xl font-normal text-[color:var(--foreground)]">Edit assignees</div>
+      <button onclick="closeAssigneesEditor()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted-foreground);line-height:1;padding:2px 6px;">&times;</button>
+    </div>
+    <div id="assignees-mode-hint" class="text-xs text-[color:var(--muted-foreground)] mb-3">Tick the people responsible for this task. Add a new name below if needed.</div>
+    <div id="assignees-options" class="flex flex-wrap gap-2 mb-4"></div>
+    <div id="assignees-add-row" class="flex items-center gap-2 mb-3">
+      <input id="assignees-add-input" type="text" placeholder="Add a name…" maxlength="40"
+        class="flex-1 bg-white border border-[var(--input)] text-[color:var(--foreground)] focus:border-[color:var(--primary)] focus:outline-none text-[13px] transition-colors"
+        style="border-radius:var(--radius-md);padding:7px 12px;"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();addAssigneeFromInput();}" />
+      <button onclick="addAssigneeFromInput()" class="ghost-btn ghost-btn-accent" style="padding:7px 14px;font-size:12px;">Add</button>
+    </div>
+    <div class="flex items-center gap-2 mb-5">
+      <button id="assignees-delete-toggle" onclick="toggleAssigneesDeleteMode()" class="ghost-btn" style="padding:6px 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px;">🗑 Delete a name</button>
+    </div>
+    <div id="assignees-error" class="hidden text-xs text-[color:var(--destructive)] mb-3"></div>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeAssigneesEditor()" class="ghost-btn" style="padding:7px 16px;font-size:13px;">Cancel</button>
+      <button id="assignees-save-btn" onclick="saveAssignees()" class="ghost-btn ghost-btn-accent" style="padding:7px 16px;font-size:13px;font-weight:700;">Save</button>
     </div>
   </div>
 </div>
@@ -1421,6 +1462,43 @@ function sortByUrgency(items, now = new Date()) {
   });
 }
 
+function collectTeamUsers(allTasks) {
+  const set = new Set(['You']);
+  for (const t of allTasks || []) {
+    if (Array.isArray(t.assigned_to)) {
+      for (const n of t.assigned_to) if (typeof n === 'string' && n.trim()) set.add(n.trim());
+    }
+  }
+  return Array.from(set);
+}
+function hasTeamTasks(allTasks) {
+  return (allTasks || []).some((t) => Array.isArray(t.assigned_to) && t.assigned_to.length);
+}
+
+function loadTaskFilterUsers() {
+  try {
+    const raw = localStorage.getItem('taskFilterUsers');
+    if (raw == null) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((s) => typeof s === 'string') : null;
+  } catch { return null; }
+}
+function saveTaskFilterUsers(users) {
+  try { localStorage.setItem('taskFilterUsers', JSON.stringify(Array.isArray(users) ? users : [])); } catch {}
+}
+function getEffectiveFilterUsers(allUsers) {
+  const stored = loadTaskFilterUsers();
+  if (!stored) return new Set(allUsers); // default: all selected
+  return new Set(stored.filter((u) => allUsers.includes(u)));
+}
+function taskVisibleUnderFilter(task, selectedSet) {
+  const list = Array.isArray(task.assigned_to) && task.assigned_to.length ? task.assigned_to : ['You'];
+  return list.some((n) => selectedSet.has(n));
+}
+
+// Migrate the old single-user dropdown key (silently drop)
+try { localStorage.removeItem('currentTeamUser'); } catch {}
+
 function activeTasks(data) {
   const raw = filters.quadrants || {};
   const anyOn = raw.do_now || raw.schedule || raw.quick || raw.defer;
@@ -1435,6 +1513,12 @@ function activeTasks(data) {
     ...(data.need_info   || []),
     ...(data.waiting     || []),
   ];
+
+  if (hasTeamTasks(all)) {
+    const users = collectTeamUsers(all);
+    const selected = getEffectiveFilterUsers(users);
+    all = all.filter((t) => taskVisibleUnderFilter(t, selected));
+  }
 
   if (needle) {
     all = all.filter(t => (t.task || '').toLowerCase().includes(needle));
@@ -1508,10 +1592,253 @@ function clearFilters() {
 }
 
 // ---------------- Rendering ----------------
+function renderChecklistUserFilter(data) {
+  const host = document.getElementById('checklist-user-filter');
+  if (!host) return;
+  const all = [
+    ...(data.do_now || []), ...(data.in_progress || []), ...(data.schedule || []),
+    ...(data.defer || []), ...(data.need_info || []), ...(data.waiting || []), ...(data.done || []),
+  ];
+  if (!hasTeamTasks(all)) {
+    host.classList.add('hidden');
+    host.innerHTML = '';
+    return;
+  }
+  host.classList.remove('hidden');
+  const users = collectTeamUsers(all);
+  const selected = getEffectiveFilterUsers(users);
+  const chips = users.map((u) => {
+    const isOn = selected.has(u);
+    const isYou = u === 'You';
+    const bg = isOn ? (isYou ? 'rgba(45,140,106,0.15)' : 'var(--accent)') : 'transparent';
+    const fg = isOn ? (isYou ? '#2D8C6A' : 'var(--heading-2)') : 'var(--muted-foreground)';
+    const border = isOn ? (isYou ? 'rgba(45,140,106,0.4)' : 'var(--border)') : 'var(--border)';
+    const av = avatarForName(u);
+    return `<button onclick="toggleFilterUser('${esc(u)}')" style="display:inline-flex;align-items:center;gap:8px;padding:5px 14px 5px 5px;border-radius:999px;background:${bg};color:${fg};border:1.5px solid ${border};font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;${isOn ? '' : 'opacity:0.55;'}">
+      <span style="display:inline-flex;align-items:center;justify-content:center;overflow:hidden;width:26px;height:26px;border-radius:50%;background:${av.bg};font-size:14px;line-height:1;">${avatarInnerHtml(av)}</span>
+      <span>${esc(u)}</span>
+      <span style="font-size:13px;line-height:1;">${isOn ? '✓' : ''}</span>
+    </button>`;
+  }).join('');
+  host.innerHTML = `
+    <div class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] p-4">
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div class="text-xs uppercase tracking-wider font-bold text-[color:var(--muted-foreground)]">👥 View tasks for</div>
+        <div class="flex gap-3">
+          <button onclick="setAllFilterUsers(true)" class="text-xs text-[color:var(--muted-foreground)] hover:text-[color:var(--primary)] underline">Show all</button>
+          <button onclick="setAllFilterUsers(false)" class="text-xs text-[color:var(--muted-foreground)] hover:text-[color:var(--destructive)] underline">Show none</button>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap mt-3">${chips}</div>
+    </div>`;
+}
+
+function toggleFilterUser(user) {
+  const all = [
+    ...(globalDashboardData.do_now || []), ...(globalDashboardData.in_progress || []), ...(globalDashboardData.schedule || []),
+    ...(globalDashboardData.defer || []), ...(globalDashboardData.need_info || []), ...(globalDashboardData.waiting || []), ...(globalDashboardData.done || []),
+  ];
+  const users = collectTeamUsers(all);
+  const sel = new Set(getEffectiveFilterUsers(users));
+  if (sel.has(user)) sel.delete(user); else sel.add(user);
+  saveTaskFilterUsers(Array.from(sel));
+  renderViews(globalDashboardData);
+}
+function setAllFilterUsers(on) {
+  const all = [
+    ...(globalDashboardData.do_now || []), ...(globalDashboardData.in_progress || []), ...(globalDashboardData.schedule || []),
+    ...(globalDashboardData.defer || []), ...(globalDashboardData.need_info || []), ...(globalDashboardData.waiting || []), ...(globalDashboardData.done || []),
+  ];
+  const users = collectTeamUsers(all);
+  saveTaskFilterUsers(on ? users : []);
+  renderViews(globalDashboardData);
+}
+
+function renderModalAssignees(item) {
+  const host = document.getElementById('modal-assignees');
+  if (!host) return;
+  const tid = esc(item.task_id);
+  const explicit = Array.isArray(item.assigned_to);
+  const rawList = explicit ? item.assigned_to : null;
+  // Match the row stack: null → implicit You, [] → "+ Add collaborators", else show chips.
+  const list = rawList && rawList.length ? rawList : (rawList && rawList.length === 0 ? [] : ['You']);
+  if (list.length) {
+    const chips = list.map((name) => {
+      const av = avatarForName(name);
+      return `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--heading-2);font-size:12px;font-weight:600;padding:3px 10px 3px 3px;border-radius:999px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;overflow:hidden;width:24px;height:24px;border-radius:50%;background:${av.bg};font-size:13px;line-height:1;">${avatarInnerHtml(av)}</span>${esc(name)}</span>`;
+    }).join('');
+    host.innerHTML = `${chips} <button onclick="openAssigneesEditor('${tid}')" class="text-xs text-[color:var(--muted-foreground)] hover:text-[color:var(--primary)] underline ml-1">Edit</button>`;
+  } else {
+    host.innerHTML = `<button onclick="openAssigneesEditor('${tid}')" class="text-xs text-[color:var(--primary)] hover:underline" style="background:rgba(55,50,47,0.08);padding:4px 10px;border-radius:999px;border:1px dashed rgba(55,50,47,0.25);">+ Add collaborators</button>`;
+  }
+}
+
+// ---------------- Assignees Editor ----------------
+let _assigneesEditorTaskId = null;
+let _assigneesEditorSelected = new Set();
+let _assigneesDeleteMode = false;
+
+function openAssigneesEditor(taskId) {
+  const item = findTaskInDashboard(taskId);
+  if (!item) return;
+  _assigneesEditorTaskId = taskId;
+  const existing = Array.isArray(item.assigned_to) ? item.assigned_to : [];
+  // Personal tasks (no assigned_to) implicitly belong to "You" — reflect that in the editor.
+  _assigneesEditorSelected = new Set(existing.length ? existing : ['You']);
+  _assigneesDeleteMode = false;
+  applyAssigneesDeleteModeUi();
+  renderAssigneesOptions();
+  document.getElementById('assignees-error').classList.add('hidden');
+  document.getElementById('assignees-add-input').value = '';
+  document.getElementById('assignees-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('assignees-add-input')?.focus(), 50);
+}
+
+function closeAssigneesEditor() {
+  _assigneesEditorTaskId = null;
+  _assigneesEditorSelected = new Set();
+  _assigneesDeleteMode = false;
+  document.getElementById('assignees-modal').classList.add('hidden');
+}
+
+function toggleAssigneesDeleteMode() {
+  _assigneesDeleteMode = !_assigneesDeleteMode;
+  applyAssigneesDeleteModeUi();
+  renderAssigneesOptions();
+}
+
+function applyAssigneesDeleteModeUi() {
+  const hint = document.getElementById('assignees-mode-hint');
+  const addRow = document.getElementById('assignees-add-row');
+  const btn = document.getElementById('assignees-delete-toggle');
+  if (_assigneesDeleteMode) {
+    if (hint) hint.innerHTML = `<span style="color:var(--destructive);font-weight:600;">🗑 Delete mode:</span> click a name to remove it from every task. Click <strong>Done</strong> when finished.`;
+    if (addRow) addRow.classList.add('hidden');
+    if (btn) {
+      btn.innerHTML = '✓ Done';
+      btn.style.background = 'var(--success)';
+      btn.style.color = '#fff';
+      btn.style.borderColor = 'var(--success)';
+    }
+  } else {
+    if (hint) hint.textContent = 'Tick the people responsible for this task. Add a new name below if needed.';
+    if (addRow) addRow.classList.remove('hidden');
+    if (btn) {
+      btn.innerHTML = '🗑 Delete a name';
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }
+  }
+}
+
+function renderAssigneesOptions() {
+  const host = document.getElementById('assignees-options');
+  if (!host) return;
+  const all = [
+    ...(globalDashboardData.do_now || []), ...(globalDashboardData.in_progress || []), ...(globalDashboardData.schedule || []),
+    ...(globalDashboardData.defer || []), ...(globalDashboardData.need_info || []), ...(globalDashboardData.waiting || []), ...(globalDashboardData.done || []),
+  ];
+  const knownSet = new Set(collectTeamUsers(all));
+  for (const n of _assigneesEditorSelected) knownSet.add(n);
+  const known = Array.from(knownSet);
+  host.innerHTML = known.map((u) => {
+    const isOn = _assigneesEditorSelected.has(u);
+    const isYou = u === 'You';
+    const av = avatarForName(u);
+
+    if (_assigneesDeleteMode) {
+      const protectedYou = isYou;
+      const bg = protectedYou ? 'transparent' : 'rgba(199,68,58,0.06)';
+      const border = protectedYou ? 'var(--border)' : 'rgba(199,68,58,0.40)';
+      const fg = protectedYou ? 'var(--muted-foreground)' : 'var(--destructive)';
+      const onclick = protectedYou ? '' : `onclick="deleteAssigneeName('${esc(u)}')"`;
+      const cursor = protectedYou ? 'not-allowed' : 'pointer';
+      const opacity = protectedYou ? '0.55' : '1';
+      const tail = protectedYou ? '<span style="font-size:11px;font-weight:500;">(can\'t delete)</span>' : '<span style="font-size:13px;line-height:1;">×</span>';
+      return `<button ${onclick} style="display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border-radius:999px;background:${bg};color:${fg};border:1.5px dashed ${border};font-size:13px;font-weight:600;cursor:${cursor};opacity:${opacity};">
+        <span style="display:inline-flex;align-items:center;justify-content:center;overflow:hidden;width:26px;height:26px;border-radius:50%;background:${av.bg};font-size:14px;line-height:1;">${avatarInnerHtml(av)}</span>
+        <span>${esc(u)}</span>
+        ${tail}
+      </button>`;
+    }
+
+    const bg = isOn ? (isYou ? 'rgba(45,140,106,0.15)' : 'rgba(55,50,47,0.10)') : 'transparent';
+    const fg = isOn ? (isYou ? '#2D8C6A' : 'var(--primary)') : 'var(--muted-foreground)';
+    const border = isOn ? (isYou ? 'rgba(45,140,106,0.4)' : 'rgba(55,50,47,0.25)') : 'var(--border)';
+    return `<button onclick="toggleAssignee('${esc(u)}')" style="display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border-radius:999px;background:${bg};color:${fg};border:1.5px solid ${border};font-size:13px;font-weight:600;cursor:pointer;${isOn ? '' : 'opacity:0.6;'}">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${av.bg};font-size:14px;line-height:1;">${av.emoji}</span>
+      <span>${esc(u)}</span>
+      <span style="font-size:13px;line-height:1;">${isOn ? '✓' : ''}</span>
+    </button>`;
+  }).join('');
+}
+
+async function deleteAssigneeName(name) {
+  if (!name || name === 'You') return;
+  if (!confirm(`Remove "${name}" from every task? You can always add the name back later.`)) return;
+  try {
+    await api('POST', '/api/assignees/remove', { name });
+    _assigneesEditorSelected.delete(name);
+    await refreshDashboard();
+    renderAssigneesOptions();
+  } catch (e) {
+    const err = document.getElementById('assignees-error');
+    if (err) {
+      err.textContent = 'Failed to remove: ' + (e?.message || 'unknown error');
+      err.classList.remove('hidden');
+    }
+  }
+}
+
+function toggleAssignee(name) {
+  if (_assigneesEditorSelected.has(name)) _assigneesEditorSelected.delete(name);
+  else _assigneesEditorSelected.add(name);
+  renderAssigneesOptions();
+}
+
+function addAssigneeFromInput() {
+  const input = document.getElementById('assignees-add-input');
+  const name = (input?.value || '').trim();
+  if (!name) return;
+  if (name.length > 40) {
+    const err = document.getElementById('assignees-error');
+    err.textContent = 'Names must be 40 characters or fewer.';
+    err.classList.remove('hidden');
+    return;
+  }
+  _assigneesEditorSelected.add(name);
+  input.value = '';
+  document.getElementById('assignees-error').classList.add('hidden');
+  renderAssigneesOptions();
+}
+
+async function saveAssignees() {
+  if (!_assigneesEditorTaskId) return;
+  const btn = document.getElementById('assignees-save-btn');
+  const tid = _assigneesEditorTaskId;
+  const list = Array.from(_assigneesEditorSelected);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    await api('POST', `/api/tasks/${encodeURIComponent(tid)}/assigned-to`, { assigned_to: list });
+    closeAssigneesEditor();
+    await refreshDashboard();
+    if (modalTaskId === tid) openTaskModal(tid);
+  } catch (e) {
+    const err = document.getElementById('assignees-error');
+    err.textContent = 'Failed to save: ' + (e?.message || 'unknown error');
+    err.classList.remove('hidden');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+  }
+}
+
 function renderViews(data) {
   const summary = document.getElementById('summary-line');
   const emptyState = document.getElementById('dashboard-empty-state');
   renderFilterToolbar(data);
+  renderChecklistUserFilter(data);
   if (!data.total_tasks) {
     if (emptyState) emptyState.classList.remove('hidden');
     summary.textContent = 'No active tasks';
@@ -1534,7 +1861,7 @@ function renderViews(data) {
 
   safeRender('dash-stat-cards', () => renderStatCards(data, active));
   try { renderPowerGrid(active); } catch (e) { console.error('renderPowerGrid failed:', e); }
-  try { renderOverloadBanner(active); } catch (e) { console.error('renderOverloadBanner failed:', e); }
+  try { renderLifeBalance(active); } catch (e) { console.error('renderLifeBalance failed:', e); }
   safeRender('dash-clarifications', () => renderImportantInfo(data, active));
   safeRender('checklist-content', () => renderTasks(data, active));
   try { renderCalendar(data, active); } catch (e) { console.error('renderCalendar failed:', e); }
@@ -1718,6 +2045,7 @@ function renderTaskRow(item) {
     : '';
   const plannedChip = plannedSlotChip(item);
   const metaChips = [quadrantPill, durationPill, plannedChip].filter(Boolean).join(' ');
+  const assignedAvatars = renderAssignedAvatarStack(item, tid);
   const assignedBy = item.assigned_by ? `<span class="text-[color:var(--muted-foreground)]">by ${esc(item.assigned_by)}</span>` : '';
 
   let deadlineTime = '';
@@ -1740,8 +2068,62 @@ function renderTaskRow(item) {
         ${assignedBy ? `<div class="text-xs mb-0.5">${assignedBy}</div>` : ''}
         <div class="flex flex-wrap items-center gap-2 mt-3">${metaChips}</div>
       </div>
+      ${assignedAvatars}
       <div class="flex shrink-0 items-center">${actions}</div>
     </div>`;
+}
+
+const ASSIGNEE_AVATAR_PALETTE = ['#F8C8A8', '#E5C0F0', '#B8E0C8', '#FAD8B0', '#C5D8FA', '#F5B5C7', '#D4C0E8', '#B5DBE8'];
+function avatarForName(name) {
+  const s = String(name || '');
+  if (s === 'You') {
+    if (currentAvatar && typeof currentAvatar === 'object' && currentAvatar.type === 'img' && currentAvatar.src) {
+      return { emoji: '', imgSrc: currentAvatar.src, bg: 'rgba(45,140,106,0.18)' };
+    }
+    if (typeof currentAvatar === 'string' && currentAvatar) {
+      return { emoji: currentAvatar, bg: 'rgba(45,140,106,0.18)' };
+    }
+    return { emoji: '🙂', bg: 'rgba(45,140,106,0.18)' };
+  }
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  const emoji = AVATAR_EMOJIS[h % AVATAR_EMOJIS.length];
+  const bg = ASSIGNEE_AVATAR_PALETTE[h % ASSIGNEE_AVATAR_PALETTE.length];
+  return { emoji, bg };
+}
+function avatarInnerHtml(av) {
+  if (av && av.imgSrc) {
+    return `<img src="${esc(av.imgSrc)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">`;
+  }
+  return av?.emoji || '';
+}
+function renderAssignedAvatarStack(item, tid) {
+  const explicit = Array.isArray(item.assigned_to);
+  const rawList = explicit ? item.assigned_to : null;
+  // Distinguish: null (never edited → fall back to You) vs [] (explicitly unassigned → empty placeholder).
+  let list;
+  let tip;
+  if (rawList && rawList.length) {
+    list = rawList;
+    tip = 'Click to edit assignees';
+  } else if (rawList && rawList.length === 0) {
+    // Explicitly unassigned — show a dashed "+" placeholder.
+    return `<button onclick="event.stopPropagation();openAssigneesEditor('${tid}')" title="Click to add collaborators" style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:transparent;border:1.5px dashed var(--border);color:var(--muted-foreground);font-size:15px;line-height:1;cursor:pointer;flex-shrink:0;margin:0 8px;padding:0;">+</button>`;
+  } else {
+    list = ['You'];
+    tip = 'Click to add collaborators';
+  }
+  const max = 4;
+  const shown = list.slice(0, max);
+  const overflow = list.length - shown.length;
+  const bubbles = shown.map((name, i) => {
+    const av = avatarForName(name);
+    return `<span title="${esc(name)}" style="position:relative;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;width:30px;height:30px;border-radius:50%;background:${av.bg};border:2px solid #fff;font-size:15px;line-height:1;margin-left:${i === 0 ? '0' : '-10px'};box-shadow:0 1px 2px rgba(0,0,0,0.08);">${avatarInnerHtml(av)}</span>`;
+  }).join('');
+  const more = overflow > 0
+    ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#E5E5E5;border:2px solid #fff;font-size:11px;font-weight:700;color:#555;margin-left:-10px;box-shadow:0 1px 2px rgba(0,0,0,0.08);">+${overflow}</span>`
+    : '';
+  return `<button onclick="event.stopPropagation();openAssigneesEditor('${tid}')" title="${tip}" style="display:inline-flex;align-items:center;background:transparent;border:none;padding:0 8px;cursor:pointer;flex-shrink:0;">${bubbles}${more}</button>`;
 }
 
 function renderStatCards(data, active) {
@@ -1891,30 +2273,139 @@ function renderPowerGrid(active) {
   }
 }
 
-function renderOverloadBanner(active) {
-  const el = document.getElementById('overload-banner');
-  if (!el) return;
-  const now = Date.now();
-  const horizonMs = 24 * 3600 * 1000;
-  const soon = (active || []).filter((t) =>
-    effectiveQuadrant(t) === 'do' &&
-    t.deadline_iso &&
-    new Date(t.deadline_iso).getTime() - now < horizonMs &&
-    t.status !== 'done'
-  );
-  const totalMin = soon.reduce((s, t) => s + (effectiveDuration(t) || 0), 0);
-  const capacityMin = 360; // ~6 productive hours/day
-  if (totalMin > capacityMin && soon.length > 0) {
-    el.className = 'mb-5';
-    el.innerHTML = `<div class="flex items-center gap-3 bg-[rgba(199,68,58,0.08)] border border-[rgba(199,68,58,0.3)] rounded-[var(--radius-xl)] px-4 py-3">
-      <span style="font-size:18px;">⚠</span>
-      <div class="flex-1 text-sm text-[color:var(--heading-2)]">
-        <strong class="text-[color:var(--destructive)]">${fmtDuration(totalMin)} of Do Now work</strong> is due in the next 24 hours — typical capacity is about <strong>6h</strong>. Consider moving some to Plan or trimming scope.
+const LIFE_BALANCE_TIPS = [
+  { icon: '⏱', text: 'Break big tasks into smaller steps.' },
+  { icon: '☕', text: 'Take short breaks to stay focused.' },
+  { icon: '🌙', text: 'Avoid heavy workload late at night.' },
+];
+
+const LIFE_BALANCE_STATUS = {
+  balanced:      { label: 'Balanced',      icon: '🍃', tint: 'rgba(91,125,78,0.10)', border: 'rgba(91,125,78,0.35)', fg: 'var(--success)' },
+  slightly_busy: { label: 'Slightly busy', icon: '⏳', tint: 'rgba(180,130,42,0.10)', border: 'rgba(180,130,42,0.35)', fg: 'var(--warn)' },
+  overloaded:    { label: 'Overloaded',    icon: '⚠️', tint: 'rgba(199,68,58,0.08)',  border: 'rgba(199,68,58,0.35)', fg: 'var(--destructive)' },
+};
+
+function weeklyWorkload(active) {
+  const counts = [0, 0, 0, 0, 0, 0, 0]; // Mon..Sun
+  for (const t of active || []) {
+    if (!t.deadline_iso || t.status === 'done') continue;
+    const d = new Date(t.deadline_iso);
+    if (isNaN(d.getTime())) continue;
+    // Convert getDay() (0=Sun..6=Sat) to Mon-first index (0=Mon..6=Sun)
+    const monFirst = (d.getDay() + 6) % 7;
+    counts[monFirst] += 1;
+  }
+  return counts;
+}
+
+function renderWorkloadBars(counts) {
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const max = Math.max(1, ...counts);
+  const sorted = [...counts].sort((a, b) => b - a);
+  const top = sorted[0];
+  const second = sorted[1];
+  const colorFor = (n) => {
+    if (n === 0) return 'var(--border)';
+    if (n === top && top > 0) return 'var(--destructive)';
+    if (n === second && second > 0 && second < top) return 'var(--warn)';
+    return 'var(--success)';
+  };
+  const bars = counts.map((n, i) => {
+    const heightPct = (n / max) * 100;
+    return `
+      <div class="flex flex-col items-center gap-1" style="flex:1;min-width:0;">
+        <div class="text-xs font-bold" style="color:${n > 0 ? 'var(--foreground)' : 'var(--muted-foreground)'};">${n}</div>
+        <div style="width:24px;height:80px;background:transparent;display:flex;align-items:flex-end;">
+          <div style="width:100%;height:${heightPct}%;background:${colorFor(n)};border-radius:6px 6px 0 0;transition:height .25s ease;"></div>
+        </div>
+        <div class="text-[11px] text-[color:var(--muted-foreground)]">${labels[i]}</div>
+      </div>`;
+  }).join('');
+  return `<div class="flex items-end justify-between gap-2 px-2 py-3">${bars}</div>`;
+}
+
+function lifeBalanceStatusBlock(result) {
+  const meta = LIFE_BALANCE_STATUS[result.status] || LIFE_BALANCE_STATUS.balanced;
+  return `
+    <div class="rounded-[var(--radius-lg)] border px-4 py-3" style="background:${meta.tint};border-color:${meta.border};">
+      <div class="flex items-start gap-3">
+        <span style="font-size:22px;line-height:1;">${meta.icon}</span>
+        <div class="flex-1">
+          <div class="text-sm font-bold uppercase tracking-wider" style="color:${meta.fg};">${meta.label}</div>
+          <div class="text-sm text-[color:var(--heading-2)] mt-0.5">${esc(result.message || '')}</div>
+        </div>
       </div>
+      ${result.suggestion ? `
+      <div class="mt-3 pt-3 border-t" style="border-color:${meta.border};">
+        <div class="text-[11px] font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-1">💡 Suggestion</div>
+        <div class="text-sm text-[color:var(--heading-2)]">${esc(result.suggestion)}</div>
+      </div>` : ''}
     </div>`;
-  } else {
-    el.className = 'hidden';
-    el.innerHTML = '';
+}
+
+function renderLifeBalance(active) {
+  const el = document.getElementById('life-balance-card');
+  if (!el) return;
+  const counts = weeklyWorkload(active);
+  const result = (globalDashboardData && globalDashboardData.life_balance) || null;
+
+  const statusHtml = result
+    ? lifeBalanceStatusBlock(result)
+    : `
+      <div class="rounded-[var(--radius-lg)] border border-[var(--border)] px-4 py-3 flex items-center justify-between gap-3">
+        <div>
+          <div class="text-sm font-bold uppercase tracking-wider text-[color:var(--muted-foreground)]">Life Balance</div>
+          <div class="text-xs text-[color:var(--muted-foreground)] mt-1">Get an AI read on whether your week is overloaded.</div>
+        </div>
+        <button id="life-balance-analyze-btn" onclick="analyzeLifeBalance(this)" class="ghost-btn ghost-btn-accent" style="padding:6px 14px;font-size:12px;">
+          <span class="inline-flex items-center gap-1.5">✨ Analyze workload</span>
+        </button>
+      </div>`;
+
+  const refresh = result
+    ? `<button onclick="analyzeLifeBalance(this)" class="text-xs text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]" title="Re-run analysis">↻ Refresh</button>`
+    : '';
+
+  const tipsHtml = LIFE_BALANCE_TIPS.map((t) => `
+    <div class="flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)]" style="background:var(--accent);">
+      <span style="font-size:16px;line-height:1;">${t.icon}</span>
+      <div class="text-sm text-[color:var(--heading-2)]">${esc(t.text)}</div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <section class="bg-white border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] p-5">
+      ${refresh ? `<div class="flex justify-end mb-2">${refresh}</div>` : ''}
+      ${statusHtml}
+      <div class="mt-5">
+        <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-1">Workload Overview</div>
+        ${renderWorkloadBars(counts)}
+      </div>
+      <div class="mt-5">
+        <div class="text-xs font-bold uppercase tracking-widest text-[color:var(--muted-foreground)] mb-2">Tips for you</div>
+        <div class="space-y-2">${tipsHtml}</div>
+      </div>
+    </section>`;
+}
+
+async function analyzeLifeBalance(btn) {
+  if (btn) {
+    btn.disabled = true;
+    btn.dataset.prevHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="clarify-spinner" style="border-color:rgba(0,0,0,0.18);border-top-color:currentColor;"></span>Analyzing…</span>';
+    btn.style.cursor = 'wait';
+  }
+  try {
+    const res = await api('POST', '/api/life-balance/analyze', {});
+    if (globalDashboardData) globalDashboardData.life_balance = res;
+    const active = activeTasks(globalDashboardData || {});
+    renderLifeBalance(active);
+  } catch (e) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = btn.dataset.prevHtml || '✨ Analyze workload';
+      btn.style.cursor = '';
+    }
+    alert('Workload analysis failed: ' + (e?.message || 'unknown error'));
   }
 }
 
@@ -2139,6 +2630,7 @@ function openTaskModal(taskId) {
   }
 
   document.getElementById('modal-assignee').textContent = item.assigned_by || '—';
+  renderModalAssignees(item);
   document.getElementById('modal-status').textContent = statusLabel(item);
   renderAiSuggestion(item);
 
@@ -3277,6 +3769,24 @@ function consoleLine(text, kind = '') {
 
 function resetUpload() { document.getElementById('console').innerHTML = ''; document.getElementById('upload-processing').classList.add('hidden'); }
 
+function detectChatParticipants(rawText) {
+  if (typeof rawText !== 'string') return null;
+  const seen = new Set();
+  const list = [];
+  const senderRe = /^(?:\[?[^\]\n]*?\]?\s*-?\s*)?([A-Za-z][A-Za-z .'\-]{0,40}?):\s/gm;
+  let m;
+  while ((m = senderRe.exec(rawText)) !== null) {
+    const name = m[1].trim();
+    if (!name || name.length > 40 || seen.has(name)) continue;
+    if (/^(am|pm|http|https|note|http\b)$/i.test(name)) continue;
+    seen.add(name);
+    list.push(name);
+    if (list.length >= 12) break;
+  }
+  if (!seen.has('You')) list.unshift('You');
+  return list.length >= 2 ? list : null;
+}
+
 async function extractSelectedChat() {
   const chat = activeChat();
   if (!chat) { setStatus('Select a chat first.', 'error'); return; }
@@ -3299,10 +3809,11 @@ async function extractSelectedChat() {
 
   let linkedIds = [];
   try {
+    const participants = detectChatParticipants(chat.raw_text);
     const res = await fetch('/api/process-stream', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: textToSend, timeframe }),
+      body: JSON.stringify({ text: textToSend, timeframe, participants }),
     });
     if (res.status === 401) { showAuthGate(); return; }
     if (res.status === 413) throw new Error('Chat file is too large (max ~500 KB). Please trim the chat and try again.');
@@ -3564,6 +4075,13 @@ function applyAvatar(av) {
   } else {
     display.textContent = av || '❓';
     display.style.fontSize = '55px';
+  }
+  if (globalDashboardData && globalDashboardData.total_tasks != null) {
+    try { renderViews(globalDashboardData); } catch {}
+    if (modalTaskId) {
+      const item = findTaskInDashboard(modalTaskId);
+      if (item) try { renderModalAssignees(item); } catch {}
+    }
   }
 }
 
