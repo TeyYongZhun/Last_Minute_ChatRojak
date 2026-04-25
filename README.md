@@ -1,8 +1,12 @@
 # Last Minute ChatRojak
 
+**Team name** - Last Minute (230)
+- **Member 1** - Edrian Tan Kah Heng
+- **Member 2** - Tey Yong Zhun
+- **Member 3** - Teh Xu Zhe
 > AI-powered task extraction and planning from chat messages
 
-Paste your messy WhatsApp, Telegram, or team chat messages and ChatRojak automatically extracts tasks, prioritizes them, estimates deadlines, and syncs everything to your calendar.
+Paste your messy WhatsApp or team chat messages and ChatRojak automatically extracts tasks, prioritizes them, estimates deadlines, and syncs everything to your calendar.
 
 ---
 
@@ -15,7 +19,6 @@ Paste your messy WhatsApp, Telegram, or team chat messages and ChatRojak automat
 - **Life Balance Analysis** — Monitors workload distribution and flags overload
 - **Clarification Loop** — Asks follow-up questions when task details are ambiguous
 - **Google Calendar Sync** — Automatically creates calendar events from your task plan
-- **Telegram Bot** — Submit and manage tasks directly from Telegram
 - **Multiple AI Providers** — Supports Gemini (Google), ILMU GLM, and Anthropic Claude
 
 ---
@@ -29,7 +32,7 @@ Paste your messy WhatsApp, Telegram, or team chat messages and ChatRojak automat
 | Frontend | Vanilla HTML/JS (SPA) |
 | AI | Anthropic Claude, Google Gemini, ILMU GLM |
 | Auth | Cookie sessions + bcryptjs |
-| Integrations | Google Calendar OAuth2, Telegram Bot API |
+| Integrations | Google Calendar OAuth2|
 | Testing | Vitest + Supertest |
 
 ---
@@ -60,24 +63,23 @@ cp .env.example .env
 Key variables in `.env`:
 
 ```env
-# AI Provider: 'gemini' or 'ilmuglm'
+# AI Provider: 'gemini' or 'openai'
 AI_PROVIDER=gemini
 GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
+
+ILMU_API_KEY=your_ilmu_api_key
+ILMU_BASE_URL=https://api.ilmu.ai/v1
+ILMU_MODEL=ilmu-glm-5.1
 
 # Server
 PORT=8000
-SESSION_SECRET=your_64_char_hex_secret
-
-# Database
-DB_PATH=state/app.db
 
 # Google Calendar (optional)
 GOOGLE_CLIENT_ID=your_client_id
 GOOGLE_CLIENT_SECRET=your_client_secret
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/google/auth/callback
 
-# Telegram Bot (optional)
-TELEGRAM_BOT_TOKEN=your_bot_token
 ```
 
 ### Run
