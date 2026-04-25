@@ -148,30 +148,78 @@ Raw Chat Message
 ```
 Last_Minute_ChatRojak/
 ├── src/
-│   ├── server.js               # Express server & API routes
-│   ├── client.js               # AI provider abstraction layer
-│   ├── modules/                # Core business logic
-│   │   ├── task1Parser.js
-│   │   ├── task2Planner.js
-│   │   ├── task3Executor.js
-│   │   ├── eisenhowerMatrix.js
-│   │   ├── adaptiveScoring.js
-│   │   ├── lifeBalance.js
-│   │   ├── clarificationLoop.js
-│   │   ├── dependencyGraph.js
-│   │   ├── telegramBot.js
-│   │   └── ...
+│   ├── server.js                      # Express server & API routes
+│   ├── scheduler.js                   # Background job scheduler
+│   ├── client.js                      # AI provider abstraction layer
+│   ├── load-env.js                    # Environment variable loader
+│   ├── setupAuth.js                   # Auth initialisation
+│   ├── testCalendar.js                # Calendar integration test script
+│   ├── auth/
+│   │   ├── middleware.js              # Session authentication middleware
+│   │   ├── passwords.js              # Password hashing utilities
+│   │   └── rateLimit.js              # Login rate limiting
+│   ├── modules/                       # Core business logic
+│   │   ├── task1Parser.js            # Stage 1: parse chat → tasks
+│   │   ├── task2Planner.js           # Stage 2: plan & prioritise
+│   │   ├── task3Executor.js          # Stage 3: execute & track
+│   │   ├── actions.js                # Task action handlers
+│   │   ├── adapter.js                # AI provider adapter
+│   │   ├── adaptiveScoring.js        # Preference learning & scoring
+│   │   ├── calendarSuggester.js      # Smart calendar slot suggestion
+│   │   ├── categorizer.js            # Task categorisation
+│   │   ├── clarificationLoop.js      # Ambiguity follow-up loop
+│   │   ├── deadlineParser.js         # Natural language deadline parsing
+│   │   ├── dependencyGraph.js        # Task dependency resolution
+│   │   ├── lifeBalance.js            # Workload & balance analysis
+│   │   ├── notifier.js               # Push notification dispatch
+│   │   ├── processStream.js          # Streaming AI pipeline
+│   │   ├── promptChain.js            # Prompt chaining helpers
+│   │   ├── slotter.js                # Time-slot allocation
+│   │   ├── smartReminders.js         # Intelligent reminder scheduling
+│   │   ├── stepGenerator.js          # Checklist step generation
+│   │   ├── telegramBot.js            # Telegram bot integration
+│   │   └── validator.js              # Input validation
 │   ├── db/
-│   │   ├── migrations/         # SQL schema migrations (001–008)
-│   │   └── repos/              # Data access layer per entity
-│   ├── routes/                 # Auth, Google OAuth, Telegram webhook
-│   └── integrations/
-│       └── googleCalendar.js
+│   │   ├── index.js                  # Database connection
+│   │   ├── migrate.js                # Migration runner
+│   │   ├── migrations/               # SQL schema migrations (001–008)
+│   │   └── repos/                    # Data access layer per entity
+│   │       ├── adaptation.js
+│   │       ├── calendarEvents.js
+│   │       ├── checklists.js
+│   │       ├── clarificationThreads.js
+│   │       ├── dependencies.js
+│   │       ├── googleTokens.js
+│   │       ├── notifications.js
+│   │       ├── plans.js
+│   │       ├── reminders.js
+│   │       ├── replanEvents.js
+│   │       ├── sessions.js
+│   │       ├── taskEvents.js
+│   │       ├── tasks.js
+│   │       ├── telegram.js
+│   │       ├── userPreferences.js
+│   │       └── users.js
+│   ├── routes/
+│   │   ├── auth.js                   # Authentication routes
+│   │   ├── googleOAuth.js            # Google OAuth2 callback
+│   │   └── telegram.js              # Telegram webhook route
+│   ├── integrations/
+│   │   └── googleCalendar.js         # Google Calendar API wrapper
+│   └── services/
+│       └── googleCalendar.js         # Google Calendar service layer
 ├── static/
-│   └── index.html              # SPA frontend
-├── test/                       # Vitest test suite
+│   └── index.html                    # SPA frontend
+├── test/
+│   ├── setup.js                      # Test environment setup
+│   ├── unit/                         # Unit tests (13 suites)
+│   └── integration/                  # Integration tests (7 suites)
 ├── scripts/
-│   └── migrate-json-state.js
+│   ├── migrate-json-state.js         # Migrate legacy JSON → SQLite
+│   └── audit-orphan-calendar-events.js
+├── state/                            # Runtime SQLite database
+├── PRD&SAD&QATD&PItch Deck/         # Project documents (PRD, SAD, QATD, pitch deck)
+├── vitest.config.js
 ├── .env.example
 └── package.json
 ```
