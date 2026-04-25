@@ -1,0 +1,29 @@
+import os
+
+# 1. Define the file types you want the AI to read
+extensions = ('.js', '.html', '.css', '.json', '.py', '.jsx', '.ts', '.tsx')
+output_file = 'ai_codebase_context.md'
+
+with open(output_file, 'w', encoding='utf-8') as outfile:
+    for root, dirs, files in os.walk('.'):
+        # 2. Skip folders you don't want the AI to waste time reading
+        if any(ignored in root for ignored in ['.git', 'node_modules', 'venv', '__pycache__']):
+            continue
+        
+        for file in files:
+            if file.endswith(extensions):
+                filepath = os.path.join(root, file)
+                
+                # 3. Write a clear header for the AI
+                outfile.write(f"\n\n{'='*50}\n")
+                outfile.write(f"FILE: {filepath}\n")
+                outfile.write(f"{'='*50}\n\n")
+                
+                # 4. Append the code
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as infile:
+                        outfile.write(infile.read())
+                except Exception as e:
+                    outfile.write(f"[Error reading file: {e}]\n")
+
+print(f"Success! Upload {output_file} to the chat.")
