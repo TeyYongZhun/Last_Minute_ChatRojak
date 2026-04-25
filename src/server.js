@@ -60,7 +60,7 @@ if (!sessionSecret) {
   console.warn('[server] WARNING: SESSION_SECRET not set — generating an ephemeral secret; sessions will not survive restart.');
 }
 app.use(cookieParser(sessionSecret || crypto.randomBytes(32).toString('hex')));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '500kb' }));
 app.use('/static', express.static(STATIC_DIR));
 
 app.get('/', (_req, res) => {
