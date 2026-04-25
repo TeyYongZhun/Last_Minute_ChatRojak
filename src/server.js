@@ -10,6 +10,7 @@ import {
   replanAll,
   startTask,
   completeTask,
+  uncompleteTask,
   pauseTask,
   respondToClarification,
   setUserEisenhower,
@@ -36,7 +37,7 @@ import telegramRouter from './routes/telegram.js';
 import googleOAuthRouter from './routes/googleOAuth.js';
 import { requireUser } from './auth/middleware.js';
 import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField, setAiSuggestion } from './db/repos/tasks.js';
-import { getPlan } from './db/repos/plans.js';
+import { getPlan, upsertPlan } from './db/repos/plans.js';
 import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
 import { addTaskEvent } from './db/repos/taskEvents.js';
@@ -262,12 +263,26 @@ app.post('/api/demo-seed', requireUser, async (req, res) => {
     steps.forEach((s, pos) => { if (s.done) toggleChecklistItem(taskId, pos); });
   }
 
-  startTask(req.user.id, rid('demo1'));
-
-  try {
-    await replanAll(req.user.id, new Date());
-  } catch (e) {
-    console.error('[/api/demo-seed] replan error:', e);
+  const demoPlans = [
+    { key: 't1', score: 95, decision: 'do_now'   },
+    { key: 't2', score: 75, decision: 'schedule'  },
+    { key: 't3', score: 60, decision: 'schedule'  },
+    { key: 't4', score: 40, decision: 'defer'     },
+    { key: 't5', score: 50, decision: 'schedule'  },
+    { key: 't6', score: 55, decision: 'schedule'  },
+    { key: 't7', score: 45, decision: 'defer'     },
+    { key: 't8', score: 30, decision: 'defer'     },
+  ];
+  for (const p of demoPlans) {
+    upsertPlan(req.user.id, {
+      task_id: rid(p.key),
+      priority_score: p.score,
+      decision: p.decision,
+      steps: [],
+      conflicts: [],
+      missing_info_questions: [],
+      status: 'pending',
+    });
   }
 
   res.json({ seeded: true, total_tasks: getDashboard(req.user.id).total_tasks });
@@ -284,12 +299,6 @@ app.post('/api/tasks/:taskId/start', requireUser, (req, res) => {
       return res.status(404).json({ detail: 'Task not found' });
     case 'done':
       return res.status(409).json({ detail: 'Task is already completed', reason: 'done' });
-    case 'blocked':
-      return res.status(409).json({
-        detail: 'Task is blocked — clarification needed before it can be started',
-        reason: 'blocked_waiting_info',
-        missing_fields: out.missing_fields || [],
-      });
     case 'blocked_by_deps':
       return res.status(409).json({
         detail: 'Task is waiting on unfinished prerequisites',
@@ -301,23 +310,24 @@ app.post('/api/tasks/:taskId/start', requireUser, (req, res) => {
   }
 });
 
-app.post('/api/tasks/:taskId/complete', requireUser, async (req, res) => {
+app.post('/api/tasks/:taskId/complete', requireUser, (req, res) => {
   if (!completeTask(req.user.id, req.params.taskId)) {
     return res.status(404).json({ detail: 'Task not found' });
-  }
-  try {
-    await replanAll(req.user.id, new Date());
-  } catch (e) {
-    console.error('[/api/tasks/:id/complete] replan error:', e);
   }
   res.json({ status: 'done' });
 });
 
-app.post('/api/tasks/:taskId/pause', requireUser, async (req, res) => {
+app.post('/api/tasks/:taskId/uncomplete', requireUser, (req, res) => {
+  if (!uncompleteTask(req.user.id, req.params.taskId)) {
+    return res.status(404).json({ detail: 'Task not found or not completed' });
+  }
+  res.json({ status: 'pending' });
+});
+
+app.post('/api/tasks/:taskId/pause', requireUser, (req, res) => {
   const out = pauseTask(req.user.id, req.params.taskId);
   switch (out.result) {
     case 'ok':
-      try { await replanAll(req.user.id, new Date()); } catch (e) { console.error('[/api/tasks/:id/pause] replan error:', e); }
       return res.json({ status: 'pending' });
     case 'not_found':
       return res.status(404).json({ detail: 'Task not found' });
@@ -475,22 +485,12 @@ app.post('/api/tasks/:taskId/dependencies', requireUser, async (req, res) => {
     const status = code === 'CYCLE' ? 409 : 400;
     return res.status(status).json({ detail: error });
   }
-  try {
-    await replanAll(req.user.id, new Date());
-  } catch (e) {
-    console.error('[/api/tasks/:id/dependencies] replan error:', e);
-  }
   res.json({ ok: true });
 });
 
-app.delete('/api/tasks/:taskId/dependencies/:dep', requireUser, async (req, res) => {
+app.delete('/api/tasks/:taskId/dependencies/:dep', requireUser, (req, res) => {
   const changed = removeTaskDependency(req.user.id, req.params.taskId, req.params.dep);
   if (!changed) return res.status(404).json({ detail: 'Dependency not found' });
-  try {
-    await replanAll(req.user.id, new Date());
-  } catch (e) {
-    console.error('[/api/tasks/:id/dependencies] replan error:', e);
-  }
   res.json({ ok: true });
 });
 
@@ -670,12 +670,8 @@ app.post('/api/tasks/:taskId/calendar-sync', requireUser, async (req, res) => {
 
   const fresh = getTask(req.user.id, task.id);
   const plan = getPlan(req.user.id, task.id);
-  // Anchor the calendar event to the task's deadline (not the scheduler's slot) so
-  // behaviour is identical regardless of AI urgency. Keeps description metadata
-  // intact while forcing buildEventBody down the deadline fallback.
-  const planForSync = plan ? { ...plan, planned_start_iso: null, planned_end_iso: null, slot_origin: null } : null;
   try {
-    const result = await upsertCalendarEvent(req.user.id, fresh, planForSync, new Date());
+    const result = await upsertCalendarEvent(req.user.id, fresh, plan, new Date());
 
     if (result?.synced && result.event_id) {
       setCalendarSyncEnabled(req.user.id, task.id, 1);

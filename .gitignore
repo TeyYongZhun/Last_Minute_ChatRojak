@@ -3,3 +3,5 @@ node_modules/
 state/tasks.json
 *.log
 .DS_Store
+state/app.db-shm
+state/app.db-wal

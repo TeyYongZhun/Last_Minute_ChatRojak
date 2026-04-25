@@ -4,7 +4,7 @@ import { MODEL, getProviderName } from '../client.js';
 
 export async function processWithEvents(userId, text, now, emit, timeframe = 'all') {
   const lineCount = text.split('\n').filter((l) => l.trim().length > 0).length;
-  emit('log', { text: `Parsing ${lineCount} message line(s) via 4-step AI chain…` });
+  emit('log', { text: `Parsing ${lineCount} message line(s) via 3-step AI chain…` });
   emit('log', { text: `Using ${getProviderName()} · ${MODEL}` });
 
   const chain = await runChain(userId, text, now, {
