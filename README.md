@@ -1,10 +1,15 @@
 # Last Minute ChatRojak
 
-**Team name** - Last Minute (230)
-- **Member 1** - Edrian Tan Kah Heng
-- **Member 2** - Tey Yong Zhun
-- **Member 3** - Teh Xu Zhe
-> AI-powered task extraction and planning from chat messages
+### 🎥 Pitching Video
+> **[Watch our Project Pitching Video here](https://drive.google.com/drive/folders/11xFTcpw0_6hDmv2WjKBwpsWeKG2rzUAi)** > *(Please ensure link permissions are set to "Anyone with the link can view")*
+
+---
+
+**Team name:** Last Minute (230)
+
+* **Member 1:** Edrian Tan Kah Heng
+* **Member 2:** Tey Yong Zhun
+* **Member 3:** Teh Xu Zhe
 
 Paste your messy WhatsApp or team chat messages and ChatRojak automatically extracts tasks, prioritizes them, estimates deadlines, and syncs everything to your calendar.
 
