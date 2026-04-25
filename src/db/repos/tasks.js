@@ -30,7 +30,23 @@ function normaliseRow(row) {
     updated_at: row.updated_at ?? row.created_at,
     completed_at: row.completed_at ?? null,
     calendar_sync_enabled: row.calendar_sync_enabled ? 1 : 0,
+    ai_suggestion: (() => { try { return row.ai_suggestion ? JSON.parse(row.ai_suggestion) : null; } catch { return null; } })(),
   };
+}
+
+export function setAiSuggestion(userId, taskId, suggestion) {
+  const db = getDb();
+  const json = suggestion ? JSON.stringify({ ...suggestion, generated_at: new Date().toISOString() }) : null;
+  return db
+    .prepare('UPDATE tasks SET ai_suggestion = ?, updated_at = ? WHERE user_id = ? AND id = ?')
+    .run(json, Date.now(), userId, taskId).changes;
+}
+
+export function clearCalendarSyncForUser(userId) {
+  const db = getDb();
+  return db
+    .prepare('UPDATE tasks SET calendar_sync_enabled = 0, updated_at = ? WHERE user_id = ? AND calendar_sync_enabled = 1')
+    .run(Date.now(), userId).changes;
 }
 
 export function setCalendarSyncEnabled(userId, taskId, enabled) {
@@ -266,4 +282,53 @@ export function renameTaskCategory(userId, oldName, newName) {
   return db
     .prepare('UPDATE tasks SET category = ?, updated_at = ? WHERE user_id = ? AND category = ?')
     .run(newName, Date.now(), userId, oldName).changes;
+}
+
+function normalizeTags(tags) {
+  if (!Array.isArray(tags)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const raw of tags) {
+    const tag = String(raw || '').trim().toLowerCase();
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    out.push(tag);
+  }
+  return out;
+}
+
+export function replaceTaskTags(taskId, tags) {
+  const db = getDb();
+  const normalized = normalizeTags(tags);
+  const tx = db.transaction(() => {
+    db.prepare('DELETE FROM task_tags WHERE task_id = ?').run(taskId);
+    const ins = db.prepare('INSERT INTO task_tags (task_id, tag) VALUES (?, ?)');
+    for (const tag of normalized) {
+      ins.run(taskId, tag);
+    }
+  });
+  tx();
+}
+
+export function getTagsForTask(taskId) {
+  const db = getDb();
+  return db
+    .prepare('SELECT tag FROM task_tags WHERE task_id = ? ORDER BY tag ASC')
+    .all(taskId)
+    .map((r) => r.tag);
+}
+
+export function listAvailableTags(userId) {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT tt.tag AS tag, COUNT(*) AS count
+       FROM task_tags tt
+       JOIN tasks t ON t.id = tt.task_id
+       WHERE t.user_id = ?
+       GROUP BY tt.tag
+       ORDER BY count DESC, tt.tag ASC`
+    )
+    .all(userId)
+    .map((r) => ({ tag: r.tag, count: Number(r.count) }));
 }
