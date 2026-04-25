@@ -607,6 +607,16 @@ app.delete('/api/tasks/:taskId', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/tasks/:taskId/rename', requireUser, (req, res) => {
+  const { title } = req.body || {};
+  const trimmed = typeof title === 'string' ? title.trim() : '';
+  if (!trimmed) return res.status(400).json({ detail: 'title is required' });
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  updateTaskField(req.user.id, req.params.taskId, 'task', trimmed);
+  res.json({ ok: true });
+});
+
 app.post('/api/tasks/:taskId/deadline', requireUser, (req, res) => {
   const { deadline_iso } = req.body || {};
   const task = getTask(req.user.id, req.params.taskId);

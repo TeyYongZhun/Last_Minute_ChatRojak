@@ -1321,6 +1321,8 @@ async function loadDemo() {
       if (!ok) { if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; } return; }
       await api('POST', '/api/demo-seed', { force: true });
     }
+    saveTaskFilterUsers(['You']);
+    localStorage.setItem('taskFilterVersion', '1');
     await refreshDashboard();
     setMode('dashboard');
   } catch (e) {
@@ -1354,6 +1356,8 @@ function setMode(mode) {
   else if (mode === 'upload') renderChatFileList();
   else {
     filters.quadrants = {};
+    saveTaskFilterUsers(['You']);
+    localStorage.setItem('taskFilterVersion', '1');
     refreshDashboard();
   }
 }
@@ -1469,7 +1473,9 @@ function collectTeamUsers(allTasks) {
       for (const n of t.assigned_to) if (typeof n === 'string' && n.trim()) set.add(n.trim());
     }
   }
-  return Array.from(set);
+  const users = Array.from(set);
+  buildAvatarAssignments(users);
+  return users;
 }
 function hasTeamTasks(allTasks) {
   return (allTasks || []).some((t) => Array.isArray(t.assigned_to) && t.assigned_to.length);
@@ -1487,8 +1493,13 @@ function saveTaskFilterUsers(users) {
   try { localStorage.setItem('taskFilterUsers', JSON.stringify(Array.isArray(users) ? users : [])); } catch {}
 }
 function getEffectiveFilterUsers(allUsers) {
+  if (!localStorage.getItem('taskFilterVersion')) {
+    saveTaskFilterUsers(['You']);
+    localStorage.setItem('taskFilterVersion', '1');
+    return new Set(['You']);
+  }
   const stored = loadTaskFilterUsers();
-  if (!stored) return new Set(allUsers); // default: all selected
+  if (!stored) return new Set(['You']);
   return new Set(stored.filter((u) => allUsers.includes(u)));
 }
 function taskVisibleUnderFilter(task, selectedSet) {
@@ -1848,6 +1859,7 @@ function renderViews(data) {
     document.getElementById('checklist-content').innerHTML = '<div class="text-base text-[color:var(--muted-foreground)] py-16 text-center bg-white rounded-[var(--radius-xl)] border border-[var(--border)]">No tasks available.</div>';
     renderPowerGrid([]);
     renderCalendar(data, []);
+    renderLifeBalance([]);
     return;
   }
   if (emptyState) emptyState.classList.add('hidden');
@@ -2074,6 +2086,30 @@ function renderTaskRow(item) {
 }
 
 const ASSIGNEE_AVATAR_PALETTE = ['#F8C8A8', '#E5C0F0', '#B8E0C8', '#FAD8B0', '#C5D8FA', '#F5B5C7', '#D4C0E8', '#B5DBE8'];
+let _avatarAssignments = {};
+function buildAvatarAssignments(users) {
+  _avatarAssignments = {};
+  const sorted = [...users].filter((u) => u !== 'You').sort();
+  for (const name of sorted) {
+    const used = new Set(Object.values(_avatarAssignments));
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    let assigned = false;
+    for (let i = 0; i < ASSIGNEE_POSITIVE_EMOJIS.length; i++) {
+      const emoji = ASSIGNEE_POSITIVE_EMOJIS[(h + i) % ASSIGNEE_POSITIVE_EMOJIS.length];
+      if (!used.has(emoji)) { _avatarAssignments[name] = emoji; assigned = true; break; }
+    }
+    if (!assigned) _avatarAssignments[name] = ASSIGNEE_POSITIVE_EMOJIS[h % ASSIGNEE_POSITIVE_EMOJIS.length];
+  }
+}
+const ASSIGNEE_POSITIVE_EMOJIS = [
+  '😀','😃','😄','😁','😆','😅','🤣','😂',
+  '😊','😇','🙂','😉','😌','😍','🥰','😎',
+  '🤓','🧐','🥳','🤩','🐶','🐱','🐭','🐹',
+  '🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐸',
+  '🐵','🌸','🌺','🌻','🌹','🍀','🌈','⭐',
+  '🔥','💎','🎯','🎮','🎨','🎵','🎸','🏆','🚀',
+];
 function avatarForName(name) {
   const s = String(name || '');
   if (s === 'You') {
@@ -2087,7 +2123,7 @@ function avatarForName(name) {
   }
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  const emoji = AVATAR_EMOJIS[h % AVATAR_EMOJIS.length];
+  const emoji = _avatarAssignments[s] ?? ASSIGNEE_POSITIVE_EMOJIS[h % ASSIGNEE_POSITIVE_EMOJIS.length];
   const bg = ASSIGNEE_AVATAR_PALETTE[h % ASSIGNEE_AVATAR_PALETTE.length];
   return { emoji, bg };
 }
@@ -3303,6 +3339,8 @@ async function resetAll() {
     resetUpload();
     // Clear filters
     localStorage.removeItem('filters');
+    // Clear life balance cached result
+    if (globalDashboardData) globalDashboardData.life_balance = null;
     refreshDashboard();
   } catch (e) { console.error(e); }
 }
