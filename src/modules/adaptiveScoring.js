@@ -48,8 +48,6 @@ export function recordEdit(userId, { task, aiPriority, userPriority }) {
   return next;
 }
 
-// User resized a task block → log-ratio of user/AI estimate pushes the duration bias.
-// Positive bias ⇒ user consistently thinks tasks take longer than the AI predicts.
 export function recordDurationAdjust(userId, { aiMinutes, userMinutes }) {
   if (!aiMinutes || !userMinutes || aiMinutes === userMinutes) return;
   const ratio = Math.log(userMinutes / aiMinutes);
@@ -65,8 +63,6 @@ export function recordDurationAdjust(userId, { aiMinutes, userMinutes }) {
   return next;
 }
 
-// User dragged a task to a different quadrant → each axis shift (urgent / important)
-// nudges its corresponding bias. Thresholds in scoreEisenhower pick this up on next extract.
 const QUADRANT_BOOLS = { do: [1, 1], plan: [0, 1], quick: [1, 0], later: [0, 0] };
 
 export function recordQuadrantAdjust(userId, { aiQuadrant, userQuadrant }) {

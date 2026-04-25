@@ -44,7 +44,6 @@ export function hasCycle(edges, extra = null) {
 export function topoSort(tasks, edges) {
   const ids = new Set(tasks.map((t) => t.id));
   const filtered = edges.filter((e) => ids.has(e.task_id) && ids.has(e.depends_on));
-  // Reverse adjacency: for edge task -> depends_on, depends_on points to tasks that depend on it.
   const revAdj = new Map();
   for (const id of ids) revAdj.set(id, []);
   const indeg = new Map();

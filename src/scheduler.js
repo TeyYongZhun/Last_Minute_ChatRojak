@@ -22,7 +22,7 @@ export async function tick(now = new Date()) {
       const failed = await retryFailedCalendar();
       if (failed?.length) console.log(`[scheduler] ${failed.length} calendar event(s) pending retry`);
     } catch (e) {
-      // Calendar retry is best-effort; never let it crash the tick.
+      // ignored
     }
   } catch (e) {
     console.error('[scheduler] tick error:', e);
