@@ -63,24 +63,23 @@ cp .env.example .env
 Key variables in `.env`:
 
 ```env
-# AI Provider: 'gemini' or 'ilmuglm'
+# AI Provider: 'gemini' or 'openai'
 AI_PROVIDER=gemini
 GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
+
+ILMU_API_KEY=your_ilmu_api_key
+ILMU_BASE_URL=https://api.ilmu.ai/v1
+ILMU_MODEL=ilmu-glm-5.1
 
 # Server
 PORT=8000
-SESSION_SECRET=your_64_char_hex_secret
-
-# Database
-DB_PATH=state/app.db
 
 # Google Calendar (optional)
 GOOGLE_CLIENT_ID=your_client_id
 GOOGLE_CLIENT_SECRET=your_client_secret
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/google/auth/callback
 
-# Telegram Bot (optional)
-TELEGRAM_BOT_TOKEN=your_bot_token
 ```
 
 ### Run
