@@ -30,7 +30,23 @@ function normaliseRow(row) {
     updated_at: row.updated_at ?? row.created_at,
     completed_at: row.completed_at ?? null,
     calendar_sync_enabled: row.calendar_sync_enabled ? 1 : 0,
+    ai_suggestion: (() => { try { return row.ai_suggestion ? JSON.parse(row.ai_suggestion) : null; } catch { return null; } })(),
   };
+}
+
+export function setAiSuggestion(userId, taskId, suggestion) {
+  const db = getDb();
+  const json = suggestion ? JSON.stringify({ ...suggestion, generated_at: new Date().toISOString() }) : null;
+  return db
+    .prepare('UPDATE tasks SET ai_suggestion = ?, updated_at = ? WHERE user_id = ? AND id = ?')
+    .run(json, Date.now(), userId, taskId).changes;
+}
+
+export function clearCalendarSyncForUser(userId) {
+  const db = getDb();
+  return db
+    .prepare('UPDATE tasks SET calendar_sync_enabled = 0, updated_at = ? WHERE user_id = ? AND calendar_sync_enabled = 1')
+    .run(Date.now(), userId).changes;
 }
 
 export function setCalendarSyncEnabled(userId, taskId, enabled) {

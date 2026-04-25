@@ -44,6 +44,11 @@ export function deleteEventMapping(taskId) {
   db.prepare('DELETE FROM calendar_events WHERE task_id = ?').run(taskId);
 }
 
+export function deleteAllForUser(userId) {
+  const db = getDb();
+  return db.prepare('DELETE FROM calendar_events WHERE user_id = ?').run(userId).changes;
+}
+
 export function listForUser(userId) {
   const db = getDb();
   return db.prepare('SELECT task_id, event_id, sync_state FROM calendar_events WHERE user_id = ?').all(userId);

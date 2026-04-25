@@ -35,7 +35,7 @@ import authRouter from './routes/auth.js';
 import telegramRouter from './routes/telegram.js';
 import googleOAuthRouter from './routes/googleOAuth.js';
 import { requireUser } from './auth/middleware.js';
-import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField } from './db/repos/tasks.js';
+import { getTask, setCalendarSyncEnabled, deleteTask, updateTaskField, setAiSuggestion } from './db/repos/tasks.js';
 import { getPlan } from './db/repos/plans.js';
 import { getTokens as getGoogleTokens } from './db/repos/googleTokens.js';
 import { upsertEvent as upsertCalendarEvent, deleteEvent as deleteCalendarEvent } from './integrations/googleCalendar.js';
@@ -43,6 +43,7 @@ import { addTaskEvent } from './db/repos/taskEvents.js';
 import { addChecklistItem, updateChecklistItemText, deleteChecklistItem, toggleChecklistItem, getChecklist, replaceChecklist } from './db/repos/checklists.js';
 import { generateStepsForTask } from './modules/stepGenerator.js';
 import { parseClarificationDeadline } from './modules/deadlineParser.js';
+import { suggestCalendarForTask } from './modules/calendarSuggester.js';
 import { listOpenThreads, receive as receiveClarification } from './modules/clarificationLoop.js';
 import { reset as resetAdaptation, weightsSummary } from './modules/adaptiveScoring.js';
 import { getPreferences, upsertPreferences } from './db/repos/userPreferences.js';
@@ -356,6 +357,19 @@ app.post('/api/tasks/:taskId/steps/generate', requireUser, async (req, res) => {
   }
 });
 
+app.post('/api/tasks/:taskId/suggest', requireUser, async (req, res) => {
+  const task = getTask(req.user.id, req.params.taskId);
+  if (!task) return res.status(404).json({ detail: 'Task not found' });
+  try {
+    const suggestion = await suggestCalendarForTask(task, new Date());
+    setAiSuggestion(req.user.id, task.id, suggestion);
+    res.json(suggestion);
+  } catch (err) {
+    console.error('[tasks/suggest]', err);
+    res.status(502).json({ detail: err.message || 'AI suggestion failed' });
+  }
+});
+
 app.post('/api/tasks/:taskId/step', requireUser, (req, res) => {
   const { index } = req.body || {};
   if (typeof index !== 'number') {
@@ -651,27 +665,43 @@ app.post('/api/tasks/:taskId/calendar-sync', requireUser, async (req, res) => {
   }
 
   if (!getGoogleTokens(req.user.id)) {
-    return res.status(409).json({ detail: 'Google Calendar not linked' });
+    return res.status(409).json({ detail: 'Google Calendar not linked', code: 'not_linked' });
   }
-
-  setCalendarSyncEnabled(req.user.id, task.id, 1);
-  addTaskEvent(req.user.id, task.id, 'calendar_sync_toggled', { enabled: true });
 
   const fresh = getTask(req.user.id, task.id);
   const plan = getPlan(req.user.id, task.id);
+  // Anchor the calendar event to the task's deadline (not the scheduler's slot) so
+  // behaviour is identical regardless of AI urgency. Keeps description metadata
+  // intact while forcing buildEventBody down the deadline fallback.
+  const planForSync = plan ? { ...plan, planned_start_iso: null, planned_end_iso: null, slot_origin: null } : null;
   try {
-    const result = await upsertCalendarEvent(req.user.id, fresh, plan, new Date());
-    return res.json({
-      ok: true,
-      enabled: true,
-      event_id: result?.event_id,
-      skipped: result?.skipped ? true : undefined,
-      reason: result?.reason,
-      error: result?.error,
+    const result = await upsertCalendarEvent(req.user.id, fresh, planForSync, new Date());
+
+    if (result?.synced && result.event_id) {
+      setCalendarSyncEnabled(req.user.id, task.id, 1);
+      addTaskEvent(req.user.id, task.id, 'calendar_sync_toggled', { enabled: true });
+      return res.json({ ok: true, synced: true, event_id: result.event_id });
+    }
+
+    if (result?.skipped) {
+      return res.json({
+        ok: false,
+        synced: false,
+        skipped: true,
+        reason: result.reason || 'unknown',
+        error: result.error || null,
+      });
+    }
+
+    // synced === false + error
+    return res.status(502).json({
+      ok: false,
+      synced: false,
+      error: result?.error || 'Calendar sync failed',
     });
   } catch (err) {
     console.error('[/api/tasks/:id/calendar-sync] upsert error:', err.message);
-    return res.status(500).json({ detail: err.message || 'Calendar sync failed' });
+    return res.status(502).json({ ok: false, synced: false, error: err.message || 'Calendar sync failed' });
   }
 });
 

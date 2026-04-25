@@ -63,6 +63,7 @@ import {
 import { openThread, listOpenThreads } from './clarificationLoop.js';
 import { assignSlots, detectSlotOverlaps } from './slotter.js';
 import { getPreferences } from '../db/repos/userPreferences.js';
+import { getEventForTask } from '../db/repos/calendarEvents.js';
 
 function ts(d = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -609,6 +610,16 @@ export function getDashboard(userId, filters = {}) {
       plan_missing: !plan,
       updated_at: task.updated_at,
       completed_at: task.completed_at,
+      ai_suggestion: task.ai_suggestion || null,
+      calendar_sync_enabled: task.calendar_sync_enabled ? 1 : 0,
+      ...(() => {
+        const ev = getEventForTask(task.id);
+        return {
+          calendar_event_id: ev?.event_id || null,
+          calendar_sync_state: ev?.sync_state || null,
+          calendar_last_error: ev?.last_error || null,
+        };
+      })(),
     };
     if (task.status === 'done') done.push(item);
     else if (task.status === 'in_progress') in_progress.push(item);

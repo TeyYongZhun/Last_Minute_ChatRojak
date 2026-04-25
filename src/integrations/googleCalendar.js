@@ -4,8 +4,10 @@ import {
   upsertEvent as upsertEventMapping,
   markFailed,
   deleteEventMapping,
+  deleteAllForUser as deleteAllEventMappingsForUser,
   listFailed,
 } from '../db/repos/calendarEvents.js';
+import { clearCalendarSyncForUser } from '../db/repos/tasks.js';
 import { computeSchedule } from '../modules/smartReminders.js';
 import { addTaskEvent } from '../db/repos/taskEvents.js';
 
@@ -106,6 +108,8 @@ export async function connectUserFromCode(userId, code) {
 
 export function disconnect(userId) {
   deleteTokens(userId);
+  deleteAllEventMappingsForUser(userId);
+  clearCalendarSyncForUser(userId);
 }
 
 const OFFSET_SUFFIX_RE = /(Z|[+-]\d{2}:\d{2})$/;
@@ -243,22 +247,34 @@ export async function upsertEvent(userId, task, plan, now = new Date()) {
   const existing = getEventForTask(task.id);
   try {
     let result;
+    let action = 'insert';
     if (existing?.event_id) {
-      result = await apiFetch(
-        userId,
-        'PATCH',
-        `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(existing.event_id)}`,
-        body
-      );
+      try {
+        result = await apiFetch(
+          userId,
+          'PATCH',
+          `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(existing.event_id)}`,
+          body
+        );
+        action = 'patch';
+      } catch (patchErr) {
+        // Stale mapping — event was deleted on Google's side. Drop the mapping and insert fresh.
+        if (patchErr.status === 404 || patchErr.status === 410) {
+          deleteEventMapping(task.id);
+          result = await apiFetch(userId, 'POST', `/calendars/${encodeURIComponent(calendarId)}/events`, body);
+          action = 'reinsert_after_stale_mapping';
+        } else {
+          throw patchErr;
+        }
+      }
     } else {
       result = await apiFetch(userId, 'POST', `/calendars/${encodeURIComponent(calendarId)}/events`, body);
     }
     upsertEventMapping(userId, { taskId: task.id, eventId: result.id, etag: result.etag });
-    addTaskEvent(userId, task.id, 'calendar_synced', { event_id: result.id, action: existing ? 'patch' : 'insert' });
+    addTaskEvent(userId, task.id, 'calendar_synced', { event_id: result.id, action });
     return { synced: true, event_id: result.id };
   } catch (err) {
-    if (existing?.event_id) markFailed(task.id, err.message);
-    else markFailed(task.id, err.message);
+    markFailed(task.id, err.message);
     addTaskEvent(userId, task.id, 'calendar_sync_failed', { error: err.message });
     return { synced: false, error: err.message };
   }
